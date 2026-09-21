@@ -1,0 +1,25 @@
+CompileFlags:
+  Add:
+    - -std=c17
+    - -Wno-c++-compat
+    - -Wno-c++-compat-pedantic
+    - -Iinclude
+    - -isystem
+    - C:/msys64/ucrt64/include
+    - -isystem
+    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.2.0/include
+    - -isystem
+    - C:/msys64/ucrt64/lib/gcc/x86_64-w64-mingw32/13.2.0/include-fixed
+  Compiler: C:/msys64/ucrt64/bin/gcc.exe
+
+---
+If:
+  PathMatch: .*\.c$
+CompileFlags:
+  Add: [-xc]
+
+---
+If:
+  PathMatch: .*\.h$
+CompileFlags:
+  Add: [-xc-header]
