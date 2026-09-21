@@ -83,3 +83,19 @@ selection_statement ::= "if" "(" expression ")" statement [ "else" statement ] |
 iteration_statement ::= "while" "(" expression ")" statement | "do" statement "while" "(" expression ")" ";"
                      | "for" "(" ( [ expression ] ";" | declaration ) [ expression ] ";" [ expression ] ")" statement ;
 jump_statement ::= ( "goto" identifier | "continue" | "break" | "return" [ expression ] ) ";" ;
+
+integer_constant ::= ( decimal | octal | hexadecimal | binary ) ( [ "u" | "U" ] ["l" | "L" | "ll" | "LL"] | ["l" | "L" | "ll" | "LL"] [ "u" | "U" ] ) ;
+decimal ::= ( "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ) { digit } ;
+octal ::= "0" { "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" } ;
+hexadecimal ::= ( "0x" | "0X" ) hex_digit { hex_digit } ;
+binary ::= ( "0b" | "0B" ) ( "0" | "1" ) { "0" | "1" } ;
+floating_constant ::= ( decimal_floating | hexadecimal_floating ) [ "f" | "F" | "l" | "L" ] ;
+decimal_floating ::= digit { digit } "." { digit } [ exponent ] | "." digit { digit } [ exponent ] | digit { digit } exponent ;
+exponent ::= ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
+hexadecimal_floating ::= ( "0x" | "0X" ) ( hex_digit { hex_digit } "." | "." hex_digit | hex_digit ) { hex_digit } ( "p" | "P" ) [ "+" | "-" ] digit { digit }
+digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+hex_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" ;
+oct_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" ;
+character_constant ::= "'" ( c_char | escape_sequence ) "'" ;
+escape_sequence ::= "\\" ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | "\\" | "'" | "\"" | "?" | oct_digit [ oct_digit ] [ oct_digit ] | "x" hex_digit { hex_digit } | unicode_escape_sequence ) ;
+unicode_escape_sequence ::= "U" hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit | "u" hex_digit hex_digit hex_digit hex_digit ;
