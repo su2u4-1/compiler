@@ -62,15 +62,179 @@ static void unget_char(Lexer* lexer) {
 static Token* number_token(Lexer* lexer) {
     size_t start = lexer->pos - 1;
     size_t column_start = lexer->column - 1;
+    char p = '\0';
     char c = next_char(lexer);
     while (is_digit(c) || is_alphabet(c) || c == '_' || c == '.') {
+        p = c;
         c = next_char(lexer);
+        if (p == 'e' || p == 'E' || p == 'p' || p == 'P') {
+            if (c == '+' || c == '-') {
+                p = c;
+                c = next_char(lexer);
+            }
+        }
     }
     unget_char(lexer);
-    string content = create_string(&lexer->source_code[start], lexer->pos - start);
+    size_t size = lexer->pos - start;
+    string C = create_string(&lexer->source_code[start], size);
     // ^ pp-number
 
-    return NULL;  // placeholder
+    bool is_float = false;
+    bool is_hex = false;
+    bool error = false;
+    size_t i = 0;
+
+    if (is_digit(C[0]) && C[0] != '0') {
+        i = 1;
+        while (is_digit(C[i]))
+            i++;
+        if (C[i] == '.') {
+            is_float = true;
+            i++;
+            while (is_digit(C[i]))
+                i++;
+        }
+    } else if (C[0] == '0') {
+        if (C[1] == 'x' || C[1] == 'X') {
+            is_hex = true;
+            i = 2;
+            size_t t0 = 0;
+            while (is_hex_digit(C[i])) {
+                i++;
+                t0++;
+            }
+            if (C[i] == '.') {
+                is_float = true;
+                i++;
+                size_t t1 = 0;
+                while (is_hex_digit(C[i])) {
+                    i++;
+                    t1++;
+                }
+                if (t0 == 0 && t1 == 0) {
+                    error = true;
+                    lexer_error("syntax error: Invalid number format, hex number must have at least one digit", lexer->line, column_start);
+                }
+            } else if (t0 == 0) {
+                error = true;
+                lexer_error("syntax error: Invalid number format, hex number must have at least one digit", lexer->line, column_start);
+            }
+        } else if (C[1] == 'b' || C[1] == 'B') {
+            i = 2;
+            size_t t0 = 0;
+            while (C[i] == '0' || C[i] == '1') {
+                i++;
+                t0++;
+            }
+            if ((is_digit(C[i]) && C[i] != '0' && C[i] != '1') || C[i] == '.' || C[i] == 'e' || C[i] == 'E' || C[i] == 'p' || C[i] == 'P') {
+                error = true;
+                lexer_error("syntax error: Invalid number format, binary number can only contain 0 and 1", lexer->line, column_start);
+            }
+            if (t0 == 0) {
+                error = true;
+                lexer_error("syntax error: Invalid number format, binary number must have at least one digit", lexer->line, column_start);
+            }
+        } else if (C[1] == '.') {
+            is_float = true;
+            i = 2;
+            while (is_digit(C[i]))
+                i++;
+        } else {
+            i = 1;
+            while (is_digit(C[i]))
+                i++;
+            if (C[i] == '.') {
+                is_float = true;
+                i++;
+                while (is_digit(C[i]))
+                    i++;
+            } else if (C[i] == 'e' || C[i] == 'E') {
+                is_float = true;
+            } else {
+                for (size_t k = 0; k < i; k++) {
+                    if (C[k] == '8' || C[k] == '9') {
+                        error = true;
+                        lexer_error("syntax error: Invalid number format, octal number can only contain digits 0-7", lexer->line, column_start);
+                        break;
+                    }
+                }
+            }
+        }
+    } else if (C[0] == '.') {
+        is_float = true;
+        i = 1;
+        size_t t1 = 0;
+        while (is_digit(C[i])) {
+            i++;
+            t1++;
+        }
+        if (t1 == 0) {
+            error = true;
+            lexer_error("syntax error: Invalid number format, float number must have at least one digit after decimal point", lexer->line, column_start);
+        }
+    }
+
+    if (is_float && is_hex && C[i] != 'p' && C[i] != 'P') {
+        error = true;
+        lexer_error("syntax error: Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
+    }
+
+    if (C[i] == 'p' || C[i] == 'P' || C[i] == 'e' || C[i] == 'E') {
+        char ec = C[i];
+        if (is_hex && ec != 'p' && ec != 'P') {
+            error = true;
+            lexer_error("syntax error: Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
+        }
+        if (!is_hex && (ec == 'p' || ec == 'P')) {
+            error = true;
+            lexer_error("syntax error: Invalid number format, decimal float number must have 'e' or 'E' exponent", lexer->line, column_start);
+        }
+        is_float = true;
+        i++;
+        if (C[i] == '+' || C[i] == '-')
+            i++;
+        size_t t1 = 0;
+        while (is_digit(C[i])) {
+            i++;
+            t1++;
+        }
+        if (t1 == 0) {
+            error = true;
+            lexer_error("syntax error: Invalid number format, exponent must have at least one digit", lexer->line, column_start);
+        }
+    }
+
+    if (is_float) {
+        if (C[i] == 'f' || C[i] == 'F')
+            i++;
+        else if (C[i] == 'l' || C[i] == 'L')
+            i++;
+    } else {
+        if (C[i] == 'u' || C[i] == 'U') {
+            i++;
+            if (C[i] == 'l' || C[i] == 'L') {
+                i++;
+                if (C[i - 1] == C[i])
+                    i++;
+            }
+        } else if (C[i] == 'l' || C[i] == 'L') {
+            i++;
+            if (C[i - 1] == C[i])
+                i++;
+            if (C[i] == 'u' || C[i] == 'U')
+                i++;
+        }
+    }
+    if (C[i] != '\0')
+        error = true;
+
+    if (error) {
+        lexer_error("syntax error: Invalid number format", lexer->line, column_start);
+        return create_token(TOKEN_SYNTAX_ERROR_NUMBER, C, lexer->line, column_start);
+    } else if (is_float)
+        return create_token(TOKEN_FLOAT, C, lexer->line, column_start);
+    else
+        return create_token(TOKEN_INT, C, lexer->line, column_start);
 }
 
 static Token* get_next_token(Lexer* lexer) {
