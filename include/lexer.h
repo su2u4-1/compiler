@@ -8,6 +8,7 @@ typedef enum TokenType {
     TOKEN_INT,
     TOKEN_FLOAT,
     TOKEN_STRING,
+    TOKEN_CHAR,
     TOKEN_KEYWORD,
     TOKEN_SYMBOL,
     TOKEN_COMMENT,

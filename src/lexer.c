@@ -29,7 +29,8 @@ static Token* create_token(TokenType type, string value, size_t line, size_t col
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 #define is_alphabet(c) ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z')
 #define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
-#define lexer_error(message, line, column) fprintf(stderr, "[lexer Error] at %s:%zu:%zu: %s\n", lexer->filename, line + 1, column + 1, message)
+#define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
+#define lexer_error(message, line, column) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", lexer->filename, line + 1, column + 1, message)
 
 static char peek_char(Lexer* lexer) {
     if (lexer->pos >= lexer->length)
@@ -86,13 +87,11 @@ static Token* number_token(Lexer* lexer) {
 
     if (is_digit(C[0]) && C[0] != '0') {
         i = 1;
-        while (is_digit(C[i]))
-            i++;
+        while (is_digit(C[i])) i++;
         if (C[i] == '.') {
             is_float = true;
             i++;
-            while (is_digit(C[i]))
-                i++;
+            while (is_digit(C[i])) i++;
         }
     } else if (C[0] == '0') {
         if (C[1] == 'x' || C[1] == 'X') {
@@ -113,11 +112,11 @@ static Token* number_token(Lexer* lexer) {
                 }
                 if (t0 == 0 && t1 == 0) {
                     error = true;
-                    lexer_error("syntax error: Invalid number format, hex number must have at least one digit", lexer->line, column_start);
+                    lexer_error("Invalid number format, hex number must have at least one digit", lexer->line, column_start);
                 }
             } else if (t0 == 0) {
                 error = true;
-                lexer_error("syntax error: Invalid number format, hex number must have at least one digit", lexer->line, column_start);
+                lexer_error("Invalid number format, hex number must have at least one digit", lexer->line, column_start);
             }
         } else if (C[1] == 'b' || C[1] == 'B') {
             i = 2;
@@ -128,33 +127,30 @@ static Token* number_token(Lexer* lexer) {
             }
             if ((is_digit(C[i]) && C[i] != '0' && C[i] != '1') || C[i] == '.' || C[i] == 'e' || C[i] == 'E' || C[i] == 'p' || C[i] == 'P') {
                 error = true;
-                lexer_error("syntax error: Invalid number format, binary number can only contain 0 and 1", lexer->line, column_start);
+                lexer_error("Invalid number format, binary number can only contain 0 and 1", lexer->line, column_start);
             }
             if (t0 == 0) {
                 error = true;
-                lexer_error("syntax error: Invalid number format, binary number must have at least one digit", lexer->line, column_start);
+                lexer_error("Invalid number format, binary number must have at least one digit", lexer->line, column_start);
             }
         } else if (C[1] == '.') {
             is_float = true;
             i = 2;
-            while (is_digit(C[i]))
-                i++;
+            while (is_digit(C[i])) i++;
         } else {
             i = 1;
-            while (is_digit(C[i]))
-                i++;
+            while (is_digit(C[i])) i++;
             if (C[i] == '.') {
                 is_float = true;
                 i++;
-                while (is_digit(C[i]))
-                    i++;
+                while (is_digit(C[i])) i++;
             } else if (C[i] == 'e' || C[i] == 'E') {
                 is_float = true;
             } else {
                 for (size_t k = 0; k < i; k++) {
                     if (C[k] == '8' || C[k] == '9') {
                         error = true;
-                        lexer_error("syntax error: Invalid number format, octal number can only contain digits 0-7", lexer->line, column_start);
+                        lexer_error("Invalid number format, octal number can only contain digits 0-7", lexer->line, column_start);
                         break;
                     }
                 }
@@ -170,29 +166,28 @@ static Token* number_token(Lexer* lexer) {
         }
         if (t1 == 0) {
             error = true;
-            lexer_error("syntax error: Invalid number format, float number must have at least one digit after decimal point", lexer->line, column_start);
+            lexer_error("Invalid number format, float number must have at least one digit after decimal point", lexer->line, column_start);
         }
     }
 
     if (is_float && is_hex && C[i] != 'p' && C[i] != 'P') {
         error = true;
-        lexer_error("syntax error: Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
+        lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
     }
 
     if (C[i] == 'p' || C[i] == 'P' || C[i] == 'e' || C[i] == 'E') {
         char ec = C[i];
         if (is_hex && ec != 'p' && ec != 'P') {
             error = true;
-            lexer_error("syntax error: Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
+            lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", lexer->line, column_start);
         }
         if (!is_hex && (ec == 'p' || ec == 'P')) {
             error = true;
-            lexer_error("syntax error: Invalid number format, decimal float number must have 'e' or 'E' exponent", lexer->line, column_start);
+            lexer_error("Invalid number format, decimal float number must have 'e' or 'E' exponent", lexer->line, column_start);
         }
         is_float = true;
         i++;
-        if (C[i] == '+' || C[i] == '-')
-            i++;
+        if (C[i] == '+' || C[i] == '-') i++;
         size_t t1 = 0;
         while (is_digit(C[i])) {
             i++;
@@ -200,41 +195,64 @@ static Token* number_token(Lexer* lexer) {
         }
         if (t1 == 0) {
             error = true;
-            lexer_error("syntax error: Invalid number format, exponent must have at least one digit", lexer->line, column_start);
+            lexer_error("Invalid number format, exponent must have at least one digit", lexer->line, column_start);
         }
     }
 
     if (is_float) {
-        if (C[i] == 'f' || C[i] == 'F')
-            i++;
-        else if (C[i] == 'l' || C[i] == 'L')
-            i++;
+        if (C[i] == 'f' || C[i] == 'F') i++;
+        else if (C[i] == 'l' || C[i] == 'L') i++;
     } else {
         if (C[i] == 'u' || C[i] == 'U') {
             i++;
             if (C[i] == 'l' || C[i] == 'L') {
                 i++;
-                if (C[i - 1] == C[i])
-                    i++;
+                if (C[i - 1] == C[i]) i++;
             }
         } else if (C[i] == 'l' || C[i] == 'L') {
             i++;
-            if (C[i - 1] == C[i])
-                i++;
-            if (C[i] == 'u' || C[i] == 'U')
-                i++;
+            if (C[i - 1] == C[i]) i++;
+            if (C[i] == 'u' || C[i] == 'U') i++;
         }
     }
     if (C[i] != '\0')
         error = true;
 
     if (error) {
-        lexer_error("syntax error: Invalid number format", lexer->line, column_start);
+        lexer_error("Invalid number format", lexer->line, column_start);
         return create_token(TOKEN_SYNTAX_ERROR_NUMBER, C, lexer->line, column_start);
     } else if (is_float)
         return create_token(TOKEN_FLOAT, C, lexer->line, column_start);
     else
         return create_token(TOKEN_INT, C, lexer->line, column_start);
+}
+
+static bool escape_sequence(Lexer* lexer) {
+    char c = next_char(lexer);
+    if (c == 'a' || c == 'b' || c == 'f' || c == 'n' || c == 'r' || c == 't' || c == 'v' || c == '\\' || c == '\'' || c == '"' || c == '?') {  // simple escape sequence
+        return true;
+    } else if (is_oct_digit(c)) {  // oct escape sequence
+        if (is_oct_digit(peek_char(lexer))) {
+            next_char(lexer);
+            if (is_oct_digit(peek_char(lexer))) next_char(lexer);
+        }
+        // TODO: the value must be within the range of unsigned char
+        return true;
+    } else if (c == 'x') {  // hex escape sequence
+        if (!is_hex_digit(peek_char(lexer))) return false;
+        while (is_hex_digit(peek_char(lexer))) next_char(lexer);
+        // TODO: the value must be within the range of unsigned char
+        return true;
+    } else if (c == 'u' || c == 'U') {  // universal character name
+        int length = (c == 'u') ? 4 : 8;
+        for (int i = 0; i < length; ++i) {
+            if (!is_hex_digit(peek_char(lexer))) return false;
+            next_char(lexer);
+        }
+        // TODO: check UCN value: ( > 00A0 || 0024, 0040, 0060 ) && not in D800..DFFF && <= 10FFFF
+        return true;
+    } else
+        return false;
 }
 
 static Token* get_next_token(Lexer* lexer) {
@@ -248,16 +266,42 @@ static Token* get_next_token(Lexer* lexer) {
             continue;
         } else if (is_alphabet(c) || c == '_') {
             size_t start = lexer->pos - 1;
-            size_t column_start = lexer->column - 1;
             do {
                 c = next_char(lexer);
             } while (is_alphabet(c) || is_digit(c) || c == '_');
             unget_char(lexer);
             string content = create_string(&lexer->source_code[start], lexer->pos - start);
-            return create_token(TOKEN_IDENTIFIER, content, lexer->line, column_start);
+            return create_token(TOKEN_IDENTIFIER, content, lexer->line, lexer->column - 1);
         } else if (is_digit(c) || (is_digit(peek_char(lexer)) && (c == '.'))) {
-            Token* token = number_token(lexer);
-        }
+            return number_token(lexer);
+        } else if (c == '"') {
+            size_t start = lexer->pos - 1;
+            size_t column_start = lexer->column - 1;
+            do {
+                c = next_char(lexer);
+                if (c == '\\') next_char(lexer);
+                if (c == '\0' || c == '\n') {
+                    lexer_error("Unterminated string literal", lexer->line, lexer->column);
+                    return create_token(TOKEN_STRING, create_string(&lexer->source_code[start], lexer->pos - start), lexer->line, column_start);
+                }
+            } while (c != '"');
+            // TODO: Handle escape sequences in string literals
+            return create_token(TOKEN_STRING, create_string(&lexer->source_code[start], lexer->pos - start), lexer->line, column_start);
+        } else if (c == '\'') {
+            size_t start = lexer->pos - 1;
+            size_t column_start = lexer->column - 1;
+            c = next_char(lexer);
+            if (c == '\0' || c == '\n' || c == '\'') {
+                lexer_error("Invalid character literal", lexer->line, lexer->column);
+                return create_token(TOKEN_CHAR, create_string(&lexer->source_code[start], lexer->pos - start), lexer->line, column_start);
+            }
+            if (c == '\\' && !escape_sequence(lexer))
+                lexer_error("Invalid escape sequence in character literal", lexer->line, lexer->column);
+            c = next_char(lexer);
+            if (c != '\'')
+                lexer_error("Invalid character literal", lexer->line, lexer->column);
+            return create_token(TOKEN_CHAR, create_string(&lexer->source_code[start], lexer->pos - start), lexer->line, column_start);
+        }  // TODO
     }
     lexer_error("Unrecognized token", lexer->line, lexer->column);
     return NULL;
