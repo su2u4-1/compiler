@@ -124,7 +124,7 @@ extern string KEYWORD_REGISTER;       // keyword `register`
 extern string KEYWORD_RESTRICT;       // keyword `restrict`
 extern string KEYWORD_RETURN;         // keyword `return`
 extern string KEYWORD_SHORT;          // keyword `short`
-extern string KEYWORD_SINGED;         // keyword `signed`
+extern string KEYWORD_SIGNED;         // keyword `signed`
 extern string KEYWORD_SIZEOF;         // keyword `sizeof`
 extern string KEYWORD_STATIC;         // keyword `static`
 extern string KEYWORD_STRUCT;         // keyword `struct`

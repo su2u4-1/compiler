@@ -282,7 +282,7 @@ string KEYWORD_REGISTER = NULL;
 string KEYWORD_RESTRICT = NULL;
 string KEYWORD_RETURN = NULL;
 string KEYWORD_SHORT = NULL;
-string KEYWORD_SINGED = NULL;
+string KEYWORD_SIGNED = NULL;
 string KEYWORD_SIZEOF = NULL;
 string KEYWORD_STATIC = NULL;
 string KEYWORD_STRUCT = NULL;
@@ -377,7 +377,7 @@ void init_constant(void) {
     KEYWORD_RESTRICT = keywordList[30];
     KEYWORD_RETURN = keywordList[31];
     KEYWORD_SHORT = keywordList[32];
-    KEYWORD_SINGED = keywordList[33];
+    KEYWORD_SIGNED = keywordList[33];
     KEYWORD_SIZEOF = keywordList[34];
     KEYWORD_STATIC = keywordList[35];
     KEYWORD_STRUCT = keywordList[36];
