@@ -146,15 +146,16 @@ string get_source(string path) {
         exit(1);
     }
     fseek(file, 0, SEEK_END);
-    size_t end = (size_t)ftell(file);
+    size_t size = (size_t)ftell(file);
     fseek(file, 0, SEEK_SET);
-    string source_code = malloc(end + 1);
+    string source_code = (string)alloc_memory(size + 1, false);
     if (source_code == NULL) {
         fprintf(stderr, "[lib Error] at <get_source>: could not allocate memory for source code\n");
         exit(1);
     }
-    fread(source_code, 1, end, file);
-    source_code[end] = '\0';
+    memset(source_code, 0, size + 1);
+    fread(source_code, 1, size, file);
+    source_code[size] = '\0';
     fclose(file);
     return source_code;
 }
