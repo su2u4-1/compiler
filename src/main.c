@@ -28,29 +28,39 @@ static void print_tokens(FILE* out, Lexer* lexer) {
     } while (token != NULL && token->type != TOKEN_EOF);
 }
 
+#ifdef DEBUG_PP_LEXER
 static void print_pp_tokens(FILE* out, list(ppToken*) pp_tokens) {
     foreach (ppToken*, token, pp_tokens)
         print_pp_token(out, token);
 }
+#endif
 
 int main(int argc, char* argv[]) {
     init();
     handle_args(argc, argv);
     string source_code = get_source(source_path);
-    // Lexer* lexer = create_lexer(source_path, source_code);
-    // if (lexer == NULL) {
-    //     fprintf(stderr, "[lexer Fatal] at <main>: Failed to create lexer\n");
-    //     return 1;
-    // }
+#ifdef DEBUG_LEXER
+    Lexer* lexer = create_lexer(source_path, source_code);
+    if (lexer == NULL) {
+        fprintf(stderr, "[lexer Fatal] at <main>: Failed to create lexer\n");
+        return 1;
+    }
+#elif defined(DEBUG_PP_LEXER)
     ppLexer* pplexer = create_pp_lexer(source_path, source_code);
     pp_lexer(pplexer);
+#endif
+    string preprocessed_code = preprocess(source_path, source_code);
     FILE* out = fopen(output_path, "w");
     if (out == NULL) {
         fprintf(stderr, "[Error] at <main>: Failed to open output file: %s\n", output_path);
         return 1;
     }
-    // print_tokens(out, lexer);
+#ifdef DEBUG_LEXER
+    print_tokens(out, lexer);
+#elif defined(DEBUG_PP_LEXER)
     print_pp_tokens(out, pplexer->pp_tokens);
+#endif
+    fputs(preprocessed_code, out);
     fclose(out);
     return 0;
 }

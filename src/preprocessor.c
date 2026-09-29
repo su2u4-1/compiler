@@ -76,7 +76,11 @@ static void normalize(ppLexer* lexer, string source_code) {
     lexer->length = size;
 }
 
+#ifdef DEBUG_PP_LEXER
 ppLexer* create_pp_lexer(string filename, string source_code) {
+#else
+static ppLexer* create_pp_lexer(string filename, string source_code) {
+#endif
     ppLexer* lexer = create_struct(ppLexer);
     if (source_code == NULL) {
         fprintf(stderr, "[preprocessor Error] at <create_pp_lexer>: Failed to create ppLexer, source_code is NULL\n");
@@ -98,7 +102,11 @@ ppLexer* create_pp_lexer(string filename, string source_code) {
     return lexer;
 }
 
+#ifdef DEBUG_PP_LEXER
 void pp_lexer(ppLexer* lexer) {
+#else
+static void pp_lexer(ppLexer* lexer) {
+#endif
     while (true) {
         char c = next_char(lexer);
         if (c == '\0') {

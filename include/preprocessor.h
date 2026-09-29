@@ -36,7 +36,9 @@ typedef struct ppLexer {
 } ppLexer;
 
 string preprocess(string filename, string source_code);
+#ifdef DEBUG_PP_LEXER
 void pp_lexer(ppLexer* lexer);
 ppLexer* create_pp_lexer(string filename, string source_code);
+#endif
 
 #endif  // PREPROCESSOR_H
