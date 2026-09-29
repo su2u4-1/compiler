@@ -36,7 +36,7 @@ typedef struct Lexer {
     bool skip_comment;
 } Lexer;
 
-Lexer* create_lexer(string filename);
+Lexer* create_lexer(string filename, string source_code);
 Token* next(Lexer* lexer);
 Token* peek(Lexer* lexer);
 

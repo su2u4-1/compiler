@@ -1,6 +1,7 @@
 CompileFlags:
   Add:
     - -std=c17
+    - -Wno-pre-c11-compat
     - -Wno-c++-compat
     - -Wno-c++-compat-pedantic
     - -Iinclude

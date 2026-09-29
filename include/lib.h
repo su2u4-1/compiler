@@ -71,8 +71,8 @@ List* list_create(int type_id);
 int list_append(List* self, void* item, int type_id);
 void* list_pop(List* self, int type_id);
 
-enum { TYPE_void };
-#define TYPE_TABLE void : TYPE_void
+enum { TYPE_ppToken };
+#define TYPE_TABLE ppToken* : TYPE_ppToken
 
 #define list(T) List*
 #define create_list(T) list_create(_Generic((T)0, TYPE_TABLE))
@@ -87,7 +87,7 @@ enum { TYPE_void };
 // constants
 
 #define keyword_count 44
-#define symbol_count 46
+#define symbol_count 48
 extern string keywordList[keyword_count];
 extern string symbolList[symbol_count];
 
@@ -181,5 +181,7 @@ extern string SYMBOL_R_SHIFT_ASSIGN;  // symbol `>>=`
 extern string SYMBOL_AND_ASSIGN;      // symbol `&=`
 extern string SYMBOL_XOR_ASSIGN;      // symbol `^=`
 extern string SYMBOL_OR_ASSIGN;       // symbol `|=`
+extern string SYMBOL_HASH;            // symbol `#`
+extern string SYMBOL_DOUBLE_HASH;     // symbol `##`
 
 #endif  // LIB_H

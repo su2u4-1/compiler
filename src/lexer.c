@@ -483,30 +483,10 @@ static Token* get(Lexer* lexer) {
     return token;
 }
 
-static size_t preprocess(string source_code) {
-    // temporary preprocess
-    size_t i = 0;
-    char c = source_code[i++];
-    for (; c != '\0'; c = source_code[i++]) {
-        if (c == '#' && (i == 1 || source_code[i - 2] == '\n')) {
-            for (; c != '\0' && c != '\n'; c = source_code[i++]) {
-                if (c == '\\' && source_code[i] == '\n')
-                    source_code[i] = ' ';
-                source_code[i - 1] = ' ';
-            }
-        }
-    }
-    return i - 1;
-}
-
-Lexer* create_lexer(string filename) {
+Lexer* create_lexer(string filename, string source_code) {
     Lexer* lexer = create_struct(Lexer);
-    lexer->source_code = get_source(filename);
-    if (lexer->source_code == NULL) {
-        fprintf(stderr, "[lexer Fatal] at <create_lexer>: Failed to read source code from file: %s\n", filename);
-        return NULL;
-    }
-    lexer->length = preprocess(lexer->source_code);
+    lexer->source_code = source_code;
+    lexer->length = strlen(lexer->source_code);
     lexer->pos = 0;
     lexer->prev_line_column = 0;
     lexer->line = 0;

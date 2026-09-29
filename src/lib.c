@@ -247,7 +247,7 @@ void* list_pop(List* self, int type_id) {
 
 static const char* keywordStrings[keyword_count] = {"_Alignas", "_Alignof", "_Atomic", "_Bool", "_Complex", "_Generic", "_Imaginary", "_Noreturn", "_Static_assert", "_Thread_local", "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern", "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short", "signed", "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while"};
 string keywordList[keyword_count] = {0};
-static const char* symbolStrings[symbol_count] = {";", ",", "{", "}", "(", ")", "[", "]", ":", "?", "...", ".", "->", "*", "&", "=", "++", "--", "+", "-", "/", "%", "!", "~", "^", "|", "<", ">", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "^=", "|="};
+static const char* symbolStrings[symbol_count] = {";", ",", "{", "}", "(", ")", "[", "]", ":", "?", "...", ".", "->", "*", "&", "=", "++", "--", "+", "-", "/", "%", "!", "~", "^", "|", "<", ">", "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "+=", "-=", "*=", "/=", "%=", "<<=", ">>=", "&=", "^=", "|=", "#", "##"};
 string symbolList[symbol_count] = {0};
 
 string KEYWORD_ALIGNAS = NULL;
@@ -340,6 +340,8 @@ string SYMBOL_R_SHIFT_ASSIGN = NULL;
 string SYMBOL_AND_ASSIGN = NULL;
 string SYMBOL_XOR_ASSIGN = NULL;
 string SYMBOL_OR_ASSIGN = NULL;
+string SYMBOL_HASH = NULL;
+string SYMBOL_DOUBLE_HASH = NULL;
 
 void init_constant(void) {
     for (size_t i = 0; i < keyword_count; ++i) {
@@ -438,4 +440,6 @@ void init_constant(void) {
     SYMBOL_AND_ASSIGN = symbolList[43];
     SYMBOL_XOR_ASSIGN = symbolList[44];
     SYMBOL_OR_ASSIGN = symbolList[45];
+    SYMBOL_HASH = symbolList[46];
+    SYMBOL_DOUBLE_HASH = symbolList[47];
 }

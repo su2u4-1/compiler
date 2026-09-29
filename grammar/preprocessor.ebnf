@@ -1,0 +1,92 @@
+preprocessing_file ::= { group_part } ;
+group_part ::= if_section | control_line | text_line | non_directive ;
+if_section ::= if_group { elif_group } [ else_group ] endif_line ;
+if_group ::= "#" [ whitespace ] "if" constant_expression "\n" { group_part }
+           | "#" [ whitespace ] "ifdef" identifier "\n" { group_part }
+           | "#" [ whitespace ] "ifndef" identifier "\n" { group_part } ;
+elif_group ::= "#" [ whitespace ] "elif" constant_expression "\n" { group_part } ;
+else_group ::= "#" [ whitespace ] "else" "\n" { group_part } ;
+endif_line ::= "#" [ whitespace ] "endif" "\n" ;
+control_line ::= "#" [ whitespace ] "include" pp_tokens "\n"
+               | "#" [ whitespace ] "define" identifier replacement_list "\n"
+               | "#" [ whitespace ] "define" identifier lparen [ identifier_list ] ")" replacement_list "\n"
+               | "#" [ whitespace ] "define" identifier lparen "..." ")" replacement_list "\n"
+               | "#" [ whitespace ] "define" identifier lparen identifier_list "," "..." ")" replacement_list "\n"
+               | "#" [ whitespace ] "undef" identifier "\n"
+               | "#" [ whitespace ] "line" pp_tokens "\n"
+               | "#" [ whitespace ] "error" [ pp_tokens ] "\n"
+               | "#" [ whitespace ] "pragma" [ pp_tokens ] "\n"
+               | "#" [ whitespace ] "\n" ;
+text_line ::= [ pp_tokens ] "\n" ;
+non_directive ::= pp_tokens "\n" ;  # 第一個 token 不能是 "#"，且不包含換行符號
+lparen ::= "(" ;  # 前方不能有空白
+replacement_list ::= [ pp_tokens ] ;
+pp_tokens ::= pp_token { pp_token } ;
+identifier_list ::= identifier { "," identifier } ;
+pp_token ::= identifier
+           | pp_number
+           | character_constant
+           | string_literal
+           | punctuator
+           | other_char ;
+header_name ::= "<" { h_char } ">"
+              | "\"" { q_char } "\"" ;
+h_char ::= 除 ">" 與 "\n" 之外的任意字元 ;
+q_char ::= 除 "\"" 與 "\n" 之外的任意字元 ;
+identifier ::= nondigit { nondigit | digit } ;
+nondigit ::= "_" | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+           | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z"
+           | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+           | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+pp_number ::= ( digit | "." digit ) { digit | nondigit | "." | ( "e" | "E" | "p" | "P" ) [ "+" | "-" ] } ;
+character_constant ::= "'" ( c_char | escape_sequence ) "'" ;
+string_literal ::= "\"" { s_char | escape_sequence } "\"" ;
+punctuator ::= "[" | "]" | "(" | ")" | "{" | "}" | "." | "->"
+             | "++" | "--" | "&" | "*" | "+" | "-" | "~" | "!"
+             | "/" | "%" | "<<" | ">>" | "<" | ">" | "<=" | ">="
+             | "==" | "!=" | "^" | "|" | "&&" | "||" | "?"
+             | ":" | ";" | "..." | "=" | "*=" | "/=" | "%="
+             | "+=" | "-=" | "<<=" | ">>=" | "&=" | "^=" | "|="
+             | "," | "#" | "##"
+             | "<:" | ":>" | "<%" | "%>" | "%:" | "%:%:" ;
+other_char ::= 除 whitespace、"\n" 以及上述 token 之外的任意字元 ;
+constant_expression ::= conditional_expression ;
+conditional_expression ::= logical_or_expression [ "?" expression ":" conditional_expression ] ;
+logical_or_expression ::= logical_and_expression { "||" logical_and_expression } ;
+logical_and_expression ::= inclusive_or_expression { "&&" inclusive_or_expression } ;
+inclusive_or_expression ::= exclusive_or_expression { "|" exclusive_or_expression } ;
+exclusive_or_expression ::= and_expression { "^" and_expression } ;
+and_expression ::= equality_expression { "&" equality_expression } ;
+equality_expression ::= relational_expression { ( "==" | "!=" ) relational_expression } ;
+relational_expression ::= shift_expression { ( "<" | ">" | "<=" | ">=" ) shift_expression } ;
+shift_expression ::= additive_expression { ( "<<" | ">>" ) additive_expression } ;
+additive_expression ::= multiplicative_expression { ( "+" | "-" ) multiplicative_expression } ;
+multiplicative_expression ::= unary_expression { ( "*" | "/" | "%" ) unary_expression } ;
+unary_expression ::= primary_expression
+                   | "defined" identifier
+                   | "defined" "(" identifier ")"
+                   | "+" unary_expression
+                   | "-" unary_expression
+                   | "~" unary_expression
+                   | "!" unary_expression
+                   | "_Pragma" "(" string_literal ")"
+                   | "__has_include" "(" header_name ")"
+                   | "__has_include" "(" string_literal ")" ;
+primary_expression ::= identifier
+                    | constant
+                    | "(" expression ")" ;
+expression ::= conditional_expression ;
+constant ::= integer_constant | character_constant ;
+whitespace ::= " " | "\t" | "\v" | "\f" ;
+digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+c_char ::= 除 "'"、"\\" 與 "\n" 之外的任意字元 ;
+s_char ::= 除 "\""、"\\" 與 "\n" 之外的任意字元 ;
+escape_sequence ::= "\\" ( "a" | "b" | "f" | "n" | "r" | "t" | "v" | "\\" | "'" | "\"" | "?" | oct_digit [ oct_digit ] [ oct_digit ] | "x" hex_digit { hex_digit } | unicode_escape_sequence ) ;
+unicode_escape_sequence ::= "U" hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit hex_digit | "u" hex_digit hex_digit hex_digit hex_digit ;
+integer_constant ::= ( decimal | octal | hexadecimal | binary ) ( [ "u" | "U" ] [ "l" | "L" | "ll" | "LL" ] | [ "l" | "L" | "ll" | "LL" ] [ "u" | "U" ] ) ;
+decimal ::= ( "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ) { digit } ;
+octal ::= "0" { oct_digit } ;
+hexadecimal ::= ( "0x" | "0X" ) hex_digit { hex_digit } ;
+binary ::= ( "0b" | "0B" ) ( "0" | "1" ) { "0" | "1" } ;
+hex_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" ;
+oct_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" ;

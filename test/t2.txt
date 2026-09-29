@@ -1,0 +1,7 @@
+#if 1
+int main(void) {
+    char* s = "abc;
+    char d = '\uxxx
+}
+/* comment *
+abc

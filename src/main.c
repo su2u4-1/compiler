@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include "lib.h"
 #include "output.h"
+#include "preprocessor.h"
 
 static string source_path = NULL;
 static string output_path = NULL;
@@ -27,19 +28,29 @@ static void print_tokens(FILE* out, Lexer* lexer) {
     } while (token != NULL && token->type != TOKEN_EOF);
 }
 
+static void print_pp_tokens(FILE* out, list(ppToken*) pp_tokens) {
+    foreach (ppToken*, token, pp_tokens)
+        print_pp_token(out, token);
+}
+
 int main(int argc, char* argv[]) {
     init();
     handle_args(argc, argv);
-    Lexer* lexer = create_lexer(source_path);
-    if (lexer == NULL) {
-        fprintf(stderr, "[lexer Fatal] at <main>: Failed to create lexer\n");
-        return 1;
-    }
+    string source_code = get_source(source_path);
+    // Lexer* lexer = create_lexer(source_path, source_code);
+    // if (lexer == NULL) {
+    //     fprintf(stderr, "[lexer Fatal] at <main>: Failed to create lexer\n");
+    //     return 1;
+    // }
+    ppLexer* pplexer = create_pp_lexer(source_path, source_code);
+    pp_lexer(pplexer);
     FILE* out = fopen(output_path, "w");
     if (out == NULL) {
         fprintf(stderr, "[Error] at <main>: Failed to open output file: %s\n", output_path);
         return 1;
     }
-    print_tokens(out, lexer);
+    // print_tokens(out, lexer);
+    print_pp_tokens(out, pplexer->pp_tokens);
+    fclose(out);
     return 0;
 }
