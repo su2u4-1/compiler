@@ -69,16 +69,27 @@ typedef struct List {
 
 List* list_create(int type_id);
 int list_append(List* self, void* item, int type_id);
-void* list_pop(List* self, int type_id);
+void* list_pop_front(List* self, int type_id);
+void* list_pop_back(List* self, int type_id);
 
-enum { TYPE_ppToken };
-#define TYPE_TABLE ppToken* : TYPE_ppToken
+enum {
+    TYPE_string,
+    TYPE_ppToken,
+    TYPE_ppMacro,
+    TYPE_ppCondFrame,
+};
+#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame
+typedef List* List_string;
+typedef List List_ppToken;
+typedef List List_ppMacro;
+typedef List List_ppCondFrame;
 
-#define list(T) List*
+#define list(T) List_##T
 #define create_list(T) list_create(_Generic((T)0, TYPE_TABLE))
 #define list_empty(self) ((self) == NULL || (self)->head == NULL)
 #define append(lst, item) list_append((lst), (void*)(item), _Generic((item), TYPE_TABLE))
-#define pop(lst, T) ((T)list_pop((lst), _Generic((T)0, TYPE_TABLE)))
+#define pop_front(lst, T) ((T)list_pop_front((lst), _Generic((T)0, TYPE_TABLE)))
+#define pop_back(lst, T) ((T)list_pop_back((lst), _Generic((T)0, TYPE_TABLE)))
 #define foreach(type, item, lst)                                                                    \
     for (List* item##__l = (lst); item##__l != NULL && item##__l->head != NULL; item##__l = NULL)   \
         for (ListNode* item##__n = item##__l->head; item##__n != NULL; item##__n = item##__n->next) \
