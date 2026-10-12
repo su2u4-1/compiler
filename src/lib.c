@@ -227,7 +227,7 @@ int list_append(List* self, void* item, int type_id) {
     return 0;
 }
 
-void* list_pop(List* self, int type_id) {
+void* list_pop_front(List* self, int type_id) {
     if (self == NULL)
         return NULL;
     if (self->type_id != type_id) {
@@ -240,6 +240,30 @@ void* list_pop(List* self, int type_id) {
     self->head = self->head->next;
     if (self->head == NULL)
         self->tail = NULL;
+    return data;
+}
+
+void* list_pop_back(List* self, int type_id) {
+    if (self == NULL)
+        return NULL;
+    if (self->type_id != type_id) {
+        fprintf(stderr, "[lib Error at <list_pop_back>: type mismatch: list has %d, got %d\n", self->type_id, type_id);
+        return NULL;
+    }
+    if (list_empty(self))
+        return NULL;
+    void* data = self->tail->data;
+    if (self->head == self->tail) {
+        self->head = NULL;
+        self->tail = NULL;
+    } else {
+        ListNode* current = self->head;
+        while (current->next != self->tail) {
+            current = current->next;
+        }
+        current->next = NULL;
+        self->tail = current;
+    }
     return data;
 }
 
