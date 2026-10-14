@@ -115,8 +115,7 @@ static void pp_lexer(ppLexer* lexer) {
             pp_token(PP_EOF, NULL, lexer->length);
             return;
         } else if (c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f') {
-            if (c == '\n')
-                pp_token(PP_NEWLINE, NULL, lexer->pos - 1);
+            if (c == '\n') pp_token(PP_NEWLINE, NULL, lexer->pos - 1);
         } else if (is_alphabet(c) || c == '_') {
             size_t start = lexer->pos - 1;
             do {
@@ -183,20 +182,16 @@ static void pp_lexer(ppLexer* lexer) {
                         if (c == '/') break;
                     }
                 }
-            } else if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_DIV_ASSIGN, start);
+            } else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_DIV_ASSIGN, start);
             else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_DIV, start);
             }
         } else if (c == '-') {
             c = next_char(lexer);
-            if (c == '-')
-                pp_token(PP_SYMBOL, SYMBOL_DECREMENT, lexer->pos - 2);
-            else if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_SUB_ASSIGN, lexer->pos - 2);
-            else if (c == '>')
-                pp_token(PP_SYMBOL, SYMBOL_ARROW, lexer->pos - 2);
+            if (c == '-') pp_token(PP_SYMBOL, SYMBOL_DECREMENT, lexer->pos - 2);
+            else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_SUB_ASSIGN, lexer->pos - 2);
+            else if (c == '>') pp_token(PP_SYMBOL, SYMBOL_ARROW, lexer->pos - 2);
             else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_SUB, lexer->pos - 1);
@@ -205,14 +200,12 @@ static void pp_lexer(ppLexer* lexer) {
             if (peek_char(lexer) == '=') {
                 c = next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_NE, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_LOGICAL_NOT, lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_LOGICAL_NOT, lexer->pos - 1);
         } else if (c == '*') {
             if (peek_char(lexer) == '=') {
                 c = next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_MUL_ASSIGN, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_MUL, lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_MUL, lexer->pos - 1);
         } else if (c == '.') {
             c = next_char(lexer);
             if (c == '.' && peek_char(lexer) == '.') {
@@ -224,10 +217,8 @@ static void pp_lexer(ppLexer* lexer) {
             }
         } else if (c == '&') {
             c = next_char(lexer);
-            if (c == '&')
-                pp_token(PP_SYMBOL, SYMBOL_LOGICAL_AND, lexer->pos - 2);
-            else if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_AND_ASSIGN, lexer->pos - 2);
+            if (c == '&') pp_token(PP_SYMBOL, SYMBOL_LOGICAL_AND, lexer->pos - 2);
+            else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_AND_ASSIGN, lexer->pos - 2);
             else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_BITWISE_AND, lexer->pos - 1);
@@ -236,98 +227,74 @@ static void pp_lexer(ppLexer* lexer) {
             if (peek_char(lexer) == '=') {
                 next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_MOD_ASSIGN, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_MOD, lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_MOD, lexer->pos - 1);
         } else if (c == '^') {
             if (peek_char(lexer) == '=') {
                 next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_XOR_ASSIGN, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_XOR, lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_XOR, lexer->pos - 1);
         } else if (c == '=') {
             if (peek_char(lexer) == '=') {
                 next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_EQ, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_ASSIGN, lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_ASSIGN, lexer->pos - 1);
         } else if (c == '+') {
             c = next_char(lexer);
-            if (c == '+')
-                pp_token(PP_SYMBOL, SYMBOL_INCREMENT, lexer->pos - 2);
-            else if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_ADD_ASSIGN, lexer->pos - 2);
+            if (c == '+') pp_token(PP_SYMBOL, SYMBOL_INCREMENT, lexer->pos - 2);
+            else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_ADD_ASSIGN, lexer->pos - 2);
             else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_ADD, lexer->pos - 1);
             }
         } else if (c == '<') {
             c = next_char(lexer);
-            if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_LE, lexer->pos - 2);
+            if (c == '=') pp_token(PP_SYMBOL, SYMBOL_LE, lexer->pos - 2);
             else if (c == '<') {
                 if (peek_char(lexer) == '=') {
                     c = next_char(lexer);
                     pp_token(PP_SYMBOL, SYMBOL_L_SHIFT_ASSIGN, lexer->pos - 3);
-                } else
-                    pp_token(PP_SYMBOL, SYMBOL_L_SHIFT, lexer->pos - 2);
+                } else pp_token(PP_SYMBOL, SYMBOL_L_SHIFT, lexer->pos - 2);
             } else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_LT, lexer->pos - 1);
             }
         } else if (c == '>') {
             c = next_char(lexer);
-            if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_GE, lexer->pos - 2);
+            if (c == '=') pp_token(PP_SYMBOL, SYMBOL_GE, lexer->pos - 2);
             else if (c == '>') {
                 if (peek_char(lexer) == '=') {
                     c = next_char(lexer);
                     pp_token(PP_SYMBOL, SYMBOL_R_SHIFT_ASSIGN, lexer->pos - 3);
-                } else
-                    pp_token(PP_SYMBOL, SYMBOL_R_SHIFT, lexer->pos - 2);
+                } else pp_token(PP_SYMBOL, SYMBOL_R_SHIFT, lexer->pos - 2);
             } else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_GT, lexer->pos - 1);
             }
         } else if (c == '|') {
             c = next_char(lexer);
-            if (c == '|')
-                pp_token(PP_SYMBOL, SYMBOL_LOGICAL_OR, lexer->pos - 2);
-            else if (c == '=')
-                pp_token(PP_SYMBOL, SYMBOL_OR_ASSIGN, lexer->pos - 2);
+            if (c == '|') pp_token(PP_SYMBOL, SYMBOL_LOGICAL_OR, lexer->pos - 2);
+            else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_OR_ASSIGN, lexer->pos - 2);
             else {
                 unget_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_BITWISE_OR, lexer->pos - 1);
             }
-        } else if (c == ',')
-            pp_token(PP_SYMBOL, SYMBOL_COMMA, lexer->pos - 1);
-        else if (c == ';')
-            pp_token(PP_SYMBOL, SYMBOL_SEMICOLON, lexer->pos - 1);
-        else if (c == ':')
-            pp_token(PP_SYMBOL, SYMBOL_COLON, lexer->pos - 1);
-        else if (c == '?')
-            pp_token(PP_SYMBOL, SYMBOL_QUESTION, lexer->pos - 1);
-        else if (c == '(')
-            pp_token(PP_SYMBOL, SYMBOL_L_PARENTHESIS, lexer->pos - 1);
-        else if (c == ')')
-            pp_token(PP_SYMBOL, SYMBOL_R_PARENTHESIS, lexer->pos - 1);
-        else if (c == '[')
-            pp_token(PP_SYMBOL, SYMBOL_L_BRACKET, lexer->pos - 1);
-        else if (c == ']')
-            pp_token(PP_SYMBOL, SYMBOL_R_BRACKET, lexer->pos - 1);
-        else if (c == '{')
-            pp_token(PP_SYMBOL, SYMBOL_L_BRACE, lexer->pos - 1);
-        else if (c == '}')
-            pp_token(PP_SYMBOL, SYMBOL_R_BRACE, lexer->pos - 1);
-        else if (c == '~')
-            pp_token(PP_SYMBOL, SYMBOL_BITWISE_NOT, lexer->pos - 1);
+        } else if (c == ',') pp_token(PP_SYMBOL, SYMBOL_COMMA, lexer->pos - 1);
+        else if (c == ';') pp_token(PP_SYMBOL, SYMBOL_SEMICOLON, lexer->pos - 1);
+        else if (c == ':') pp_token(PP_SYMBOL, SYMBOL_COLON, lexer->pos - 1);
+        else if (c == '?') pp_token(PP_SYMBOL, SYMBOL_QUESTION, lexer->pos - 1);
+        else if (c == '(') pp_token(PP_SYMBOL, SYMBOL_L_PARENTHESIS, lexer->pos - 1);
+        else if (c == ')') pp_token(PP_SYMBOL, SYMBOL_R_PARENTHESIS, lexer->pos - 1);
+        else if (c == '[') pp_token(PP_SYMBOL, SYMBOL_L_BRACKET, lexer->pos - 1);
+        else if (c == ']') pp_token(PP_SYMBOL, SYMBOL_R_BRACKET, lexer->pos - 1);
+        else if (c == '{') pp_token(PP_SYMBOL, SYMBOL_L_BRACE, lexer->pos - 1);
+        else if (c == '}') pp_token(PP_SYMBOL, SYMBOL_R_BRACE, lexer->pos - 1);
+        else if (c == '~') pp_token(PP_SYMBOL, SYMBOL_BITWISE_NOT, lexer->pos - 1);
         else if (c == '#') {
             if (peek_char(lexer) == '#') {
                 next_char(lexer);
                 pp_token(PP_SYMBOL, SYMBOL_DOUBLE_HASH, lexer->pos - 2);
-            } else
-                pp_token(PP_SYMBOL, SYMBOL_HASH, lexer->pos - 1);
-        } else
-            pp_token(PP_OTHER, create_string(&lexer->source_code[lexer->pos - 1], 1), lexer->pos - 1);
+            } else pp_token(PP_SYMBOL, SYMBOL_HASH, lexer->pos - 1);
+        } else pp_token(PP_OTHER, create_string(&lexer->source_code[lexer->pos - 1], 1), lexer->pos - 1);
     }
 }
 
@@ -361,16 +328,19 @@ static ppContext* create_pp_context(ppLexer* lexer) {
 static void skip_to_newline(ppContext* ctx) {
     assert(ctx != NULL);
     while (ctx->current != NULL) {
-        if (ctx->current->data == NULL) return;
+        if (ctx->current->data == NULL)
+            return;
         ppToken* t = (ppToken*)ctx->current->data;
-        if (is_eof(t) || t->type == PP_NEWLINE) return;
+        if (is_eof(t) || t->type == PP_NEWLINE)
+            return;
         ctx->current = ctx->current->next;
     }
 }
 static ppMacro* find_macro(ppContext* ctx, string name) {
     assert(ctx != NULL);
     foreach (ppMacro*, macro, ctx->macros)
-        if (macro->name == name) return macro;
+        if (macro->name == name)
+            return macro;
     return NULL;
 }
 static bool cond_active(ppContext* ctx) {
@@ -856,6 +826,8 @@ string preprocess(string filename, string source_code) {
                 continue;
             pp_get(ctx);
             at_line_start = (token->type == PP_NEWLINE);
+            if (token->type == PP_OTHER)
+                preprocessor_error(string_splice("Unexpected token: %s", token->value == NULL ? "(null)" : token->value), token->line, token->column);
             if (token->type == PP_IDENTIFIER && expand_macro(ctx, token))
                 continue;
             append(ctx->output, token);
