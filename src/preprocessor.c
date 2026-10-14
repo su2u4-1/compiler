@@ -13,6 +13,7 @@
 #define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
 #define pp_lexer_error(message, pos) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", lexer->filename, line(lexer, pos), column(lexer, pos), message)
 #define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
+#define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
 #define content_string(start) create_string(&lexer->source_code[start], lexer->pos - start)
 #define is_eof(t) ((t) == NULL || (t)->type == PP_EOF)
 
@@ -345,7 +346,7 @@ static ppMacro* find_macro(ppContext* ctx, string name) {
 }
 static bool cond_active(ppContext* ctx) {
     assert(ctx != NULL);
-    if (!list_empty(ctx->cond_stack))
+    if (list_empty(ctx->cond_stack))
         return true;
     return ((ppCondFrame*)ctx->cond_stack->tail->data)->active;
 }
@@ -665,6 +666,88 @@ static long long eval_conditional(ppContext* ctx) {
     }
 }
 
+static void handle_define(ppContext* ctx) {
+    ppToken* name = pp_peek(ctx);
+    if (is_eof(name) || name->type != PP_IDENTIFIER) {
+        preprocessor_error("Expected macro name after #define", name == NULL ? 0 : name->line, name == NULL ? 0 : name->column);
+        return;
+    }
+    pp_get(ctx);  // consume macro name
+
+    ppMacro* macro = NULL;
+    ppToken* t = pp_peek(ctx);
+    if (!is_eof(t) && t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS && t->line == name->line && t->column == name->column + strlen(name->value)) {
+        macro = create_pp_macro(name->value, true);
+        pp_get(ctx);  // consume '('
+
+        t = pp_peek(ctx);
+        while (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
+            if (is_eof(t)) {
+                preprocessor_error("Expected parameter or ) in macro definition", t == NULL ? 0 : t->line, t == NULL ? 0 : t->column);
+                return;
+            }
+            if (t->type == PP_SYMBOL && t->value == SYMBOL_ELLIPSIS) {
+                pp_get(ctx);  // consume '...'
+                macro->is_variadic = true;
+                t = pp_peek(ctx);
+                if (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
+                    preprocessor_error("Expected ) after ... in macro definition", t->line, t->column);
+                    return;
+                }
+                break;
+            }
+            if (t->type != PP_IDENTIFIER) {
+                preprocessor_error("Expected parameter name in macro definition", t->line, t->column);
+                return;
+            }
+            foreach (string, p, macro->params) {
+                if (p == t->value) {
+                    preprocessor_error("Duplicate macro parameter name", t->line, t->column);
+                    return;
+                }
+            }
+            pp_get(ctx);  // consume parameter name
+            append(macro->params, t->value);
+
+            t = pp_peek(ctx);
+            if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA) {
+                pp_get(ctx);  // consume ','
+                t = pp_peek(ctx);
+                if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
+                    preprocessor_error("Expected parameter name after , in macro definition", t->line, t->column);
+                    return;
+                }
+            } else if (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
+                preprocessor_error("Expected , or ) in macro definition", t->line, t->column);
+                return;
+            }
+            t = pp_peek(ctx);
+        }
+        pp_get(ctx);  // consume ')'
+    } else
+        macro = create_pp_macro(name->value, false);
+
+    while (true) {
+        t = pp_peek(ctx);
+        if (is_eof(t) || t->type == PP_NEWLINE)
+            break;
+        pp_get(ctx);  // consume token
+        append(macro->body, t);
+    }
+
+    foreach (ppMacro*, m, ctx->macros) {
+        if (m->name == macro->name) {
+            preprocessor_warn("Macro redefined", name->line, name->column);
+            // TODO: compare old and new definition for full equality
+            m->params = macro->params;
+            m->is_variadic = macro->is_variadic;
+            m->body = macro->body;
+            return;
+        }
+    }
+    append(ctx->macros, macro);
+}
+
 static void handle_directive(ppContext* ctx) {
     ppToken* directive = pp_peek(ctx);
     if (is_eof(directive) || directive->type != PP_IDENTIFIER) {
@@ -673,8 +756,12 @@ static void handle_directive(ppContext* ctx) {
     }
     pp_get(ctx);  // consume directive token
 
+    bool is_cond = directive->value == P_IF || directive->value == P_IFDEF || directive->value == P_IFNDEF || directive->value == P_ELIF || directive->value == P_ELSE || directive->value == P_ENDIF;
+    if (!is_cond && !cond_active(ctx))
+        return;
+
     if (directive->value == P_DEFINE) {
-        // TODO: handle_define
+        handle_define(ctx);
     } else if (directive->value == P_UNDEF) {
         ppToken* name = pp_peek(ctx);
         if (is_eof(name) || name->type != PP_IDENTIFIER) {
@@ -822,10 +909,10 @@ string preprocess(string filename, string source_code) {
             skip_to_newline(ctx);
             at_line_start = true;
         } else {
+            token = pp_get(ctx);
+            at_line_start = (token->type == PP_NEWLINE);
             if (!cond_active(ctx))
                 continue;
-            pp_get(ctx);
-            at_line_start = (token->type == PP_NEWLINE);
             if (token->type == PP_OTHER)
                 preprocessor_error(string_splice("Unexpected token: %s", token->value == NULL ? "(null)" : token->value), token->line, token->column);
             if (token->type == PP_IDENTIFIER && expand_macro(ctx, token))
@@ -833,6 +920,18 @@ string preprocess(string filename, string source_code) {
             append(ctx->output, token);
         }
     }
-
-    return NULL;  // placeholder
+    // temporary: just concatenate the output tokens into a string for now
+    string result = malloc(lexer->length * 2);  // allocate enough space for the output
+    result[0] = '\0';
+    foreach (ppToken*, t, ctx->output) {
+        if (t->type == PP_NEWLINE) {
+            strcat(result, "\n");
+        } else if (t->type == PP_STRING || t->type == PP_CHAR) {
+            strcat(result, t->value);
+        } else if (t->type == PP_NUMBER || t->type == PP_IDENTIFIER || t->type == PP_SYMBOL) {
+            strcat(result, t->value);
+            strcat(result, " ");
+        }
+    }
+    return result;
 }
