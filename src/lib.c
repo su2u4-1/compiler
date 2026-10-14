@@ -85,10 +85,8 @@ pointer alloc_memory(size_t size, bool is_struct) {
             pointer ptr = (void*)(block->data + block->used);
             if (is_struct)
                 assert((size_t)ptr % ALIGN_SIZE == 0);
-            if (block->size - block->used >= size) {
-                block->used += size;
-                return ptr;
-            }
+            block->used += size;
+            return ptr;
         }
         block = block->next;
     }
