@@ -1,0 +1,20 @@
+#define F(x) x y
+#define G(x) x
+#define S(x) #x
+#define STR(...) #__VA_ARGS__
+F(1)       // 1 y
+G(a b)     // a b
+S(a b)     // "a b"
+STR(a, b)  // "a, b"
+
+#define CAT(a, b) a##b
+CAT(foo, bar)       // foobar
+
+#define A 1
+#define B 2
+#define AB 3
+CAT(A, B)           // AB → rescan → 3
+CAT(A, 2)           // A2 (identifier)
+
+#define PREFIX pre_
+CAT(PREFIX, fix)    // PREFIXfix

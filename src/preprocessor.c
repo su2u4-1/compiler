@@ -3,9 +3,9 @@
 #define line(lexer, pos) ((pos >= lexer->length) ? lexer->line_map[lexer->length] : lexer->line_map[pos])
 #define column(lexer, pos) ((pos >= lexer->length) ? lexer->column_map[lexer->length] : lexer->column_map[pos])
 #define peek_char(lexer) ((lexer->pos >= lexer->length) ? '\0' : lexer->source_code[lexer->pos])
-#define next_char(lexer) ((lexer->pos >= lexer->length) ? '\0' : lexer->source_code[lexer->pos++])
+#define next_char(lexer) ((lexer->pos++ >= lexer->length) ? '\0' : lexer->source_code[lexer->pos - 1])
 #define unget_char(lexer) \
-    if (lexer->pos > 0) lexer->pos -= (lexer->pos >= lexer->length ? 0 : 1)
+    if (lexer->pos > 0) lexer->pos -= 1
 #define pp_token(type, value, pos) append(lexer->pp_tokens, create_pp_token(type, value, lexer, pos))
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 #define is_alphabet(c) ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z')
@@ -364,6 +364,7 @@ static string P_INCLUDE = NULL;
 static string P_LINE = NULL;
 static string P_ERROR = NULL;
 static string P_PRAGMA = NULL;
+static string P_VA_ARGS = NULL;
 
 static ppToken* pp_peek(ppContext* ctx) {
     if (ctx == NULL) return NULL;
@@ -451,7 +452,7 @@ static long long parse_int_literal(string s) {
     return strtoll(p, NULL, base);
 }
 
-static void skip_expr(ppContext* ctx, int min_prec);
+static void skip_conditional(ppContext* ctx);
 
 static void skip_primary(ppContext* ctx) {
     ppToken* t = pp_peek(ctx);
@@ -459,7 +460,7 @@ static void skip_primary(ppContext* ctx) {
 
     if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
         pp_get(ctx);
-        skip_expr(ctx, 0);
+        skip_conditional(ctx);
         expect_token(ctx, "Expected ) in expression end", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS);
         return;
     }
@@ -524,24 +525,218 @@ static void skip_conditional(ppContext* ctx) {
     skip_conditional(ctx);  // else branch
 }
 
-static long long eval_conditional(ppContext* ctx);
+static list(list(ppToken*)) collect_args(ppContext* ctx, ppToken* name, size_t expected, bool is_variadic) {
+    expect_token(ctx, "Expected ( in macro invocation", name->line, name->column, PP_SYMBOL, SYMBOL_L_PARENTHESIS);
+    size_t count = 0;
+    list(list(ppToken*)) args = create_list(list(ppToken*));
+    list(ppToken*) cur = create_list(ppToken*);
+    int depth = 0;
+    while (true) {
+        ppToken* t = pp_get(ctx);
+        if (is_eof(t)) {
+            preprocessor_error("Unterminated macro arguments", name->line, name->column);
+            return NULL;
+        } else if (t->type == PP_NEWLINE) {
+            continue;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
+            depth++;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
+            if (depth == 0)
+                break;
+            depth--;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA && depth == 0) {
+            count++;
+            if (!(is_variadic && count > expected)) {
+                append(args, cur);
+                cur = create_list(ppToken*);
+                continue;
+            }
+        }
+        append(cur, t);
+    }
+    if (expected == 0 && list_empty(cur) && list_empty(args))
+        return args;  // empty list
+    count++;
+    append(args, cur);
+    if ((!is_variadic && count != expected) || (is_variadic && count < expected)) {
+        preprocessor_error("Incorrect number of macro arguments", name->line, name->column);
+        return NULL;
+    }
+    return args;
+}
+
+static ppToken* copy_pp_token(ppTokenType type, string value, ppToken* name) {
+    ppToken* new_token = create_struct(ppToken);
+    new_token->type = type;
+    new_token->value = value;
+    new_token->line = name->line;
+    new_token->column = name->column;
+    return new_token;
+}
+
+static string create_string_from_tokens(list(ppToken*) tokens) {
+    if (list_empty(tokens))
+        return create_string("", 0);
+    size_t len = 0;
+    size_t n = 0;
+    foreach (ppToken*, t, tokens) {
+        len += strlen(t->value);
+        n++;
+    }
+    string buf = malloc(len * 3 + n + 5);
+    size_t p = 0;
+    ppToken* prev = NULL;
+    buf[p++] = '"';
+    foreach (ppToken*, t, tokens) {
+        if (prev != NULL) {
+            if (!(prev->line == t->line && prev->column + strlen(prev->value) == t->column))
+                buf[p++] = ' ';
+        }
+        prev = t;
+        for (string s = t->value; *s != '\0'; s++) {
+            if (*s == '\\' || *s == '"')
+                buf[p++] = '\\';
+            buf[p++] = *s;
+        }
+    }
+    buf[p++] = '"';
+    buf[p] = '\0';
+    string result = create_string(buf, p);
+    free(buf);
+    return result;
+}
+
+static list(ppToken*) paste_tokens(ppContext* ctx, list(ppToken*) tokens) {
+    list(ppToken*) out = create_list(ppToken*);
+    ListNode* node = tokens->head;
+    while (node != NULL) {
+        ppToken* t = (ppToken*)node->data;
+        if (t->type == PP_SYMBOL && t->value == SYMBOL_DOUBLE_HASH) {
+            if (out->tail == NULL || node->next == NULL) {
+                preprocessor_error("## cannot appear at boundary", t->line, t->column);
+                node = node->next;
+                continue;
+            }
+            ppToken* left = (ppToken*)out->tail->data;
+            ppToken* right = (ppToken*)node->next->data;
+            size_t len_l = strlen(left->value);
+            size_t len_r = strlen(right->value);
+            string buf = malloc(len_l + len_r + 1);
+            memcpy(buf, left->value, len_l);
+            memcpy(buf + len_l, right->value, len_r);
+            buf[len_l + len_r] = '\0';
+            string new_value = create_string(buf, len_l + len_r);
+            free(buf);
+
+            char c = new_value[0];
+            ppTokenType type = PP_SYMBOL;
+            if (c == '\0')
+                type = PP_OTHER;
+            else if (is_alphabet(c) || c == '_')
+                type = PP_IDENTIFIER;
+            else if (is_digit(c) || c == '.')
+                type = PP_NUMBER;
+            out->tail->data = copy_pp_token(type, new_value, left);
+            node = node->next->next;
+        } else {
+            append(out, t);
+            node = node->next;
+        }
+    }
+    return out;
+}
+
+static list(ppToken*) substitute(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name) {
+    list(ppToken*) result = create_list(ppToken*);
+    if (list_empty(macro->body))
+        return result;
+    if (macro->params == NULL) {
+        foreach (ppToken*, t, macro->body)
+            append(result, copy_pp_token(t->type, t->value, name));
+        return result;
+    }
+    bool stringize = false;
+    ppToken* hash_token = NULL;
+    foreach (ppToken*, t, macro->body) {
+        if (t->type == PP_IDENTIFIER) {
+            ListNode* arg__n = args->head;
+            bool matched = false;
+            foreach (string, param, macro->params) {
+                assert(arg__n != NULL);
+                list(ppToken*) arg = (list(ppToken*))arg__n->data;
+                if (param == t->value) {
+                    if (stringize) {
+                        append(result, copy_pp_token(PP_STRING, create_string_from_tokens(arg), name));
+                        stringize = false;
+                    } else {
+                        foreach (ppToken*, arg_t, arg)
+                            append(result, copy_pp_token(arg_t->type, arg_t->value, name));
+                    }
+                    matched = true;
+                    break;
+                }
+                arg__n = arg__n->next;
+            }
+            if (!matched && t->value == P_VA_ARGS && macro->is_variadic) {
+                list(ppToken*) arg = (arg__n != NULL) ? (list(ppToken*))arg__n->data : create_list(ppToken*);
+                if (stringize) {
+                    append(result, copy_pp_token(PP_STRING, create_string_from_tokens(arg), name));
+                    stringize = false;
+                } else {
+                    foreach (ppToken*, arg_t, arg)
+                        append(result, copy_pp_token(arg_t->type, arg_t->value, name));
+                }
+                matched = true;
+            }
+            if (matched) continue;
+        }
+        if (t->type == PP_SYMBOL && t->value == SYMBOL_HASH) {
+            if (stringize) {
+                preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
+                stringize = false;
+                continue;
+            }
+            stringize = true;
+            hash_token = t;
+        } else {
+            if (stringize) {
+                preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
+                stringize = false;
+            } else
+                append(result, copy_pp_token(t->type, t->value, name));
+        }
+    }
+    if (stringize)
+        preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
+    return paste_tokens(ctx, result);
+}
 
 static bool expand_macro(ppContext* ctx, ppToken* name) {
     ppMacro* macro = find_macro(ctx, name->value);
-    if (macro == NULL || list_empty(macro->body)) return false;
-    list(ppToken*) temp = create_list(ppToken*);
-    foreach (ppToken*, pp_token, macro->body) {
-        ppToken* t = create_struct(ppToken);
-        t->type = pp_token->type;
-        t->value = pp_token->value;
-        t->line = name->line;
-        t->column = name->column;
-        append(temp, t);
+    if (macro == NULL) return false;
+
+    list(list(ppToken*)) args = NULL;
+    if (macro->params != NULL) {
+        size_t expected = 0;
+        foreach (string, param, macro->params) expected++;
+        ListNode* t = ctx->current;
+        args = collect_args(ctx, name, expected, macro->is_variadic);
+        if (args == NULL) {
+            ctx->current = t;
+            return false;
+        }
+    } else {
+        args = NULL;
     }
-    temp->tail->next = ctx->current;
-    ctx->current = temp->head;
+    list(ppToken*) result = substitute(ctx, macro, args, name);
+    if (list_empty(result))
+        return true;
+    result->tail->next = ctx->current;
+    ctx->current = result->head;
     return true;
 }
+
+static long long eval_conditional(ppContext* ctx);
 
 static long long eval_primary(ppContext* ctx) {
     ppToken* t = pp_peek(ctx);
@@ -891,6 +1086,7 @@ string preprocess(string filename, string source_code) {
     P_LINE = create_string("line", 4);
     P_ERROR = create_string("error", 5);
     P_PRAGMA = create_string("pragma", 6);
+    P_VA_ARGS = create_string("__VA_ARGS__", 11);
 
     ppLexer* lexer = create_pp_lexer(filename, source_code);
     pp_lexer(lexer);

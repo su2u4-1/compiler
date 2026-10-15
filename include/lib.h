@@ -77,14 +77,17 @@ enum {
     TYPE_ppToken,
     TYPE_ppMacro,
     TYPE_ppCondFrame,
+    TYPE_List,
 };
-#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame
+#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame, List* : TYPE_List
 typedef List* List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
+typedef List List_List_ppToken;
 
-#define list(T) List_##T
+#define list_concat(T) List_##T
+#define list(T) list_concat(T)
 #define create_list(T) list_create(_Generic((T)0, TYPE_TABLE))
 #define list_empty(self) ((self) == NULL || (self)->head == NULL)
 #define append(lst, item) list_append((lst), (void*)(item), _Generic((item), TYPE_TABLE))
