@@ -347,21 +347,6 @@ static bool cond_active(ppContext* ctx) {
     return ((ppCondFrame*)ctx->cond_stack->tail->data)->active;
 }
 
-static string P_DEFINED = NULL;
-static string P_DEFINE = NULL;
-static string P_UNDEF = NULL;
-static string P_IF = NULL;
-static string P_IFDEF = NULL;
-static string P_IFNDEF = NULL;
-static string P_ELIF = NULL;
-static string P_ELSE = NULL;
-static string P_ENDIF = NULL;
-static string P_INCLUDE = NULL;
-static string P_LINE = NULL;
-static string P_ERROR = NULL;
-static string P_PRAGMA = NULL;
-static string P_VA_ARGS = NULL;
-
 static ppToken* pp_peek(ppContext* ctx) {
     if (ctx == NULL) return NULL;
     if (ctx->current == NULL || ctx->current->data == NULL)
@@ -1086,21 +1071,6 @@ static void handle_directive(ppContext* ctx) {
 }
 
 list(ppToken*) preprocess(string filename, string source_code, bool* error_flag) {
-    P_DEFINE = create_string("define", 6);
-    P_DEFINED = create_string("defined", 7);
-    P_UNDEF = create_string("undef", 5);
-    P_IF = create_string("if", 2);
-    P_IFDEF = create_string("ifdef", 5);
-    P_IFNDEF = create_string("ifndef", 6);
-    P_ELIF = create_string("elif", 4);
-    P_ELSE = create_string("else", 4);
-    P_ENDIF = create_string("endif", 5);
-    P_INCLUDE = create_string("include", 7);
-    P_LINE = create_string("line", 4);
-    P_ERROR = create_string("error", 5);
-    P_PRAGMA = create_string("pragma", 6);
-    P_VA_ARGS = create_string("__VA_ARGS__", 11);
-
     has_error = false;
     ppLexer* lexer = create_pp_lexer(filename, source_code);
     if (lexer == NULL) {

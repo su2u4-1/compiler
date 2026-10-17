@@ -108,9 +108,7 @@ typedef List List_Token;
 // constants
 
 #define keyword_count 44
-#define symbol_count 48
 extern string keywordList[keyword_count];
-extern string symbolList[symbol_count];
 
 extern string KEYWORD_ALIGNAS;        // keyword `_Alignas`
 extern string KEYWORD_ALIGNOF;        // keyword `_Alignof`
@@ -204,5 +202,19 @@ extern string SYMBOL_XOR_ASSIGN;      // symbol `^=`
 extern string SYMBOL_OR_ASSIGN;       // symbol `|=`
 extern string SYMBOL_HASH;            // symbol `#`
 extern string SYMBOL_DOUBLE_HASH;     // symbol `##`
+extern string P_DEFINED;              // preprocessor `defined`
+extern string P_DEFINE;               // preprocessor `define`
+extern string P_UNDEF;                // preprocessor `undef`
+extern string P_IF;                   // preprocessor `if`
+extern string P_IFDEF;                // preprocessor `ifdef`
+extern string P_IFNDEF;               // preprocessor `ifndef`
+extern string P_ELIF;                 // preprocessor `elif`
+extern string P_ELSE;                 // preprocessor `else`
+extern string P_ENDIF;                // preprocessor `endif`
+extern string P_INCLUDE;              // preprocessor `include`
+extern string P_LINE;                 // preprocessor `line`
+extern string P_ERROR;                // preprocessor `error`
+extern string P_PRAGMA;               // preprocessor `pragma`
+extern string P_VA_ARGS;              // preprocessor `__VA_ARGS__`
 
 #endif  // LIB_H
