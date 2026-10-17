@@ -19,20 +19,6 @@ static void handle_args(int argc, char* argv[]) {
     }
 }
 
-static void print_tokens(FILE* out, Lexer* lexer) {
-    lexer->skip_comment = false;
-    Token* token = NULL;
-    do {
-        token = next(lexer);
-        print_token(out, token);
-    } while (token != NULL && token->type != TOKEN_EOF);
-}
-
-static void print_pp_tokens(FILE* out, list(ppToken*) pp_tokens) {
-    foreach (ppToken*, token, pp_tokens)
-        print_pp_token(out, token);
-}
-
 int main(int argc, char* argv[]) {
     // init
     init();
@@ -47,13 +33,18 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // output preprocessed code
+    // convert preprocessed code to tokens
+    list(Token*) tokens = pp_to_tokens(preprocessed_code);
+
+    // output
     FILE* out = fopen(output_path, "w");
     if (out == NULL) {
         fprintf(stderr, "[Error] at <main>: Failed to open output file: %s\n", output_path);
         return 1;
     }
-    print_pp_tokens(out, preprocessed_code);
+    // foreach (Token*, token, tokens)
+    //     print_token(out, token);
+    output_token_to_code(out, tokens);
     fclose(out);
 
     return 0;

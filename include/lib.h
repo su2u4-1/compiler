@@ -80,13 +80,16 @@ enum {
     TYPE_ppMacro,
     TYPE_ppCondFrame,
     TYPE_List,
+    TYPE_Token,
 };
-#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame, List* : TYPE_List
+typedef struct Token Token;
+#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame, List* : TYPE_List, Token* : TYPE_Token
 typedef List* List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
 typedef List List_List_ppToken;
+typedef List List_Token;
 
 #define list_concat(T) List_##T
 #define list(T) list_concat(T)

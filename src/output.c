@@ -80,3 +80,31 @@ void print_pp_token(FILE* out, ppToken* token) {
         fputs("`)\n", out);
     }
 }
+
+void output_token_to_code(FILE* out, list(Token*) tokens) {
+    size_t prev_line = 1;
+    size_t prev_column = 1;
+    foreach (Token*, token, tokens) {
+        if (token == NULL) {
+            fprintf(stderr, "[Error] Token is NULL\n");
+            continue;
+        }
+        if (token->value == NULL) {
+            fprintf(stderr, "[Error] Token value is NULL\n");
+            continue;
+        }
+        while (prev_line < token->line) {
+            fputc('\n', out);
+            prev_line++;
+            prev_column = 1;
+        }
+        while (prev_column < token->column) {
+            fputc(' ', out);
+            prev_column++;
+        }
+        fputs(token->value, out);
+        prev_column = token->column + strlen(token->value);
+        prev_line = token->line;
+    }
+    fputs("\n", out);
+}

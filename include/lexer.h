@@ -23,21 +23,6 @@ typedef struct Token {
     size_t column;
 } Token;
 
-typedef struct Lexer {
-    string source_code;
-    size_t length;
-    size_t pos;
-    size_t prev_line_column;
-    size_t line;
-    size_t column;
-    Token* current_token;
-    Token* next_token;
-    string filename;
-    bool skip_comment;
-} Lexer;
-
-Lexer* create_lexer(string filename, string source_code);
-Token* next(Lexer* lexer);
-Token* peek(Lexer* lexer);
+list(Token*) pp_to_tokens(list(ppToken*) pp_tokens);
 
 #endif  // LEXER_H
