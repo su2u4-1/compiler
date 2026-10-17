@@ -33,12 +33,9 @@ typedef struct ppLexer {
     size_t* line_map;
     size_t* column_map;
 } ppLexer;
-#ifdef DEBUG_PP_LEXER
-void pp_lexer(ppLexer* lexer);
-ppLexer* create_pp_lexer(string filename, string source_code);
-#endif
 
 typedef struct ppCondFrame {
+    ppToken* directive;
     bool active;
     bool taken;
     bool in_else;
@@ -57,6 +54,6 @@ typedef struct ppContext {
     ppLexer* lexer;
 } ppContext;
 
-string preprocess(string filename, string source_code);
+list(ppToken*) preprocess(string filename, string source_code, bool* error_flag);
 
 #endif  // PREPROCESSOR_H

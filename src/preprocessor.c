@@ -11,11 +11,13 @@
 #define is_alphabet(c) ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z')
 #define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
-#define pp_lexer_error(message, pos) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", lexer->filename, line(lexer, pos), column(lexer, pos), message)
-#define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
+#define pp_lexer_error(message, pos) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", (has_error = true, lexer->filename), line(lexer, pos), column(lexer, pos), message)
+#define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = true, ctx->lexer->filename), line, column, message)
 #define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
 #define content_string(start) create_string(&lexer->source_code[start], lexer->pos - start)
 #define is_eof(t) ((t) == NULL || (t)->type == PP_EOF)
+
+static bool has_error = false;
 
 static ppToken* create_pp_token(ppTokenType type, string value, ppLexer* lexer, size_t pos) {
     ppToken* token = create_struct(ppToken);
@@ -79,14 +81,11 @@ static void normalize(ppLexer* lexer, string source_code) {
     lexer->length = size;
 }
 
-#ifdef DEBUG_PP_LEXER
-ppLexer* create_pp_lexer(string filename, string source_code) {
-#else
 static ppLexer* create_pp_lexer(string filename, string source_code) {
-#endif
     ppLexer* lexer = create_struct(ppLexer);
     if (source_code == NULL) {
         fprintf(stderr, "[preprocessor Error] at <create_pp_lexer>: Failed to create ppLexer, source_code is NULL\n");
+        has_error = true;
         return NULL;
     }
     lexer->source_code = NULL;
@@ -105,11 +104,7 @@ static ppLexer* create_pp_lexer(string filename, string source_code) {
     return lexer;
 }
 
-#ifdef DEBUG_PP_LEXER
-void pp_lexer(ppLexer* lexer) {
-#else
 static void pp_lexer(ppLexer* lexer) {
-#endif
     while (true) {
         char c = next_char(lexer);
         if (c == '\0') {
@@ -299,11 +294,12 @@ static void pp_lexer(ppLexer* lexer) {
     }
 }
 
-static ppCondFrame* create_pp_cond_frame(void) {
+static ppCondFrame* create_pp_cond_frame(ppToken* directive) {
     ppCondFrame* frame = create_struct(ppCondFrame);
     frame->active = false;
     frame->taken = false;
     frame->in_else = false;
+    frame->directive = directive;
     return frame;
 }
 static ppMacro* create_pp_macro(string name, bool is_function) {
@@ -445,11 +441,23 @@ static long long parse_int_literal(string s) {
             is_unsigned = true;
         q++;
     }
+    char* endptr;
     if (is_unsigned) {
-        unsigned long long v = strtoull(p, NULL, base);
+        unsigned long long v = strtoull(p, &endptr, base);
+        if (*endptr != '\0') {
+            fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
+            has_error = true;
+            return 0;
+        }
         return (long long)v;
     }
-    return strtoll(p, NULL, base);
+    long long v = strtoll(p, &endptr, base);
+    if (*endptr != '\0') {
+        fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
+        has_error = true;
+        return 0;
+    }
+    return v;
 }
 
 static void skip_conditional(ppContext* ctx);
@@ -748,6 +756,7 @@ static long long eval_primary(ppContext* ctx) {
         pp_get(ctx);
         return parse_int_literal(t->value);
     }
+    // TODO: handle string and char literals in #if expressions
     if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
         pp_get(ctx);
         long long v = eval_conditional(ctx);
@@ -946,6 +955,10 @@ static void handle_define(ppContext* ctx) {
 static void handle_directive(ppContext* ctx) {
     ppToken* directive = pp_peek(ctx);
     if (is_eof(directive) || directive->type != PP_IDENTIFIER) {
+        if (!is_eof(directive) && directive->type == PP_NEWLINE) {
+            pp_get(ctx);  // consume newline
+            return;
+        }
         preprocessor_error("Expected directive after #", directive == NULL ? 0 : directive->line, directive == NULL ? 0 : directive->column);
         return;
     }
@@ -996,7 +1009,7 @@ static void handle_directive(ppContext* ctx) {
                 inner_active = (directive->value == P_IFDEF) == (find_macro(ctx, name->value) != NULL);
             }
         }
-        ppCondFrame* frame = create_pp_cond_frame();
+        ppCondFrame* frame = create_pp_cond_frame(directive);
         frame->active = outer_active && inner_active;
         frame->taken = !outer_active || inner_active;
         append(ctx->cond_stack, frame);
@@ -1046,7 +1059,7 @@ static void handle_directive(ppContext* ctx) {
             ctx->cond_stack->tail = n;
         }
     } else if (directive->value == P_INCLUDE) {
-        // TODO
+        // TODO: include file handle
     } else if (directive->value == P_LINE) {
         // skip, not currently supported
         return;
@@ -1072,7 +1085,7 @@ static void handle_directive(ppContext* ctx) {
     }
 }
 
-string preprocess(string filename, string source_code) {
+list(ppToken*) preprocess(string filename, string source_code, bool* error_flag) {
     P_DEFINE = create_string("define", 6);
     P_DEFINED = create_string("defined", 7);
     P_UNDEF = create_string("undef", 5);
@@ -1088,7 +1101,12 @@ string preprocess(string filename, string source_code) {
     P_PRAGMA = create_string("pragma", 6);
     P_VA_ARGS = create_string("__VA_ARGS__", 11);
 
+    has_error = false;
     ppLexer* lexer = create_pp_lexer(filename, source_code);
+    if (lexer == NULL) {
+        *error_flag = true;
+        return NULL;
+    }
     pp_lexer(lexer);
 
     ppContext* ctx = create_pp_context(lexer);
@@ -1116,18 +1134,18 @@ string preprocess(string filename, string source_code) {
             append(ctx->output, token);
         }
     }
-    // temporary: just concatenate the output tokens into a string for now
-    string result = malloc(lexer->length * 2);  // allocate enough space for the output
-    result[0] = '\0';
-    foreach (ppToken*, t, ctx->output) {
-        if (t->type == PP_NEWLINE) {
-            strcat(result, "\n");
-        } else if (t->type == PP_STRING || t->type == PP_CHAR) {
-            strcat(result, t->value);
-        } else if (t->type == PP_NUMBER || t->type == PP_IDENTIFIER || t->type == PP_SYMBOL) {
-            strcat(result, t->value);
-            strcat(result, " ");
+    if (!list_empty(ctx->cond_stack)) {
+        size_t line = 0, column = 0;
+        ppCondFrame* frame = peek_back(ctx->cond_stack, ppCondFrame*);
+        if (frame != NULL && frame->directive != NULL) {
+            line = frame->directive->line;
+            column = frame->directive->column;
         }
+        preprocessor_error("Unterminated conditional directive", line, column);
     }
-    return result;
+    *error_flag = has_error;
+    return ctx->output;
 }
+
+// TODO: macro recursion check
+// TODO: __FILE__, __LINE__, __DATE__, __TIME__, ...

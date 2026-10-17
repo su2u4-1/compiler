@@ -71,6 +71,8 @@ List* list_create(int type_id);
 int list_append(List* self, void* item, int type_id);
 void* list_pop_front(List* self, int type_id);
 void* list_pop_back(List* self, int type_id);
+void* list_peek_front(List* self, int type_id);
+void* list_peek_back(List* self, int type_id);
 
 enum {
     TYPE_string,
@@ -93,6 +95,8 @@ typedef List List_List_ppToken;
 #define append(lst, item) list_append((lst), (void*)(item), _Generic((item), TYPE_TABLE))
 #define pop_front(lst, T) ((T)list_pop_front((lst), _Generic((T)0, TYPE_TABLE)))
 #define pop_back(lst, T) ((T)list_pop_back((lst), _Generic((T)0, TYPE_TABLE)))
+#define peek_front(lst, T) ((T)list_peek_front((lst), _Generic((T)0, TYPE_TABLE)))
+#define peek_back(lst, T) ((T)list_peek_back((lst), _Generic((T)0, TYPE_TABLE)))
 #define foreach(type, item, lst)                                                                    \
     for (List* item##__l = (lst); item##__l != NULL && item##__l->head != NULL; item##__l = NULL)   \
         for (ListNode* item##__n = item##__l->head; item##__n != NULL; item##__n = item##__n->next) \

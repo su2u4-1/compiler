@@ -226,14 +226,12 @@ int list_append(List* self, void* item, int type_id) {
 }
 
 void* list_pop_front(List* self, int type_id) {
-    if (self == NULL)
+    if (list_empty(self))
         return NULL;
     if (self->type_id != type_id) {
         fprintf(stderr, "[lib Error at <list_pop>: type mismatch: list has %d, got %d\n", self->type_id, type_id);
         return NULL;
     }
-    if (list_empty(self))
-        return NULL;
     void* data = self->head->data;
     self->head = self->head->next;
     if (self->head == NULL)
@@ -242,14 +240,12 @@ void* list_pop_front(List* self, int type_id) {
 }
 
 void* list_pop_back(List* self, int type_id) {
-    if (self == NULL)
+    if (list_empty(self))
         return NULL;
     if (self->type_id != type_id) {
         fprintf(stderr, "[lib Error at <list_pop_back>: type mismatch: list has %d, got %d\n", self->type_id, type_id);
         return NULL;
     }
-    if (list_empty(self))
-        return NULL;
     void* data = self->tail->data;
     if (self->head == self->tail) {
         self->head = NULL;
@@ -263,6 +259,26 @@ void* list_pop_back(List* self, int type_id) {
         self->tail = current;
     }
     return data;
+}
+
+void* list_peek_front(List* self, int type_id) {
+    if (list_empty(self))
+        return NULL;
+    if (self->type_id != type_id) {
+        fprintf(stderr, "[lib Error at <list_peek_front>: type mismatch: list has %d, got %d\n", self->type_id, type_id);
+        return NULL;
+    }
+    return self->head->data;
+}
+
+void* list_peek_back(List* self, int type_id) {
+    if (list_empty(self))
+        return NULL;
+    if (self->type_id != type_id) {
+        fprintf(stderr, "[lib Error at <list_peek_back>: type mismatch: list has %d, got %d\n", self->type_id, type_id);
+        return NULL;
+    }
+    return self->tail->data;
 }
 
 // constants
