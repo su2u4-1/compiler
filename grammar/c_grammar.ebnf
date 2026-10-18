@@ -58,9 +58,9 @@ exclusive_or_expression ::= and_expression { "^" and_expression } ;
 and_expression ::= equality_expression { "&" equality_expression } ;
 equality_expression ::= relational_expression { ( "==" | "!=" ) relational_expression } ;
 relational_expression ::= shift_expression { ( "<" | ">" | "<=" | ">=" ) shift_expression } ;
-shift_expression ::= additive_expression { ("<<" | ">>") additive_expression } ;
-additive_expression ::= multiplicative_expression { ("+" | "-") multiplicative_expression } ;
-multiplicative_expression ::= cast_expression { ("*" | "/" | "%") cast_expression } ;
+shift_expression ::= additive_expression { ( "<<" | ">>" ) additive_expression } ;
+additive_expression ::= multiplicative_expression { ( "+" | "-" ) multiplicative_expression } ;
+multiplicative_expression ::= cast_expression { ( "*" | "/" | "%" ) cast_expression } ;
 cast_expression ::= unary_expression | "(" type_name ")" cast_expression ;
 unary_expression ::= postfix_expression | ( "++" | "--" | "sizeof" ) unary_expression | unary_operator cast_expression | ( "sizeof" | "_Alignof" ) "(" type_name ")" ;
 postfix_expression ::= primary_expression | "(" type_name ")" "{" initializer_list [ "," ] "}"
@@ -71,10 +71,9 @@ argument_expression_list ::= assignment_expression { "," assignment_expression }
 constant ::= integer_constant | character_constant | floating_constant | enumeration_constant ;
 string ::= string_literal ;
 generic_selection ::= "_Generic" "(" assignment_expression "," generic_assoc_list ")" ;
-generic_assoc_list ::= generic_association {"," generic_association};
+generic_assoc_list ::= generic_association { "," generic_association } ;
 generic_association ::= ( type_name | "default" ) ":" assignment_expression ;
-designation ::= designator_list "=" ;
-designator_list ::= designator { designator } ;
+designation ::= designator { designator } "=" ;
 designator ::= "[" constant_expression "]" | "." identifier ;
 statement ::= labeled_statement | compound_statement | expression_statement | selection_statement | iteration_statement | jump_statement ;
 labeled_statement ::= ( identifier | "case" constant_expression | "default" ) ":" statement ;
@@ -92,7 +91,7 @@ binary ::= ( "0b" | "0B" ) ( "0" | "1" ) { "0" | "1" } ;
 floating_constant ::= ( decimal_floating | hexadecimal_floating ) [ "f" | "F" | "l" | "L" ] ;
 decimal_floating ::= digit { digit } "." { digit } [ exponent ] | "." digit { digit } [ exponent ] | digit { digit } exponent ;
 exponent ::= ( "e" | "E" ) [ "+" | "-" ] digit { digit } ;
-hexadecimal_floating ::= ( "0x" | "0X" ) ( hex_digit { hex_digit } "." | "." hex_digit | hex_digit ) { hex_digit } ( "p" | "P" ) [ "+" | "-" ] digit { digit }
+hexadecimal_floating ::= ( "0x" | "0X" ) ( hex_digit { hex_digit } "." | "." hex_digit | hex_digit ) { hex_digit } ( "p" | "P" ) [ "+" | "-" ] digit { digit } ;
 digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 hex_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "a" | "b" | "c" | "d" | "e" | "f" | "A" | "B" | "C" | "D" | "E" | "F" ;
 oct_digit ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" ;

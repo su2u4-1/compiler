@@ -79,17 +79,80 @@ enum {
     TYPE_ppToken,
     TYPE_ppMacro,
     TYPE_ppCondFrame,
-    TYPE_List,
+    TYPE_List_ppToken,
     TYPE_Token,
+    TYPE_ExternDecl,
+    TYPE_DeclSpec,
+    TYPE_InitDecl,
+    TYPE_ParamDecl,
+    TYPE_StructDecl,
+    TYPE_Enumerator,
+    TYPE_InitializerItem,
+    TYPE_Designator,
+    TYPE_SpecifierQualifier,
+    TYPE_StructDeclarator,
+    TYPE_DeclStmt,
+    TYPE_AssignmentExpression,
+    TYPE_GenericAssociation,
+    TYPE_TypeName,
 };
 typedef struct Token Token;
-#define TYPE_TABLE ppToken* : TYPE_ppToken, string : TYPE_string, ppMacro* : TYPE_ppMacro, ppCondFrame* : TYPE_ppCondFrame, List* : TYPE_List, Token* : TYPE_Token
+typedef struct ExternDecl ExternDecl;
+typedef struct DeclSpec DeclSpec;
+typedef struct InitDecl InitDecl;
+typedef struct ParamDecl ParamDecl;
+typedef struct StructDecl StructDecl;
+typedef struct Enumerator Enumerator;
+typedef struct InitializerItem InitializerItem;
+typedef struct Designator Designator;
+typedef struct SpecifierQualifier SpecifierQualifier;
+typedef struct StructDeclarator StructDeclarator;
+typedef struct DeclStmt DeclStmt;
+typedef struct AssignmentExpression AssignmentExpression;
+typedef struct GenericAssociation GenericAssociation;
+typedef struct TypeName TypeName;
+// clang-format off
+#define TYPE_TABLE string: TYPE_string,                   \
+        ppToken*: TYPE_ppToken,                           \
+        ppMacro*: TYPE_ppMacro,                           \
+        ppCondFrame*: TYPE_ppCondFrame,                   \
+        List_ppToken*: TYPE_List_ppToken,                 \
+        Token*: TYPE_Token,                               \
+        ExternDecl*: TYPE_ExternDecl,                     \
+        DeclSpec*: TYPE_DeclSpec,                         \
+        InitDecl*: TYPE_InitDecl,                         \
+        ParamDecl*: TYPE_ParamDecl,                       \
+        StructDecl*: TYPE_StructDecl,                     \
+        Enumerator*: TYPE_Enumerator,                     \
+        InitializerItem*: TYPE_InitializerItem,           \
+        Designator*: TYPE_Designator,                     \
+        SpecifierQualifier*: TYPE_SpecifierQualifier,     \
+        StructDeclarator*: TYPE_StructDeclarator,         \
+        DeclStmt*: TYPE_DeclStmt,                         \
+        AssignmentExpression*: TYPE_AssignmentExpression, \
+        GenericAssociation*: TYPE_GenericAssociation,     \
+        TypeName*: TYPE_TypeName
+// clang-format on
 typedef List* List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
 typedef List List_List_ppToken;
 typedef List List_Token;
+typedef List List_ExternDecl;
+typedef List List_DeclSpec;
+typedef List List_InitDecl;
+typedef List List_ParamDecl;
+typedef List List_StructDecl;
+typedef List List_Enumerator;
+typedef List List_InitializerItem;
+typedef List List_Designator;
+typedef List List_SpecifierQualifier;
+typedef List List_StructDeclarator;
+typedef List List_DeclStmt;
+typedef List List_AssignmentExpression;
+typedef List List_GenericAssociation;
+typedef List List_TypeName;
 
 #define list_concat(T) List_##T
 #define list(T) list_concat(T)
