@@ -55,7 +55,7 @@ typedef struct ppContext {
 } ppContext;
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
-#define is_alphabet(c) ((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z')
+#define is_alphabet(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z'))
 
 list(ppToken*) preprocess(string filename, string source_code, bool* error_flag);
 ppToken* create_pp_token(ppTokenType type, string value, ppLexer* lexer, size_t pos);

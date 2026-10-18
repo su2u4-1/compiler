@@ -11,6 +11,8 @@
 
 typedef char* string;
 typedef size_t* pointer;
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 void init(void);
 string get_source(string path);

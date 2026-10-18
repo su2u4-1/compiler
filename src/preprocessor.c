@@ -141,6 +141,7 @@ static long long parse_int_literal(string s) {
     char* endptr;
     if (is_unsigned) {
         unsigned long long v = strtoull(p, &endptr, base);
+        // TODO: check postfixes is valid
         if (*endptr != '\0') {
             fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
             has_error = true;
@@ -149,6 +150,7 @@ static long long parse_int_literal(string s) {
         return (long long)v;
     }
     long long v = strtoll(p, &endptr, base);
+    // TODO: check postfixes is valid
     if (*endptr != '\0') {
         fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
         has_error = true;
@@ -231,7 +233,11 @@ static void skip_conditional(ppContext* ctx) {
 }
 
 static list(list(ppToken*)) collect_args(ppContext* ctx, ppToken* name, size_t expected, bool is_variadic) {
-    expect_token(ctx, "Expected ( in macro invocation", name->line, name->column, PP_SYMBOL, SYMBOL_L_PARENTHESIS);
+    ppToken* t = pp_peek(ctx);
+    if (is_eof(t) || t->type != PP_SYMBOL || t->value != SYMBOL_L_PARENTHESIS)
+        return NULL;
+    pp_get(ctx);
+
     size_t count = 0;
     list(list(ppToken*)) args = create_list(list(ppToken*));
     list(ppToken*) cur = create_list(ppToken*);
@@ -281,7 +287,7 @@ static ppToken* copy_pp_token(ppTokenType type, string value, ppToken* name) {
 
 static string create_string_from_tokens(list(ppToken*) tokens) {
     if (list_empty(tokens))
-        return create_string("", 0);
+        return create_string("\"\"", 2);
     size_t len = 0;
     size_t n = 0;
     foreach (ppToken*, t, tokens) {
@@ -358,7 +364,7 @@ static list(ppToken*) substitute(ppContext* ctx, ppMacro* macro, list(list(ppTok
     if (macro->params == NULL) {
         foreach (ppToken*, t, macro->body)
             append(result, copy_pp_token(t->type, t->value, name));
-        return result;
+        return paste_tokens(ctx, result);
     }
     bool stringize = false;
     ppToken* hash_token = NULL;
@@ -378,10 +384,11 @@ static list(ppToken*) substitute(ppContext* ctx, ppMacro* macro, list(list(ppTok
                             append(result, copy_pp_token(arg_t->type, arg_t->value, name));
                     }
                     matched = true;
-                    break;
+                    goto break_foreach_in_substitute;
                 }
                 arg__n = arg__n->next;
             }
+        break_foreach_in_substitute:
             if (!matched && t->value == P_VA_ARGS && macro->is_variadic) {
                 list(ppToken*) arg = (arg__n != NULL) ? (list(ppToken*))arg__n->data : create_list(ppToken*);
                 if (stringize) {
@@ -457,8 +464,7 @@ static long long eval_primary(ppContext* ctx) {
     if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
         pp_get(ctx);
         long long v = eval_conditional(ctx);
-        if (!expect_token(ctx, "Expected ) in #if expression", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS))
-            return v;
+        expect_token(ctx, "Expected ) in #if expression", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS);
         return v;
     }
     if (t->type == PP_IDENTIFIER) {
@@ -652,10 +658,8 @@ static void handle_define(ppContext* ctx) {
 static void handle_directive(ppContext* ctx) {
     ppToken* directive = pp_peek(ctx);
     if (is_eof(directive) || directive->type != PP_IDENTIFIER) {
-        if (!is_eof(directive) && directive->type == PP_NEWLINE) {
-            pp_get(ctx);  // consume newline
+        if ((!is_eof(directive) && directive->type == PP_NEWLINE) || !cond_active(ctx))
             return;
-        }
         preprocessor_error("Expected directive after #", directive == NULL ? 0 : directive->line, directive == NULL ? 0 : directive->column);
         return;
     }
@@ -700,6 +704,10 @@ static void handle_directive(ppContext* ctx) {
                 ppToken* name = pp_peek(ctx);
                 if (is_eof(name) || name->type != PP_IDENTIFIER) {
                     preprocessor_error("Expected identifier after #if[n]def", directive->line, directive->column);
+                    ppCondFrame* frame = create_pp_cond_frame(directive);
+                    frame->active = false;
+                    frame->taken = false;
+                    append(ctx->cond_stack, frame);
                     return;
                 }
                 pp_get(ctx);

@@ -10,7 +10,7 @@
 #define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
 #define pp_lexer_error(message, pos) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", (has_error = true, lexer->filename), line(lexer, pos), column(lexer, pos), message)
-#define content_string(start) create_string(&lexer->source_code[start], lexer->pos - start)
+#define content_string(start) create_string(&lexer->source_code[start], min(lexer->pos, lexer->length) - start)
 
 static bool has_error = false;
 
@@ -27,8 +27,8 @@ static void normalize(ppLexer* lexer, string source_code) {
     const string src = source_code;
     size_t source_len = strlen(source_code);
     string buffer = (string)alloc_memory(source_len + 1, false);
-    lexer->line_map = alloc_memory(sizeof(size_t) * (source_len + 1), false);
-    lexer->column_map = alloc_memory(sizeof(size_t) * (source_len + 1), false);
+    lexer->line_map = alloc_memory(sizeof(size_t) * (source_len + 1), true);
+    lexer->column_map = alloc_memory(sizeof(size_t) * (source_len + 1), true);
     size_t size = 0;
     size_t line = 1, column = 1;
     for (size_t i = 0; i < source_len;) {
@@ -79,7 +79,7 @@ static void normalize(ppLexer* lexer, string source_code) {
 ppLexer* create_pp_lexer(string filename, string source_code) {
     ppLexer* lexer = create_struct(ppLexer);
     if (source_code == NULL) {
-        fprintf(stderr, "[preprocessor Error] at <create_pp_lexer>: Failed to create ppLexer, source_code is NULL\n");
+        fprintf(stderr, "[Preprocessor Error] at <create_pp_lexer>: Failed to create ppLexer, source_code is NULL\n");
         has_error = true;
         return NULL;
     }
@@ -100,6 +100,7 @@ ppLexer* create_pp_lexer(string filename, string source_code) {
 }
 
 bool pp_lexer(ppLexer* lexer) {
+    has_error = false;
     while (true) {
         char c = next_char(lexer);
         if (c == '\0') {
@@ -171,6 +172,7 @@ bool pp_lexer(ppLexer* lexer) {
                     } else if (c == '*') {
                         c = next_char(lexer);
                         if (c == '/') break;
+                        unget_char(lexer);
                     }
                 }
             } else if (c == '=') pp_token(PP_SYMBOL, SYMBOL_DIV_ASSIGN, start);
