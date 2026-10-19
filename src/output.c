@@ -56,6 +56,8 @@ void print_pp_token(FILE* out, ppToken* token) {
         case PP_CHAR: fputs("(char, ", out); break;
         case PP_SYMBOL: fputs("(symbol, ", out); break;
         case PP_NEWLINE: fputs("(newline, ", out); break;
+        case PP_HEADER_NAME: fputs("(header_name, ", out); break;
+        case PP_PLACE_MARKER: fputs("(place_marker, ", out); break;
         case PP_OTHER: fputs("(other, ", out); break;
         default: fputs("(unknown, ", out); break;
     }

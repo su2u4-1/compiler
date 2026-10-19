@@ -13,9 +13,9 @@ static void handle_args(int argc, char* argv[]) {
     }
     source_path = argv[1];
     if (argc >= 3) {
-        output_path = argv[2];
+        output_path = create_string(argv[2], strlen(argv[2]));
     } else {
-        output_path = "a.out";
+        output_path = create_string("a.out", 5);
     }
 }
 

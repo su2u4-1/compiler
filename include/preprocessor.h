@@ -12,26 +12,32 @@ typedef enum ppTokenType {
     PP_OTHER,
     PP_NEWLINE,
     PP_EOF,
+    PP_PLACE_MARKER,
+    PP_HEADER_NAME,
 } ppTokenType;
-typedef struct ppToken {
-    ppTokenType type;
+typedef struct ppToken ppToken;
+struct ppToken {
     string value;
     size_t line;
     size_t column;
-} ppToken;
+    string filename;
+    list(string) hideset;
+    ppToken* expanded_from;
+    ppTokenType type;
+    bool space_before;
+    bool at_line_start;
+};
 typedef struct ppLexer {
     string source_code;
     size_t length;
     size_t pos;
-    size_t prev_line_column;
-    size_t line;
-    size_t column;
-    ppToken* current_token;
-    ppToken* next_token;
     string filename;
     list(ppToken*) pp_tokens;
     size_t* line_map;
     size_t* column_map;
+    int include_state;
+    bool pending_space;
+    bool line_start;
 } ppLexer;
 
 typedef struct ppCondFrame {
