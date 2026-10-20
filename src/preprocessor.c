@@ -21,7 +21,7 @@ static ppMacro* create_pp_macro(ppToken* name, bool is_function) {
     macro->name = name;
     macro->params = NULL;
     if (is_function)
-        macro->params = create_list(string);
+        macro->params = create_list(ppToken*);
     macro->is_variadic = false;
     macro->body = create_list(ppToken*);
     return macro;
@@ -127,9 +127,134 @@ static long long apply_binop(ppToken* op, long long lhs, long long rhs) {
     else return 0;
 }
 
-static bool expand_macro(ppContext* ctx, ppToken* token) {
+static list(list(ppToken*)) handle_macro_args(ppContext* ctx, ppMacro* macro, ppToken* name) {
+    size_t expected = 0;
+    foreach (ppToken*, param, macro->params)
+        expected++;
+    size_t count = 0;
+    list(list(ppToken*)) args = create_list(list(ppToken*));
+    list(ppToken*) cur = create_list(ppToken*);
+
+    int depth = 0;
+    bool space = false;
+    while (true) {
+        ppToken* t = pp_peek(ctx);
+        if (is_eof(t)) {
+            preprocessor_error("Unterminated macro arguments", name->line, name->column);
+            return NULL;
+        } else if (t->type == PP_NEWLINE) {
+            if (ctx->in_directive) {
+                preprocessor_error("Unterminated macro arguments", t->line, t->column);
+                return NULL;
+            }
+            space = true;
+            pp_get(ctx);
+            continue;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
+            depth++;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
+            if (depth == 0)
+                break;
+            depth--;
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA && depth == 0) {
+            if (!(macro->is_variadic && count >= expected)) {
+                count++;
+                append(args, cur);
+                cur = create_list(ppToken*);
+                pp_get(ctx);
+                continue;
+            }
+        }
+        pp_get(ctx);
+        if (space) {
+            ppToken* new = create_struct(ppToken);
+            memcpy(new, t, sizeof(ppToken));
+            new->space_before = true;
+            append(cur, new);
+            space = false;
+        } else
+            append(cur, t);
+    }
+    if (expected == 0 && list_empty(cur) && list_empty(args) && !macro->is_variadic)
+        return args;  // empty list
+    count++;
+    append(args, cur);
+    if ((!macro->is_variadic && count != expected) || (macro->is_variadic && count < expected)) {
+        preprocessor_error("Incorrect number of macro arguments", name->line, name->column);
+        return NULL;
+    }
+    if (macro->is_variadic && count == expected)
+        append(args, create_list(ppToken*));
+    return args;
+}
+
+static bool expand_macro(ppContext* ctx, ppToken* name);
+
+static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name, list(string) hideset) {
     // TODO
-    return false;  // placeholder
+    return NULL;  // placeholder
+}
+
+static list(string) hideset_append(list(string) hideset, string name) {
+    list(string) new_hideset = create_list(string);
+    foreach (string, s, hideset)
+        append(new_hideset, s);
+    append(new_hideset, name);
+    return new_hideset;
+}
+
+static list(string) hideset_intersect(list(string) a, list(string) b, string name) {
+    list(string) result = create_list(string);
+    foreach (string, s, a)
+        foreach (string, t, b)
+            if (s == t)
+                append(result, s);
+    append(result, name);
+    return result;
+}
+
+static bool expand_macro(ppContext* ctx, ppToken* name) {
+    if (name->type != PP_IDENTIFIER)
+        return false;
+    ppMacro* macro = find_macro(ctx, name->value);
+    if (macro == NULL)
+        return false;
+    foreach (string, s, name->hideset)
+        if (s == name->value)
+            return false;
+
+    ListNode* saved = ctx->current;
+    list(string) hideset = NULL;
+    list(list(ppToken*)) args = NULL;
+
+    if (macro->params == NULL) {
+        hideset = hideset_append(name->hideset, name->value);
+    } else {
+        if (!ctx->in_directive)
+            while (pp_peek(ctx)->type == PP_NEWLINE)
+                pp_get(ctx);
+        ppToken* l_paren = pp_peek(ctx);
+        if (is_eof(l_paren) || l_paren->type != PP_SYMBOL || l_paren->value != SYMBOL_L_PARENTHESIS) {
+            ctx->current = saved;
+            return false;
+        }
+        pp_get(ctx);  // consume '('
+
+        args = handle_macro_args(ctx, macro, name);
+        if (args == NULL) {
+            ctx->current = saved;
+            return false;
+        }
+        ppToken* r_paren = pp_get(ctx);  // consume ')'
+        hideset = hideset_intersect(name->hideset, r_paren->hideset, name->value);
+    }
+
+    list(ppToken*) result = paste_macro_body(ctx, macro, args, name, hideset);
+    if (list_empty(result))
+        return true;
+    result->tail->next = ctx->current;
+    ctx->current = result->head;
+    return true;
 }
 
 static void delete_macro(ppContext* ctx, string name) {
