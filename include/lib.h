@@ -280,6 +280,13 @@ extern string P_INCLUDE;              // preprocessor `include`
 extern string P_LINE;                 // preprocessor `line`
 extern string P_ERROR;                // preprocessor `error`
 extern string P_PRAGMA;               // preprocessor `pragma`
-extern string P_VA_ARGS;              // preprocessor `__VA_ARGS__`
+extern string P_VA_ARGS_;             // preprocessor `__VA_ARGS__`
+extern string P_FILE_;                // preprocessor `__FILE__`
+extern string P_LINE_;                // preprocessor `__LINE__`
+extern string P_DATE_;                // preprocessor `__DATE__`
+extern string P_TIME_;                // preprocessor `__TIME__`
+extern string P_STDC_;                // preprocessor `__STDC__`
+extern string P_STDC_VERSION_;        // preprocessor `__STDC_VERSION__`
+extern string P_STDC_HOSTED_;         // preprocessor `__STDC_HOSTED__`
 
 #endif  // LIB_H

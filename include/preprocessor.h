@@ -47,10 +47,10 @@ typedef struct ppCondFrame {
     bool in_else;
 } ppCondFrame;
 typedef struct ppMacro {
-    string name;
-    list(string) params;
-    bool is_variadic;
+    ppToken* name;
+    list(ppToken*) params;
     list(ppToken*) body;
+    bool is_variadic;
 } ppMacro;
 typedef struct ppContext {
     list(ppMacro*) macros;
@@ -58,6 +58,7 @@ typedef struct ppContext {
     list(ppToken*) output;
     ListNode* current;
     ppLexer* lexer;
+    bool in_directive;
 } ppContext;
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')

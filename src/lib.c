@@ -391,7 +391,14 @@ string P_INCLUDE = NULL;
 string P_LINE = NULL;
 string P_ERROR = NULL;
 string P_PRAGMA = NULL;
-string P_VA_ARGS = NULL;
+string P_VA_ARGS_ = NULL;
+string P_FILE_ = NULL;
+string P_LINE_ = NULL;
+string P_DATE_ = NULL;
+string P_TIME_ = NULL;
+string P_STDC_ = NULL;
+string P_STDC_VERSION_ = NULL;
+string P_STDC_HOSTED_ = NULL;
 
 void init_constant(void) {
     for (size_t i = 0; i < keyword_count; ++i) {
@@ -504,5 +511,12 @@ void init_constant(void) {
     P_LINE = create_string_check("line", 4, false);
     P_ERROR = create_string_check("error", 5, false);
     P_PRAGMA = create_string_check("pragma", 6, false);
-    P_VA_ARGS = create_string_check("__VA_ARGS__", 11, false);
+    P_VA_ARGS_ = create_string_check("__VA_ARGS__", 11, false);
+    P_FILE_ = create_string_check("__FILE__", 8, false);
+    P_LINE_ = create_string_check("__LINE__", 8, false);
+    P_DATE_ = create_string_check("__DATE__", 8, false);
+    P_TIME_ = create_string_check("__TIME__", 8, false);
+    P_STDC_ = create_string_check("__STDC__", 8, false);
+    P_STDC_VERSION_ = create_string_check("__STDC_VERSION__", 16, false);
+    P_STDC_HOSTED_ = create_string_check("__STDC_HOSTED__", 15, false);
 }

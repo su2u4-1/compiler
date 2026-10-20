@@ -1,5 +1,7 @@
 #include "preprocessor.h"
 
+#include "lib.h"
+
 #define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = true, ctx->lexer->filename), line, column, message)
 #define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
 #define is_eof(t) ((t) == NULL || (t)->type == PP_EOF)
@@ -14,7 +16,7 @@ static ppCondFrame* create_pp_cond_frame(ppToken* directive) {
     frame->directive = directive;
     return frame;
 }
-static ppMacro* create_pp_macro(string name, bool is_function) {
+static ppMacro* create_pp_macro(ppToken* name, bool is_function) {
     ppMacro* macro = create_struct(ppMacro);
     macro->name = name;
     macro->params = NULL;
@@ -31,6 +33,7 @@ static ppContext* create_pp_context(ppLexer* lexer) {
     context->current = NULL;
     context->output = create_list(ppToken*);
     context->lexer = lexer;
+    context->in_directive = false;
     return context;
 }
 
@@ -48,7 +51,7 @@ static void skip_to_newline(ppContext* ctx) {
 static ppMacro* find_macro(ppContext* ctx, string name) {
     assert(ctx != NULL);
     foreach (ppMacro*, macro, ctx->macros)
-        if (macro->name == name)
+        if (macro->name->value == name)
             return macro;
     return NULL;
 }
@@ -124,535 +127,296 @@ static long long apply_binop(ppToken* op, long long lhs, long long rhs) {
     else return 0;
 }
 
-static long long parse_int_literal(string s) {
-    string p = s;
-    int base = 0;
-    if (p[0] == '0' && (p[1] == 'b' || p[1] == 'B')) {
-        base = 2;
-        p += 2;
-    }
-    string q = p;
-    bool is_unsigned = false;
-    while (q[0] != '\0') {
-        if (q[0] == 'u' || q[0] == 'U')
-            is_unsigned = true;
-        q++;
-    }
-    char* endptr;
-    if (is_unsigned) {
-        unsigned long long v = strtoull(p, &endptr, base);
-        // TODO: check postfixes is valid
-        if (*endptr != '\0') {
-            fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
-            has_error = true;
-            return 0;
-        }
-        return (long long)v;
-    }
-    long long v = strtoll(p, &endptr, base);
-    // TODO: check postfixes is valid
-    if (*endptr != '\0') {
-        fprintf(stderr, "[Preprocessor Error] at <parse_int_literal>: Invalid integer literal: %s\n", s);
-        has_error = true;
-        return 0;
-    }
-    return v;
+static bool expand_macro(ppContext* ctx, ppToken* token) {
+    // TODO
+    return false;  // placeholder
 }
 
-static void skip_conditional(ppContext* ctx);
-
-static void skip_primary(ppContext* ctx) {
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t) || t->type == PP_NEWLINE) return;
-
-    if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
-        pp_get(ctx);
-        skip_conditional(ctx);
-        expect_token(ctx, "Expected ) in expression end", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS);
-        return;
-    }
-    pp_get(ctx);
-}
-
-static void skip_unary(ppContext* ctx) {
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t) || t->type == PP_NEWLINE) return;
-
-    // defined / defined(...)
-    if (t->type == PP_IDENTIFIER && t->value == P_DEFINED) {
-        pp_get(ctx);
-        ppToken* nt = pp_peek(ctx);
-        if (is_eof(nt) || nt->type == PP_NEWLINE) return;
-        if (nt->type == PP_SYMBOL && nt->value == SYMBOL_L_PARENTHESIS) {
-            pp_get(ctx);
-            ppToken* name = pp_peek(ctx);
-            if (!is_eof(name) && name->type == PP_IDENTIFIER)
-                pp_get(ctx);
-            expect_token(ctx, "Expected ) in defined(...)", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS);
-            return;
-        }
-        if (nt->type == PP_IDENTIFIER) {
-            pp_get(ctx);
-            return;
-        }
-        return;
-    }
-
-    // unary operators: +, -, !, ~
-    if (t->type == PP_SYMBOL && (t->value == SYMBOL_ADD || t->value == SYMBOL_SUB || t->value == SYMBOL_LOGICAL_NOT || t->value == SYMBOL_BITWISE_NOT)) {
-        pp_get(ctx);
-        skip_unary(ctx);
-        return;
-    }
-
-    skip_primary(ctx);
-}
-
-static void skip_expr(ppContext* ctx, int min_prec) {
-    skip_unary(ctx);
-    while (true) {
-        ppToken* t = pp_peek(ctx);
-        if (is_eof(t)) break;
-        int prec = op_prec(t);
-        if (prec == 0 || prec < min_prec) break;
-        pp_get(ctx);
-        skip_expr(ctx, prec + 1);
-    }
-}
-
-static void skip_conditional(ppContext* ctx) {
-    skip_expr(ctx, 0);
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t)) return;
-    if (t->type != PP_SYMBOL || t->value != SYMBOL_QUESTION) return;
-    pp_get(ctx);  // consume '?'
-
-    skip_conditional(ctx);  // then branch
-    expect_token(ctx, "Expected : in skipped expression", t->line, t->column, PP_SYMBOL, SYMBOL_COLON);
-    skip_conditional(ctx);  // else branch
-}
-
-static list(list(ppToken*)) collect_args(ppContext* ctx, ppToken* name, size_t expected, bool is_variadic) {
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t) || t->type != PP_SYMBOL || t->value != SYMBOL_L_PARENTHESIS)
-        return NULL;
-    pp_get(ctx);
-
-    size_t count = 0;
-    list(list(ppToken*)) args = create_list(list(ppToken*));
-    list(ppToken*) cur = create_list(ppToken*);
-    int depth = 0;
-    while (true) {
-        ppToken* t = pp_get(ctx);
-        if (is_eof(t)) {
-            preprocessor_error("Unterminated macro arguments", name->line, name->column);
-            return NULL;
-        } else if (t->type == PP_NEWLINE) {
-            continue;
-        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
-            depth++;
-        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
-            if (depth == 0)
-                break;
-            depth--;
-        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA && depth == 0) {
-            count++;
-            if (!(is_variadic && count > expected)) {
-                append(args, cur);
-                cur = create_list(ppToken*);
-                continue;
-            }
-        }
-        append(cur, t);
-    }
-    if (expected == 0 && list_empty(cur) && list_empty(args))
-        return args;  // empty list
-    count++;
-    append(args, cur);
-    if ((!is_variadic && count != expected) || (is_variadic && count < expected)) {
-        preprocessor_error("Incorrect number of macro arguments", name->line, name->column);
-        return NULL;
-    }
-    return args;
-}
-
-static ppToken* copy_pp_token(ppTokenType type, string value, ppToken* name) {
-    ppToken* new_token = create_struct(ppToken);
-    new_token->type = type;
-    new_token->value = value;
-    new_token->line = name->line;
-    new_token->column = name->column;
-    return new_token;
-}
-
-static string create_string_from_tokens(list(ppToken*) tokens) {
-    if (list_empty(tokens))
-        return create_string("\"\"", 2);
-    size_t len = 0;
-    size_t n = 0;
-    foreach (ppToken*, t, tokens) {
-        len += strlen(t->value);
-        n++;
-    }
-    string buf = malloc(len * 3 + n + 5);
-    size_t p = 0;
-    ppToken* prev = NULL;
-    buf[p++] = '"';
-    foreach (ppToken*, t, tokens) {
-        if (prev != NULL) {
-            if (!(prev->line == t->line && prev->column + strlen(prev->value) == t->column))
-                buf[p++] = ' ';
-        }
-        prev = t;
-        for (string s = t->value; *s != '\0'; s++) {
-            if (*s == '\\' || *s == '"')
-                buf[p++] = '\\';
-            buf[p++] = *s;
-        }
-    }
-    buf[p++] = '"';
-    buf[p] = '\0';
-    string result = create_string(buf, p);
-    free(buf);
-    return result;
-}
-
-static list(ppToken*) paste_tokens(ppContext* ctx, list(ppToken*) tokens) {
-    list(ppToken*) out = create_list(ppToken*);
-    ListNode* node = tokens->head;
-    while (node != NULL) {
-        ppToken* t = (ppToken*)node->data;
-        if (t->type == PP_SYMBOL && t->value == SYMBOL_DOUBLE_HASH) {
-            if (out->tail == NULL || node->next == NULL) {
-                preprocessor_error("## cannot appear at boundary", t->line, t->column);
-                node = node->next;
-                continue;
-            }
-            ppToken* left = (ppToken*)out->tail->data;
-            ppToken* right = (ppToken*)node->next->data;
-            size_t len_l = strlen(left->value);
-            size_t len_r = strlen(right->value);
-            string buf = malloc(len_l + len_r + 1);
-            memcpy(buf, left->value, len_l);
-            memcpy(buf + len_l, right->value, len_r);
-            buf[len_l + len_r] = '\0';
-            string new_value = create_string(buf, len_l + len_r);
-            free(buf);
-
-            char c = new_value[0];
-            ppTokenType type = PP_SYMBOL;
-            if (c == '\0')
-                type = PP_OTHER;
-            else if (is_alphabet(c) || c == '_')
-                type = PP_IDENTIFIER;
-            else if (is_digit(c) || c == '.')
-                type = PP_NUMBER;
-            out->tail->data = copy_pp_token(type, new_value, left);
-            node = node->next->next;
-        } else {
-            append(out, t);
-            node = node->next;
-        }
-    }
-    return out;
-}
-
-static list(ppToken*) substitute(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name) {
-    list(ppToken*) result = create_list(ppToken*);
-    if (list_empty(macro->body))
-        return result;
-    if (macro->params == NULL) {
-        foreach (ppToken*, t, macro->body)
-            append(result, copy_pp_token(t->type, t->value, name));
-        return paste_tokens(ctx, result);
-    }
-    bool stringize = false;
-    ppToken* hash_token = NULL;
-    foreach (ppToken*, t, macro->body) {
-        if (t->type == PP_IDENTIFIER) {
-            ListNode* arg__n = args->head;
-            bool matched = false;
-            foreach (string, param, macro->params) {
-                assert(arg__n != NULL);
-                list(ppToken*) arg = (list(ppToken*))arg__n->data;
-                if (param == t->value) {
-                    if (stringize) {
-                        append(result, copy_pp_token(PP_STRING, create_string_from_tokens(arg), name));
-                        stringize = false;
-                    } else {
-                        foreach (ppToken*, arg_t, arg)
-                            append(result, copy_pp_token(arg_t->type, arg_t->value, name));
-                    }
-                    matched = true;
-                    goto break_foreach_in_substitute;
-                }
-                arg__n = arg__n->next;
-            }
-        break_foreach_in_substitute:
-            if (!matched && t->value == P_VA_ARGS && macro->is_variadic) {
-                list(ppToken*) arg = (arg__n != NULL) ? (list(ppToken*))arg__n->data : create_list(ppToken*);
-                if (stringize) {
-                    append(result, copy_pp_token(PP_STRING, create_string_from_tokens(arg), name));
-                    stringize = false;
-                } else {
-                    foreach (ppToken*, arg_t, arg)
-                        append(result, copy_pp_token(arg_t->type, arg_t->value, name));
-                }
-                matched = true;
-            }
-            if (matched) continue;
-        }
-        if (t->type == PP_SYMBOL && t->value == SYMBOL_HASH) {
-            if (stringize) {
-                preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
-                stringize = false;
-                continue;
-            }
-            stringize = true;
-            hash_token = t;
-        } else {
-            if (stringize) {
-                preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
-                stringize = false;
-            } else
-                append(result, copy_pp_token(t->type, t->value, name));
-        }
-    }
-    if (stringize)
-        preprocessor_error("Invalid use of # operator in macro", hash_token->line, hash_token->column);
-    return paste_tokens(ctx, result);
-}
-
-static bool expand_macro(ppContext* ctx, ppToken* name) {
-    ppMacro* macro = find_macro(ctx, name->value);
-    if (macro == NULL) return false;
-
-    list(list(ppToken*)) args = NULL;
-    if (macro->params != NULL) {
-        size_t expected = 0;
-        foreach (string, param, macro->params) expected++;
-        ListNode* t = ctx->current;
-        args = collect_args(ctx, name, expected, macro->is_variadic);
-        if (args == NULL) {
-            ctx->current = t;
-            return false;
-        }
-    } else {
-        args = NULL;
-    }
-    list(ppToken*) result = substitute(ctx, macro, args, name);
-    if (list_empty(result))
-        return true;
-    result->tail->next = ctx->current;
-    ctx->current = result->head;
-    return true;
-}
-
-static long long eval_conditional(ppContext* ctx);
-
-static long long eval_primary(ppContext* ctx) {
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t) || t->type == PP_NEWLINE) {
-        preprocessor_error("Unexpected end of #if expression", t == NULL ? 0 : t->line, t == NULL ? 0 : t->column);
-        return 0;
-    }
-    if (t->type == PP_NUMBER) {
-        pp_get(ctx);
-        return parse_int_literal(t->value);
-    }
-    // TODO: handle string and char literals in #if expressions
-    if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
-        pp_get(ctx);
-        long long v = eval_conditional(ctx);
-        expect_token(ctx, "Expected ) in #if expression", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS);
-        return v;
-    }
-    if (t->type == PP_IDENTIFIER) {
-        pp_get(ctx);
-        if (expand_macro(ctx, t))
-            return eval_primary(ctx);
-        return 0;
-    }
-    preprocessor_error("Unexpected token in #if expression", t->line, t->column);
-    return 0;
-}
-
-static long long eval_unary(ppContext* ctx) {
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t) || t->type == PP_NEWLINE) {
-        preprocessor_error("Unexpected end in #if expression", t == NULL ? 0 : t->line, t == NULL ? 0 : t->column);
-        return 0;
-    }
-
-    // defined
-    if (t->type == PP_IDENTIFIER && t->value == P_DEFINED) {
-        pp_get(ctx);
-        ppToken* nt = pp_peek(ctx);
-        if (is_eof(nt)) {
-            preprocessor_error("Expected identifier after defined", t->line, t->column);
-            return 0;
-        }
-        // defined(NAME)
-        if (nt->type == PP_SYMBOL && nt->value == SYMBOL_L_PARENTHESIS) {
-            pp_get(ctx);
-            ppToken* name = pp_peek(ctx);
-            if (is_eof(name) || name->type != PP_IDENTIFIER) {
-                preprocessor_error("Expected identifier in defined(...)", t->line, t->column);
-                return 0;
-            }
-            pp_get(ctx);
-            if (!expect_token(ctx, "Expected ) in defined(...)", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS))
-                return 0;
-            return find_macro(ctx, name->value) != NULL ? 1 : 0;
-        }
-        // defined NAME
-        if (nt->type == PP_IDENTIFIER) {
-            pp_get(ctx);
-            return find_macro(ctx, nt->value) != NULL ? 1 : 0;
-        }
-        preprocessor_error("Expected identifier after defined", t->line, t->column);
-        return 0;
-    }
-
-    // unary operators: +, -, !, ~
-    if (t->type == PP_SYMBOL && (t->value == SYMBOL_ADD || t->value == SYMBOL_SUB || t->value == SYMBOL_LOGICAL_NOT || t->value == SYMBOL_BITWISE_NOT)) {
-        pp_get(ctx);
-        long long v = eval_unary(ctx);
-        if (t->value == SYMBOL_SUB) return -v;
-        if (t->value == SYMBOL_LOGICAL_NOT) return !v;
-        if (t->value == SYMBOL_BITWISE_NOT) return ~v;
-        return v;
-    }
-
-    return eval_primary(ctx);
-}
-
-static long long eval_expr(ppContext* ctx, int min_prec) {
-    long long lhs = eval_unary(ctx);
-    while (true) {
-        ppToken* t = pp_peek(ctx);
-        if (is_eof(t)) break;
-        int prec = op_prec(t);
-        if (prec == 0 || prec < min_prec) break;
-        pp_get(ctx);
-
-        // short-circuit evaluation for logical AND and OR
-        if (t->value == SYMBOL_LOGICAL_AND && lhs == 0) {
-            skip_expr(ctx, prec + 1);
-            lhs = 0;
-            continue;
-        }
-        if (t->value == SYMBOL_LOGICAL_OR && lhs != 0) {
-            skip_expr(ctx, prec + 1);
-            lhs = 1;
-            continue;
-        }
-        lhs = apply_binop(t, lhs, eval_expr(ctx, prec + 1));
-    }
-    return lhs;
-}
-
-static long long eval_conditional(ppContext* ctx) {
-    long long cond = eval_expr(ctx, 0);
-    ppToken* t = pp_peek(ctx);
-    if (is_eof(t)) return cond;
-    if (t->type != PP_SYMBOL || t->value != SYMBOL_QUESTION) return cond;
-    pp_get(ctx);  // consume '?'
-
-    if (cond) {
-        long long then_val = eval_conditional(ctx);
-        if (!expect_token(ctx, "Expected : in #if expression", t->line, t->column, PP_SYMBOL, SYMBOL_COLON))
-            return then_val;
-        skip_conditional(ctx);
-        return then_val;
-    } else {
-        skip_conditional(ctx);
-        if (!expect_token(ctx, "Expected : in #if expression", t->line, t->column, PP_SYMBOL, SYMBOL_COLON))
-            return 0;
-        return eval_conditional(ctx);
-    }
-}
-
-static void handle_define(ppContext* ctx) {
-    ppToken* name = pp_peek(ctx);
-    if (is_eof(name) || name->type != PP_IDENTIFIER) {
-        preprocessor_error("Expected macro name after #define", name == NULL ? 0 : name->line, name == NULL ? 0 : name->column);
-        return;
-    }
-    pp_get(ctx);  // consume macro name
-
-    ppMacro* macro = NULL;
-    ppToken* t = pp_peek(ctx);
-    if (!is_eof(t) && t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS && t->line == name->line && t->column == name->column + strlen(name->value)) {
-        macro = create_pp_macro(name->value, true);
-        pp_get(ctx);  // consume '('
-
-        t = pp_peek(ctx);
-        while (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
-            if (is_eof(t)) {
-                preprocessor_error("Expected parameter or ) in macro definition", t == NULL ? 0 : t->line, t == NULL ? 0 : t->column);
+static void delete_macro(ppContext* ctx, string name) {
+    if (!list_empty(ctx->macros)) {
+        ListNode* prev = NULL;
+        foreach (ppMacro*, macro, ctx->macros) {
+            if (macro->name->value == name) {
+                if (prev == NULL)
+                    ctx->macros->head = macro__n->next;
+                else
+                    prev->next = macro__n->next;
+                if (macro__n == ctx->macros->tail)
+                    ctx->macros->tail = prev;
                 return;
             }
+            prev = macro__n;
+        }
+    }
+}
+
+static bool get_macro_params(ppContext* ctx, ppMacro* macro) {
+    if (ctx == NULL || macro == NULL || macro->params == NULL)
+        return false;
+    ppToken* t = pp_peek(ctx);
+    while (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
+        if (is_eof(t) || t->type == PP_NEWLINE) {
+            preprocessor_error("Expected parameter or ) in macro definition", (t == NULL ? macro->name : t)->line, (t == NULL ? macro->name : t)->column);
+            return false;
+        }
+        if (t->type != PP_IDENTIFIER) {
             if (t->type == PP_SYMBOL && t->value == SYMBOL_ELLIPSIS) {
                 pp_get(ctx);  // consume '...'
                 macro->is_variadic = true;
-                t = pp_peek(ctx);
-                if (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
-                    preprocessor_error("Expected ) after ... in macro definition", t->line, t->column);
-                    return;
-                }
-                break;
+                if (!expect_token(ctx, "Expected ) after ... in macro parameter list", t->line, t->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS))
+                    return false;
+                return true;
             }
-            if (t->type != PP_IDENTIFIER) {
-                preprocessor_error("Expected parameter name in macro definition", t->line, t->column);
-                return;
-            }
-            foreach (string, p, macro->params) {
-                if (p == t->value) {
-                    preprocessor_error("Duplicate macro parameter name", t->line, t->column);
-                    return;
-                }
-            }
-            pp_get(ctx);  // consume parameter name
-            append(macro->params, t->value);
-
-            t = pp_peek(ctx);
-            if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA) {
-                pp_get(ctx);  // consume ','
-                t = pp_peek(ctx);
-                if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
-                    preprocessor_error("Expected parameter name after , in macro definition", t->line, t->column);
-                    return;
-                }
-            } else if (t->type != PP_SYMBOL || t->value != SYMBOL_R_PARENTHESIS) {
-                preprocessor_error("Expected , or ) in macro definition", t->line, t->column);
-                return;
-            }
-            t = pp_peek(ctx);
+            preprocessor_error("Expected parameter name in macro definition", t->line, t->column);
+            return false;
         }
-        pp_get(ctx);  // consume ')'
-    } else
-        macro = create_pp_macro(name->value, false);
-
-    while (true) {
+        t = pp_get(ctx);  // consume parameter name
+        if (t->value == P_VA_ARGS_) {
+            preprocessor_error("Invalid parameter name __VA_ARGS__ in macro definition", t->line, t->column);
+            return false;
+        }
+        foreach (ppToken*, param, macro->params) {
+            if (param->value == t->value) {
+                preprocessor_error("Duplicate parameter name in macro definition", t->line, t->column);
+                return false;
+            }
+        }
+        append(macro->params, t);
         t = pp_peek(ctx);
-        if (is_eof(t) || t->type == PP_NEWLINE)
+        if (is_eof(t) || t->type == PP_NEWLINE) {
+            preprocessor_error("Expected , or ) in macro definition", (t == NULL ? macro->name : t)->line, (t == NULL ? macro->name : t)->column);
+            return false;
+        }
+        if (t->type == PP_SYMBOL && t->value == SYMBOL_COMMA) {
+            t = pp_get(ctx);  // consume ','
+            t = pp_peek(ctx);
+            if (is_eof(t) || t->type == PP_NEWLINE || (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS)) {
+                preprocessor_error("Expected parameter name after , in macro definition", (t == NULL ? macro->name : t)->line, (t == NULL ? macro->name : t)->column);
+                return false;
+            }
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
             break;
-        pp_get(ctx);  // consume token
-        append(macro->body, t);
+        } else {
+            preprocessor_error("Expected , or ) in macro definition", t->line, t->column);
+            return false;
+        }
+        t = pp_peek(ctx);
     }
+    if (t->type == PP_SYMBOL && t->value == SYMBOL_R_PARENTHESIS) {
+        pp_get(ctx);  // consume ')'
+        return true;
+    } else {
+        preprocessor_error("Expected ) in macro parameter list", t->line, t->column);
+        return false;
+    }
+}
 
-    foreach (ppMacro*, m, ctx->macros) {
-        if (m->name == macro->name) {
-            preprocessor_warn("Macro redefined", name->line, name->column);
-            // TODO: compare old and new definition for full equality
-            m->params = macro->params;
-            m->is_variadic = macro->is_variadic;
-            m->body = macro->body;
+static bool macro_equal(ppMacro* a, ppMacro* b) {
+    if (a == NULL && b == NULL) return true;
+    if (a == NULL || b == NULL) return false;
+    if (a->name->value != b->name->value) return false;
+    if (a->is_variadic != b->is_variadic) return false;
+    if ((a->params == NULL) != (b->params == NULL)) return false;
+    if (list_empty(a->params) != list_empty(b->params)) return false;
+    if (list_empty(a->body) != list_empty(b->body)) return false;
+    if (!list_empty(a->params) && !list_empty(b->params)) {
+        ListNode* old_node = a->params->head;
+        ListNode* new_node = b->params->head;
+        while (new_node != NULL && old_node != NULL) {
+            if (((ppToken*)old_node->data)->value != ((ppToken*)new_node->data)->value)
+                return false;
+            old_node = old_node->next;
+            new_node = new_node->next;
+        }
+        if ((old_node == NULL) != (new_node == NULL))
+            return false;
+    }
+    if (!list_empty(a->body) && !list_empty(b->body)) {
+        ListNode* old_node = a->body->head;
+        ListNode* new_node = b->body->head;
+        bool first = true;
+        while (new_node != NULL && old_node != NULL) {
+            ppToken* old_t = (ppToken*)old_node->data;
+            ppToken* new_t = (ppToken*)new_node->data;
+            if (old_t->type != new_t->type || old_t->value != new_t->value || (!first && old_t->space_before != new_t->space_before))
+                return false;
+            first = false;
+            old_node = old_node->next;
+            new_node = new_node->next;
+        }
+        if ((old_node == NULL) != (new_node == NULL))
+            return false;
+    }
+    return true;
+}
+
+#define not_allow_macro_name(value) (value == P_DEFINED || value == P_VA_ARGS_ || value == P_DATE_ || value == P_TIME_ || value == P_STDC_ || value == P_STDC_VERSION_ || value == P_STDC_HOSTED_)
+
+static void handle_define(ppContext* ctx) {
+    ppToken* t = pp_peek(ctx);
+    if (is_eof(t) || t->type != PP_IDENTIFIER) {
+        preprocessor_error("Expected macro name after #define", t == NULL ? 0 : t->line, t == NULL ? 0 : t->column);
+        return;
+    }
+    if (not_allow_macro_name(t->value)) {
+        preprocessor_error("Invalid macro name after #define", t->line, t->column);
+        return;
+    }
+    if (t->value == P_FILE_ || t->value == P_LINE_) {
+        preprocessor_warn("Redefining predefined macro", t->line, t->column);
+    }
+    t = pp_get(ctx);  // consume macro name
+    ppToken* name = t;
+    t = pp_peek(ctx);
+    ppMacro* macro = NULL;
+    if (!is_eof(t) && t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS && !t->space_before) {
+        pp_get(ctx);  // consume '('
+        macro = create_pp_macro(name, true);
+        if (!get_macro_params(ctx, macro))
+            return;
+    } else {
+        if (!is_eof(t) && t->type != PP_NEWLINE && !t->space_before)
+            preprocessor_warn("Missing space between macro name and replacement list", t->line, t->column);
+        macro = create_pp_macro(name, false);
+    }
+    t = pp_peek(ctx);
+    if (!is_eof(t) && t->type == PP_SYMBOL && t->value == SYMBOL_DOUBLE_HASH) {
+        preprocessor_error("Macro body cannot start with ##", t->line, t->column);
+        return;
+    }
+    int state = 0;  // 0: normal, 1: after #, 2: after ##
+    while (!is_eof(t) && t->type != PP_NEWLINE) {
+        t = pp_get(ctx);  // consume token
+        if (t->type == PP_IDENTIFIER && t->value == P_VA_ARGS_ && !macro->is_variadic) {
+            preprocessor_error("Invalid use of __VA_ARGS__ in macro body", t->line, t->column);
             return;
         }
+        if (state == 1) {
+            if (t->type != PP_IDENTIFIER) {
+                preprocessor_error("Expected parameter after # in macro body", t->line, t->column);
+                return;
+            }
+            bool find = false;
+            if (t->value == P_VA_ARGS_ && macro->is_variadic)
+                find = true;
+            else if (!list_empty(macro->params)) {
+                foreach (ppToken*, param, macro->params) {
+                    if (param->value == t->value) {
+                        find = true;
+                        goto break_foreach_in_handle_define;
+                    }
+                }
+            }
+        break_foreach_in_handle_define:
+            if (!find) {
+                preprocessor_error("Invalid parameter after # in macro body", t->line, t->column);
+                return;
+            }
+        }
+        if (macro->params != NULL && t->type == PP_SYMBOL && t->value == SYMBOL_HASH)
+            state = 1;
+        else if (t->type == PP_SYMBOL && t->value == SYMBOL_DOUBLE_HASH)
+            state = 2;
+        else
+            state = 0;
+        append(macro->body, t);
+        t = pp_peek(ctx);
+    }
+    if (state == 1) {
+        preprocessor_error("Macro body cannot end with #", (t == NULL ? name : t)->line, (t == NULL ? name : t)->column);
+        return;
+    }
+    if (state == 2) {
+        preprocessor_error("Macro body cannot end with ##", (t == NULL ? name : t)->line, (t == NULL ? name : t)->column);
+        return;
+    }
+    ppMacro* old = find_macro(ctx, name->value);
+    if (old != NULL) {
+        if (!macro_equal(old, macro))
+            preprocessor_warn("Macro redefined", name->line, name->column);
+        delete_macro(ctx, name->value);
     }
     append(ctx->macros, macro);
+}
+
+static void handle_include(ppContext* ctx, ppToken* header_name) {
+    // TODO
+}
+
+static bool eval_conditional(ppContext* ctx) {
+    // TODO
+    return false;  // placeholder
+}
+
+static ppToken* build_include_name(ppContext* ctx, ppToken* directive, list(ppToken*) tokens) {
+    if (list_empty(tokens)) {
+        preprocessor_error("Expected header name in #include", directive->line, directive->column);
+        return NULL;
+    }
+    int state = 0;  // 1: <, 2: header_name, 3: >
+    ppToken* name = NULL;
+    string header_name = NULL;
+    ListNode* other = NULL;
+    foreach (ppToken*, t, tokens) {
+        if (is_eof(t)) {
+            preprocessor_error("Unexpected end of tokens in #include", t->line, t->column);
+            return NULL;
+        } else if (state == 0 && t->type == PP_STRING) {
+            name = create_pp_token(PP_HEADER_NAME, t->value, ctx->lexer, 0);
+            name->line = t->line;
+            name->column = t->column;
+            name->expanded_from = t->expanded_from;
+            other = t__n;
+            goto skip_foreach_in_build_include_name;
+        } else if (state == 0 && t->type == PP_SYMBOL && t->value == SYMBOL_LT) {
+            state = 1;
+            header_name = "<";
+            continue;
+        } else if ((state == 2 || state == 1) && t->type == PP_SYMBOL && t->value == SYMBOL_GT) {
+            if (state == 1) {
+                preprocessor_error("Expected header name after <", t->line, t->column);
+                return NULL;
+            }
+            state = 3;
+            header_name = string_splice("%s>", header_name);
+            name = create_pp_token(PP_HEADER_NAME, header_name, ctx->lexer, 0);
+            name->line = t->line;
+            name->column = t->column;
+            name->expanded_from = t->expanded_from;
+            other = t__n;
+            goto skip_foreach_in_build_include_name;
+        } else if ((state == 1 || state == 2) && t->type != PP_EOF && t->type != PP_NEWLINE) {
+            if (t->space_before && state == 2)  // don't add space after '<'
+                header_name = string_splice("%s %s", header_name, t->value);
+            else
+                header_name = string_splice("%s%s", header_name, t->value);
+            state = 2;
+            continue;
+        } else if (state == 0 && t->type == PP_HEADER_NAME) {
+            name = t;
+            other = t__n;
+            goto skip_foreach_in_build_include_name;
+        } else {
+            preprocessor_error("Invalid token in #include header name", t->line, t->column);
+            return NULL;
+        }
+    }
+skip_foreach_in_build_include_name:
+    if (other != NULL && other->next != NULL && (ppToken*)other->next->data != NULL) {
+        ppToken* t = (ppToken*)other->next->data;
+        if (!is_eof(t) && t->type != PP_NEWLINE) {
+            preprocessor_error("Unexpected token after #include header name", t->line, t->column);
+            return NULL;
+        }
+    }
+    if (name == NULL) {
+        if (state == 0)
+            preprocessor_error("Expected header name in #include", directive->line, directive->column);
+        else
+            preprocessor_error("Expected closing > in #include", directive->line, directive->column);
+        return NULL;
+    }
+    return name;
 }
 
 static void handle_directive(ppContext* ctx) {
@@ -677,26 +441,16 @@ static void handle_directive(ppContext* ctx) {
             preprocessor_error("Expected macro name after #undef", directive->line, directive->column);
             return;
         }
-        pp_get(ctx);
-
-        if (!list_empty(ctx->macros)) {
-            ListNode* prev = NULL;
-            foreach (ppMacro*, macro, ctx->macros) {
-                if (macro->name == name->value) {
-                    if (prev == NULL)
-                        ctx->macros->head = macro__n->next;
-                    else
-                        prev->next = macro__n->next;
-                    if (macro__n == ctx->macros->tail)
-                        ctx->macros->tail = prev;
-                    return;
-                }
-                prev = macro__n;
-            }
+        if (not_allow_macro_name(name->value)) {
+            preprocessor_error("Invalid macro name after #undef", name->line, name->column);
+            return;
         }
+        pp_get(ctx);
+        delete_macro(ctx, name->value);
     } else if (directive->value == P_IF || directive->value == P_IFDEF || directive->value == P_IFNDEF) {
         bool outer_active = cond_active(ctx);
         bool inner_active = false;
+        ppCondFrame* frame = create_pp_cond_frame(directive);
         if (outer_active) {
             if (directive->value == P_IF) {
                 inner_active = eval_conditional(ctx) != 0;
@@ -704,7 +458,6 @@ static void handle_directive(ppContext* ctx) {
                 ppToken* name = pp_peek(ctx);
                 if (is_eof(name) || name->type != PP_IDENTIFIER) {
                     preprocessor_error("Expected identifier after #if[n]def", directive->line, directive->column);
-                    ppCondFrame* frame = create_pp_cond_frame(directive);
                     frame->active = false;
                     frame->taken = false;
                     append(ctx->cond_stack, frame);
@@ -714,7 +467,6 @@ static void handle_directive(ppContext* ctx) {
                 inner_active = (directive->value == P_IFDEF) == (find_macro(ctx, name->value) != NULL);
             }
         }
-        ppCondFrame* frame = create_pp_cond_frame(directive);
         frame->active = outer_active && inner_active;
         frame->taken = !outer_active || inner_active;
         append(ctx->cond_stack, frame);
@@ -764,7 +516,25 @@ static void handle_directive(ppContext* ctx) {
             ctx->cond_stack->tail = n;
         }
     } else if (directive->value == P_INCLUDE) {
-        // TODO: include file handle
+        list(ppToken*) tokens = create_list(ppToken*);
+        int expansions = 0;
+        while (true) {
+            ppToken* t = pp_peek(ctx);
+            if (is_eof(t) || t->type == PP_NEWLINE) break;
+            pp_get(ctx);
+            if (t->type == PP_IDENTIFIER && expand_macro(ctx, t)) {
+                if (++expansions > 64) {
+                    preprocessor_error("Too many macro expansions in #include", t->line, t->column);
+                    return;
+                }
+                continue;
+            }
+            append(tokens, t);
+        }
+        ppToken* name = build_include_name(ctx, directive, tokens);
+        if (name == NULL)
+            return;
+        handle_include(ctx, name);
     } else if (directive->value == P_LINE) {
         // skip, not currently supported
         return;
@@ -802,19 +572,18 @@ list(ppToken*) preprocess(string filename, string source_code, bool* error_flag)
     ppContext* ctx = create_pp_context(lexer);
     ctx->current = lexer->pp_tokens->head;
 
-    bool at_line_start = true;
     while (true) {
         ppToken* token = pp_peek(ctx);
         if (is_eof(token)) break;
 
-        if (at_line_start && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
+        if (token->at_line_start && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
             pp_get(ctx);  // consume '#'
+            ctx->in_directive = true;
             handle_directive(ctx);
+            ctx->in_directive = false;
             skip_to_newline(ctx);
-            at_line_start = true;
         } else {
             token = pp_get(ctx);
-            at_line_start = (token->type == PP_NEWLINE);
             if (!cond_active(ctx))
                 continue;
             if (token->type == PP_OTHER)
@@ -836,6 +605,3 @@ list(ppToken*) preprocess(string filename, string source_code, bool* error_flag)
     *error_flag = has_error;
     return ctx->output;
 }
-
-// TODO: macro recursion check
-// TODO: __FILE__, __LINE__, __DATE__, __TIME__, ...
