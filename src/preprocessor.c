@@ -188,14 +188,116 @@ static list(list(ppToken*)) handle_macro_args(ppContext* ctx, ppMacro* macro, pp
     return args;
 }
 
+static int find_arg_index(list(ppToken*) params, ppToken* param, size_t expected) {
+    if (param == NULL || param->type != PP_IDENTIFIER)
+        return -1;
+    int index = 0;
+    foreach (ppToken*, p, params) {
+        if (p->value == param->value)
+            return index;
+        index++;
+    }
+    if (param->value == P_VA_ARGS_ && expected > 0)
+        return (int)expected - 1;
+    return -1;
+}
+
+static string stringize_tokens(list(ppToken*) tokens) {
+    bool first = true;
+    size_t len = 2;
+    foreach (ppToken*, t, tokens) {
+        len += strlen(t->value) + ((t->space_before && !first) ? 1 : 0);
+        if (t->type == PP_STRING || t->type == PP_CHAR) {
+            for (size_t i = 0; i < strlen(t->value); i++) {
+                char c = t->value[i];
+                if (c == '"' || c == '\\')
+                    len++;
+            }
+        }
+        first = false;
+    }
+    char* result = (char*)malloc(len + 1);
+    if (result == NULL) {
+        fprintf(stderr, "[preprocessor Fatal] at <stringize_tokens>: Cannot allocate memory\n");
+        abort();
+    }
+    result[0] = '"';
+    size_t pos = 1;
+    first = true;
+    foreach (ppToken*, t, tokens) {
+        if (t->space_before && !first)
+            result[pos++] = ' ';
+        first = false;
+        for (size_t i = 0; i < strlen(t->value); i++) {
+            char c = t->value[i];
+            if ((t->type == PP_STRING || t->type == PP_CHAR) && (c == '"' || c == '\\'))
+                result[pos++] = '\\';
+            result[pos++] = c;
+        }
+    }
+    result[pos++] = '"';
+    result[pos] = '\0';
+    string str = create_string(result, pos);
+    free(result);
+    return str;
+}
+
+static ppToken* create_pp_token_in_macro(ppTokenType type, string value, ppToken* name, bool space_before, list(string) hideset) {
+    ppToken* new_token = create_struct(ppToken);
+    new_token->type = type;
+    new_token->value = value;
+    new_token->line = name->line;
+    new_token->column = name->column;
+    new_token->filename = name->filename;
+    new_token->space_before = space_before;
+    new_token->at_line_start = false;
+    new_token->hideset = hideset;
+    new_token->expanded_from = name;
+    while (new_token->expanded_from->expanded_from != NULL)
+        new_token->expanded_from = new_token->expanded_from->expanded_from;
+    return new_token;
+}
+
 static bool expand_macro(ppContext* ctx, ppToken* name);
 
-static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name, list(string) hideset) {
-    // TODO
-    return NULL;  // placeholder
+static list(ppToken*) expand_tokens(ppContext* ctx, list(ppToken*) tokens) {
+    ppContext* sub_ctx = create_pp_context(ctx->lexer);
+    sub_ctx->macros = ctx->macros;
+    sub_ctx->in_directive = ctx->in_directive;
+    sub_ctx->current = tokens->head;
+    while (true) {
+        ppToken* t = pp_peek(sub_ctx);
+        if (is_eof(t)) break;
+        pp_get(sub_ctx);
+        if (t->type == PP_IDENTIFIER && expand_macro(sub_ctx, t))
+            continue;
+        append(sub_ctx->output, t);
+    }
+    return sub_ctx->output;
+}
+
+static bool hideset_contains(list(string) hideset, string name) {
+    foreach (string, s, hideset)
+        if (s == name)
+            return true;
+    return false;
+}
+
+static list(string) hideset_union(list(string) a, list(string) b) {
+    if (a == NULL) return b;
+    if (b == NULL) return a;
+    list(string) result = create_list(string);
+    foreach (string, s, a)
+        append(result, s);
+    foreach (string, t, b)
+        if (!hideset_contains(a, t))
+            append(result, t);
+    return result;
 }
 
 static list(string) hideset_append(list(string) hideset, string name) {
+    if (hideset_contains(hideset, name))
+        return hideset;
     list(string) new_hideset = create_list(string);
     foreach (string, s, hideset)
         append(new_hideset, s);
@@ -209,7 +311,185 @@ static list(string) hideset_intersect(list(string) a, list(string) b, string nam
         foreach (string, t, b)
             if (s == t)
                 append(result, s);
-    append(result, name);
+    if (name != NULL && !hideset_contains(result, name))
+        append(result, name);
+    return result;
+}
+
+static ppToken* paste_two_tokens(ppContext* ctx, ppToken* lhs, ppToken* rhs, ppToken* name) {
+    string str = string_splice("%s%s", lhs->value, rhs->value);
+    ppLexer* lexer = create_pp_lexer(name->filename, str);
+    if (lexer == NULL) {
+        fprintf(stderr, "[preprocessor Fatal] at <paste_two_tokens>: Cannot create lexer for token pasting\n");
+        abort();
+    }
+    bool lex_error = pp_lexer(lexer);
+
+    ppToken* pasted = NULL;
+    size_t count = 0;
+    foreach (ppToken*, token, lexer->pp_tokens) {
+        if (token->type == PP_EOF || token->type == PP_NEWLINE)
+            continue;
+        if (count++ == 0)
+            pasted = token;
+    }
+    if (lex_error || count != 1) {
+        preprocessor_error(string_splice("Pasting \"%s\" and \"%s\" does not give a valid preprocessing token", lhs->value, rhs->value), name->line, name->column);
+        return NULL;
+    }
+    return create_pp_token_in_macro(pasted->type, pasted->value, name, lhs->space_before, hideset_intersect(lhs->hideset, rhs->hideset, NULL));
+}
+
+static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name, list(string) hideset) {
+    if (macro == NULL || name == NULL)
+        return NULL;
+    if (list_empty(macro->body))
+        return create_list(ppToken*);  // empty list
+
+    size_t expected = 0;
+    if (macro->params != NULL) {
+        assert(args != NULL);
+        foreach (ppToken*, param, macro->params) expected++;
+        if (macro->is_variadic) expected++;
+    }
+    list(ppToken*)* expanded = NULL;
+    list(ppToken*)* arg_arr = NULL;
+    if (expected > 0) {
+        expanded = calloc(expected, sizeof(list(ppToken*)));
+        arg_arr = calloc(expected, sizeof(list(ppToken*)));
+        if (expanded == NULL || arg_arr == NULL) {
+            fprintf(stderr, "[preprocessor Fatal] at <paste_macro_body>: Cannot allocate memory\n");
+            abort();
+        }
+    }
+    size_t i = 0;
+    foreach (list(ppToken*), arg, args)
+        arg_arr[i++] = arg;
+
+    list(ppToken*) result = create_list(ppToken*);
+    ListNode* node = macro->body->head;
+    while (node != NULL) {
+        ppToken* t = (ppToken*)node->data;
+        assert(t != NULL);
+        if (t->type == PP_SYMBOL && t->value == SYMBOL_HASH && expected > 0) {
+            bool space_before = t->space_before;
+            node = node->next;
+            assert(node != NULL);
+            t = (ppToken*)node->data;
+            int index = find_arg_index(macro->params, t, expected);
+            if (index == -1) {
+                preprocessor_error("Invalid parameter after # in macro body", t->line, t->column);
+                free(expanded);
+                free(arg_arr);
+                return NULL;
+            }
+            string str = stringize_tokens(arg_arr[index]);
+            ppToken* new = create_pp_token_in_macro(PP_STRING, str, name, space_before, NULL);
+            append(result, new);
+        } else if (t->type == PP_SYMBOL && t->value == SYMBOL_DOUBLE_HASH) {
+            ppToken* next = NULL;
+            if (node->next != NULL && node->next->data != NULL)
+                next = (ppToken*)node->next->data;
+            if (!is_eof(next) && next->type != PP_NEWLINE) {
+                list(ppToken*) rhs = NULL;
+                int index = find_arg_index(macro->params, next, expected);
+                int rhs_stringize = -1;
+                if (macro->params != NULL && next->type == PP_SYMBOL && next->value == SYMBOL_HASH && node->next->next != NULL)
+                    rhs_stringize = find_arg_index(macro->params, (ppToken*)node->next->next->data, expected);
+                if (rhs_stringize != -1) {
+                    rhs = create_list(ppToken*);
+                    append(rhs, create_pp_token_in_macro(PP_STRING, stringize_tokens(arg_arr[rhs_stringize]), name, next->space_before, NULL));
+                    node = node->next;
+                } else if (index != -1) {
+                    rhs = arg_arr[index];
+                } else {
+                    rhs = create_list(ppToken*);
+                    append(rhs, next);
+                }
+                node = node->next;
+
+                ppToken* lhs = pop_back(result, ppToken*);
+                assert(lhs != NULL);
+
+                ListNode* r = (rhs == NULL) ? NULL : rhs->head;
+                if (r == NULL) {
+                    append(result, lhs);
+                } else if (lhs->type == PP_PLACE_MARKER) {
+                    bool first = true;
+                    for (; r != NULL; r = r->next) {
+                        ppToken* a = (ppToken*)r->data;
+                        append(result, create_pp_token_in_macro(a->type, a->value, name, (first ? lhs : a)->space_before, a->hideset));
+                        first = false;
+                    }
+                } else {
+                    ppToken* first_rhs = (ppToken*)r->data;
+                    ppToken* pasted = paste_two_tokens(ctx, lhs, first_rhs, name);
+                    if (pasted != NULL) {
+                        append(result, pasted);
+                    } else {
+                        append(result, lhs);
+                        append(result, create_pp_token_in_macro(first_rhs->type, first_rhs->value, name, first_rhs->space_before, first_rhs->hideset));
+                    }
+                    for (r = r->next; r != NULL; r = r->next) {
+                        ppToken* a = (ppToken*)r->data;
+                        append(result, create_pp_token_in_macro(a->type, a->value, name, a->space_before, a->hideset));
+                    }
+                }
+            }
+        } else {
+            int index = find_arg_index(macro->params, t, expected);
+            if (index == -1) {
+                append(result, create_pp_token_in_macro(t->type, t->value, name, t->space_before, t->hideset));
+            } else {
+                ppToken* next = NULL;
+                if (node->next != NULL && node->next->data != NULL)
+                    next = (ppToken*)node->next->data;
+                if (next != NULL && next->type == PP_SYMBOL && next->value == SYMBOL_DOUBLE_HASH) {
+                    if (list_empty(arg_arr[index]))
+                        append(result, create_pp_token_in_macro(PP_PLACE_MARKER, NULL, name, t->space_before, NULL));
+                    else {
+                        bool first = true;
+                        foreach (ppToken*, arg_t, arg_arr[index]) {
+                            append(result, create_pp_token_in_macro(arg_t->type, arg_t->value, name, (first ? t : arg_t)->space_before, arg_t->hideset));
+                            first = false;
+                        }
+                    }
+                } else {
+                    if (expanded[index] == NULL)
+                        expanded[index] = expand_tokens(ctx, arg_arr[index]);
+                    bool first = true;
+                    foreach (ppToken*, arg_t, expanded[index]) {
+                        append(result, create_pp_token_in_macro(arg_t->type, arg_t->value, name, (first ? t : arg_t)->space_before, arg_t->hideset));
+                        first = false;
+                    }
+                }
+            }
+        }
+        node = node->next;
+    }
+
+    free(expanded);
+    free(arg_arr);
+
+    ListNode* prev = NULL;
+    bool first = true;
+    foreach (ppToken*, t, result) {
+        if (t->type == PP_PLACE_MARKER) {
+            if (prev == NULL)
+                result->head = t__n->next;
+            else
+                prev->next = t__n->next;
+            if (t__n == result->tail)
+                result->tail = prev;
+        } else {
+            t->hideset = hideset_union(t->hideset, hideset);
+            if (first) {
+                t->space_before = name->space_before;
+                first = false;
+            }
+            prev = t__n;
+        }
+    }
     return result;
 }
 
@@ -219,9 +499,8 @@ static bool expand_macro(ppContext* ctx, ppToken* name) {
     ppMacro* macro = find_macro(ctx, name->value);
     if (macro == NULL)
         return false;
-    foreach (string, s, name->hideset)
-        if (s == name->value)
-            return false;
+    if (hideset_contains(name->hideset, name->value))
+        return false;
 
     ListNode* saved = ctx->current;
     list(string) hideset = NULL;
