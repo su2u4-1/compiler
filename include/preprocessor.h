@@ -38,6 +38,7 @@ typedef struct ppLexer {
     int include_state;
     bool pending_space;
     bool line_start;
+    bool output_error;
 } ppLexer;
 
 typedef struct ppCondFrame {

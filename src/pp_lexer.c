@@ -8,7 +8,8 @@
     if (lexer->pos > 0) lexer->pos -= 1
 #define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
-#define pp_lexer_error(message, pos) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", (has_error = true, lexer->filename), line_pos(lexer, pos), column_pos(lexer, pos), message)
+#define pp_lexer_error(message, pos) \
+    if (has_error = true, lexer->output_error) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", lexer->filename, line_pos(lexer, pos), column_pos(lexer, pos), message)
 #define content_string(start) create_string(&lexer->source_code[start], min(lexer->pos, lexer->length) - start)
 
 static bool has_error = false;
@@ -130,6 +131,7 @@ ppLexer* create_pp_lexer(string filename, string source_code) {
     lexer->include_state = 0;
     lexer->pending_space = false;
     lexer->line_start = true;
+    lexer->output_error = true;
     normalize(lexer, source_code);
     return lexer;
 }

@@ -291,6 +291,8 @@ list(Token*) pp_to_tokens(list(ppToken*) pp_tokens) {
                 return tokens;
             case PP_NEWLINE:
             case PP_OTHER:
+            case PP_PLACE_MARKER:
+            case PP_HEADER_NAME:
             default:
                 break;
         }

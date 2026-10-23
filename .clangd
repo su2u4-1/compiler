@@ -24,3 +24,5 @@ If:
   PathMatch: .*\.h$
 CompileFlags:
   Add: [-xc-header]
+Diagnostics:
+  Suppress: [-Wunused-macros]

@@ -48,6 +48,7 @@ static void skip_to_newline(ppContext* ctx) {
         ctx->current = ctx->current->next;
     }
 }
+
 static ppMacro* find_macro(ppContext* ctx, string name) {
     assert(ctx != NULL);
     foreach (ppMacro*, macro, ctx->macros)
@@ -55,6 +56,7 @@ static ppMacro* find_macro(ppContext* ctx, string name) {
             return macro;
     return NULL;
 }
+
 static bool cond_active(ppContext* ctx) {
     assert(ctx != NULL);
     if (list_empty(ctx->cond_stack))
@@ -162,6 +164,7 @@ static list(list(ppToken*)) handle_macro_args(ppContext* ctx, ppMacro* macro, pp
                 append(args, cur);
                 cur = create_list(ppToken*);
                 pp_get(ctx);
+                space = false;
                 continue;
             }
         }
@@ -228,7 +231,8 @@ static string stringize_tokens(list(ppToken*) tokens) {
         if (t->space_before && !first)
             result[pos++] = ' ';
         first = false;
-        for (size_t i = 0; i < strlen(t->value); i++) {
+        size_t t_len = strlen(t->value);
+        for (size_t i = 0; i < t_len; i++) {
             char c = t->value[i];
             if ((t->type == PP_STRING || t->type == PP_CHAR) && (c == '"' || c == '\\'))
                 result[pos++] = '\\';
@@ -323,6 +327,7 @@ static ppToken* paste_two_tokens(ppContext* ctx, ppToken* lhs, ppToken* rhs, ppT
         fprintf(stderr, "[preprocessor Fatal] at <paste_two_tokens>: Cannot create lexer for token pasting\n");
         abort();
     }
+    lexer->output_error = false;
     bool lex_error = pp_lexer(lexer);
 
     ppToken* pasted = NULL;
@@ -493,12 +498,43 @@ static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list
     return result;
 }
 
+static bool expand_builtin(ppContext* ctx, ppToken* name) {
+    ppToken* origin = name;
+    while (origin->expanded_from != NULL)
+        origin = origin->expanded_from;
+    ppToken* t = NULL;
+    if (name->value == P_LINE_) {
+        t = create_pp_token_in_macro(PP_NUMBER, string_splice("%zu", origin->line), name, name->space_before, NULL);
+    } else if (name->value == P_FILE_) {
+        string f = origin->filename;
+        size_t len = strlen(f);
+        char* buf = malloc(len * 2 + 3);
+        size_t pos = 0;
+        buf[pos++] = '"';
+        for (size_t i = 0; i < len; i++) {
+            if (f[i] == '\\' || f[i] == '"') buf[pos++] = '\\';
+            buf[pos++] = f[i];
+        }
+        buf[pos++] = '"';
+        buf[pos] = '\0';
+        t = create_pp_token_in_macro(PP_STRING, create_string(buf, pos), name, name->space_before, NULL);
+        free(buf);
+    } else {
+        return false;
+    }
+    ListNode* node = create_struct(ListNode);
+    node->data = t;
+    node->next = ctx->current;
+    ctx->current = node;
+    return true;
+}
+
 static bool expand_macro(ppContext* ctx, ppToken* name) {
     if (name->type != PP_IDENTIFIER)
         return false;
     ppMacro* macro = find_macro(ctx, name->value);
     if (macro == NULL)
-        return false;
+        return expand_builtin(ctx, name);
     if (hideset_contains(name->hideset, name->value))
         return false;
 
@@ -529,6 +565,10 @@ static bool expand_macro(ppContext* ctx, ppToken* name) {
     }
 
     list(ppToken*) result = paste_macro_body(ctx, macro, args, name, hideset);
+    if (result == NULL) {
+        ctx->current = saved;
+        return false;
+    }
     if (list_empty(result))
         return true;
     result->tail->next = ctx->current;
