@@ -158,8 +158,8 @@ string get_source(string path) {
     return source_code;
 }
 
-string string_splice(string format, ...) {
 #include <stdarg.h>
+string string_splice(string format, ...) {
     va_list args;
     va_start(args, format);
     int length = vsnprintf(NULL, 0, format, args);

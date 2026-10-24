@@ -348,9 +348,12 @@ static ppToken* paste_two_tokens(ppContext* ctx, ppToken* lhs, ppToken* rhs, ppT
 static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list(ppToken*)) args, ppToken* name, list(string) hideset) {
     if (macro == NULL || name == NULL)
         return NULL;
-    if (list_empty(macro->body))
-        return create_list(ppToken*);  // empty list
-
+    if (name->space_before && ctx->current != NULL && ctx->current->data != NULL) {
+        ppToken* next = create_struct(ppToken);
+        memcpy(next, ctx->current->data, sizeof(ppToken));
+        next->space_before = true;
+        ctx->current->data = next;
+    }
     size_t expected = 0;
     if (macro->params != NULL) {
         assert(args != NULL);
@@ -783,6 +786,38 @@ static void handle_define(ppContext* ctx) {
     append(ctx->macros, macro);
 }
 
+static void add_predefined(ppContext* ctx, string name, ppTokenType type, string value) {
+    ppMacro* macro = create_pp_macro(create_pp_token(PP_IDENTIFIER, name, ctx->lexer, 0), false);
+    append(macro->body, create_pp_token(type, value, ctx->lexer, 0));
+    append(ctx->macros, macro);
+}
+
+#include <time.h>
+static void add_predefined_macros(ppContext* ctx) {
+// add_predefined(ctx, P_STDC_, PP_NUMBER, create_string("1", 1));
+// add_predefined(ctx, P_STDC_VERSION_, PP_NUMBER, create_string("201112L", 7));
+// add_predefined(ctx, P_STDC_HOSTED_, PP_NUMBER, create_string("1", 1));
+#if defined(__MINGW32__) || defined(__MINGW64__)
+    time_t now = _time64(NULL);
+    struct tm* tm = now == (time_t)-1 ? NULL : _localtime64(&now);
+#else
+    time_t now = time(NULL);
+    struct tm* tm = now == (time_t)-1 ? NULL : localtime(&now);
+#endif
+    if (tm == NULL) {
+        add_predefined(ctx, P_DATE_, PP_STRING, create_string("\"??? ?? ????\"", 13));
+        add_predefined(ctx, P_TIME_, PP_STRING, create_string("\"??:??:??\"", 10));
+    } else {
+        char buf[32];
+        strftime(buf, sizeof buf, "\"%b %d %Y\"", tm);
+        if (buf[5] == '0')
+            buf[5] = ' ';
+        add_predefined(ctx, P_DATE_, PP_STRING, create_string(buf, strlen(buf)));
+        strftime(buf, sizeof buf, "\"%H:%M:%S\"", tm);
+        add_predefined(ctx, P_TIME_, PP_STRING, create_string(buf, strlen(buf)));
+    }
+}
+
 static void handle_include(ppContext* ctx, ppToken* header_name) {
     // TODO
 }
@@ -1015,6 +1050,7 @@ list(ppToken*) preprocess(string filename, string source_code, bool* error_flag)
 
     ppContext* ctx = create_pp_context(lexer);
     ctx->current = lexer->pp_tokens->head;
+    add_predefined_macros(ctx);
 
     while (true) {
         ppToken* token = pp_peek(ctx);
