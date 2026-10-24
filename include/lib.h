@@ -24,6 +24,8 @@ __attribute__((format(gnu_printf, 1, 2)))
 #endif
 string string_splice(string format, ...);
 
+#define MAX_INCLUDE_DEPTH 200
+
 // memory
 
 #define DEFAULT_MEMORY_SIZE 1024

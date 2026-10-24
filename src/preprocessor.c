@@ -1,6 +1,6 @@
 #include "preprocessor.h"
 
-#include "lib.h"
+#include "file.h"
 
 #define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = true, ctx->lexer->filename), line, column, message)
 #define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
@@ -33,6 +33,7 @@ static ppContext* create_pp_context(ppLexer* lexer) {
     context->current = NULL;
     context->output = create_list(ppToken*);
     context->lexer = lexer;
+    context->include_depth = 0;
     context->in_directive = false;
     return context;
 }
@@ -818,8 +819,51 @@ static void add_predefined_macros(ppContext* ctx) {
     }
 }
 
+static void process_tokens(ppContext* ctx);
+
 static void handle_include(ppContext* ctx, ppToken* header_name) {
-    // TODO
+    assert(ctx != NULL && header_name != NULL);
+    assert(header_name->type == PP_HEADER_NAME);
+    if (ctx->include_depth >= MAX_INCLUDE_DEPTH) {
+        preprocessor_error("Maximum include depth exceeded", header_name->line, header_name->column);
+        return;
+    }
+    string name = header_name->value;
+    size_t len = strlen(name);
+    bool is_angle = false;
+    if (len > 2 && name[0] == '<' && name[len - 1] == '>') {
+        name = create_string(name + 1, len - 2);
+        is_angle = true;
+    } else if (len > 2 && name[0] == '"' && name[len - 1] == '"') {
+        name = create_string(name + 1, len - 2);
+    } else {
+        if (len < 3)
+            preprocessor_error("Empty header name in #include", header_name->line, header_name->column);
+        else
+            preprocessor_error("Invalid header name in #include", header_name->line, header_name->column);
+        return;
+    }
+    string path = find_file(name, is_angle, ctx->lexer->filename);
+    if (path == NULL) {
+        preprocessor_error(string_splice("Cannot find header file: %s", name), header_name->line, header_name->column);
+        return;
+    }
+    string source = get_source(path);
+    if (source == NULL) {
+        preprocessor_error(string_splice("Cannot find header file: %s", name), header_name->line, header_name->column);
+        return;
+    }
+    ppLexer* lexer = create_pp_lexer(path, source);
+    if (lexer == NULL)
+        return;
+    if (pp_lexer(lexer))
+        has_error = true;
+    ppContext* sub_ctx = create_pp_context(lexer);
+    sub_ctx->macros = ctx->macros;
+    sub_ctx->include_depth = ctx->include_depth + 1;
+    sub_ctx->output = ctx->output;
+    sub_ctx->current = lexer->pp_tokens->head;
+    process_tokens(sub_ctx);
 }
 
 static bool eval_conditional(ppContext* ctx) {
@@ -1039,19 +1083,7 @@ static void handle_directive(ppContext* ctx) {
     }
 }
 
-list(ppToken*) preprocess(string filename, string source_code, bool* error_flag) {
-    has_error = false;
-    ppLexer* lexer = create_pp_lexer(filename, source_code);
-    if (lexer == NULL) {
-        *error_flag = true;
-        return NULL;
-    }
-    has_error = pp_lexer(lexer);
-
-    ppContext* ctx = create_pp_context(lexer);
-    ctx->current = lexer->pp_tokens->head;
-    add_predefined_macros(ctx);
-
+static void process_tokens(ppContext* ctx) {
     while (true) {
         ppToken* token = pp_peek(ctx);
         if (is_eof(token)) break;
@@ -1082,6 +1114,23 @@ list(ppToken*) preprocess(string filename, string source_code, bool* error_flag)
         }
         preprocessor_error("Unterminated conditional directive", line, column);
     }
+}
+
+list(ppToken*) preprocess(string filename, string source_code, bool* error_flag) {
+    has_error = false;
+    ppLexer* lexer = create_pp_lexer(filename, source_code);
+    if (lexer == NULL) {
+        *error_flag = true;
+        return NULL;
+    }
+    has_error = pp_lexer(lexer);
+
+    ppContext* ctx = create_pp_context(lexer);
+    ctx->current = lexer->pp_tokens->head;
+    add_predefined_macros(ctx);
+
+    process_tokens(ctx);
+
     *error_flag = has_error;
     return ctx->output;
 }

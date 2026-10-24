@@ -59,6 +59,7 @@ typedef struct ppContext {
     list(ppToken*) output;
     ListNode* current;
     ppLexer* lexer;
+    int include_depth;
     bool in_directive;
 } ppContext;
 

@@ -24,6 +24,10 @@ int main(int argc, char* argv[]) {
     init();
     handle_args(argc, argv);
     string source_code = get_source(source_path);
+    if (source_code == NULL) {
+        printf(stderr, "[Error] at <main>: Failed to read source file: %s\n", source_path);
+        return 1;
+    }
 
     // preprocess
     bool error_flag = false;

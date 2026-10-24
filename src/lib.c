@@ -138,23 +138,27 @@ string create_string(const char* str, size_t len) {
 }
 
 string get_source(string path) {
-    FILE* file = fopen(path, "r");
-    if (file == NULL) {
-        fprintf(stderr, "[lib Error] at <get_source>: could not open source file '%s'\n", path);
-        exit(1);
+    FILE* file = fopen(path, "rb");
+    if (file == NULL)
+        return NULL;
+    if (fseek(file, 0, SEEK_END) != 0) {
+        fclose(file);
+        return NULL;
     }
-    fseek(file, 0, SEEK_END);
-    size_t size = (size_t)ftell(file);
-    fseek(file, 0, SEEK_SET);
+    long n = ftell(file);
+    if (n < 0 || n > (1L << 30)) {  // 1 GiB limit
+        fclose(file);
+        return NULL;
+    }
+    rewind(file);
+    size_t size = (size_t)n;
     string source_code = (string)alloc_memory(size + 1, false);
-    if (source_code == NULL) {
-        fprintf(stderr, "[lib Error] at <get_source>: could not allocate memory for source code\n");
-        exit(1);
-    }
-    memset(source_code, 0, size + 1);
-    fread(source_code, 1, size, file);
-    source_code[size] = '\0';
+    size_t got = fread(source_code, 1, size, file);
+    bool failed = ferror(file);
     fclose(file);
+    if (failed)
+        return NULL;
+    source_code[got] = '\0';
     return source_code;
 }
 
