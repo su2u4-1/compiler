@@ -26,6 +26,12 @@ string string_splice(string format, ...);
 
 #define MAX_INCLUDE_DEPTH 200
 
+#ifdef _WIN32
+#define WIN_PATH 1
+#else
+#define WIN_PATH 0
+#endif
+
 // memory
 
 #define DEFAULT_MEMORY_SIZE 1024
@@ -101,6 +107,9 @@ enum {
     TYPE_TypeName,
 };
 typedef struct Token Token;
+typedef struct ppToken ppToken;
+typedef struct ppMacro ppMacro;
+typedef struct ppCondFrame ppCondFrame;
 typedef struct ExternDecl ExternDecl;
 typedef struct DeclSpec DeclSpec;
 typedef struct InitDecl InitDecl;

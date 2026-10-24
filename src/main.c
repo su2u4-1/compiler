@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
     handle_args(argc, argv);
     string source_code = get_source(source_path);
     if (source_code == NULL) {
-        printf(stderr, "[Error] at <main>: Failed to read source file: %s\n", source_path);
+        fprintf(stderr, "[Error] at <main>: Failed to read source file: %s\n", source_path);
         return 1;
     }
 
