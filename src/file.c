@@ -245,20 +245,46 @@ bool path_is_dir(const Path* p) {
 }
 
 // === for include ===
+
 static list(string) include_dir = NULL;
 
 void add_include_dir(string dir) {
     if (include_dir == NULL)
         include_dir = create_list(string);
-
-    // TODO
+    if (dir == NULL || dir[0] == '\0')
+        return;
+    string normalized_dir = create_path(dir)->str;
+    foreach (string, d, include_dir)
+        if (d == normalized_dir)
+            return;
+    append(include_dir, normalized_dir);
 }
 
 string find_file(string name, bool is_system, string current_file) {
     if (include_dir == NULL)
         include_dir = create_list(string);
+    if (name == NULL || name[0] == '\0')
+        return NULL;
 
-    // TODO
+    Path* n = create_path(name);
 
-    return NULL;  // placeholder
+    if (n->rooted) {
+        if (path_exists(n) && !path_is_dir(n))
+            return n->str;
+        return NULL;
+    }
+
+    if (!is_system && current_file != NULL) {
+        Path* dir = create_path(path_dirname(create_path(current_file)));
+        Path* path = path_join(dir, n);
+        if (path_exists(path) && !path_is_dir(path))
+            return path->str;
+    }
+
+    foreach (string, d, include_dir) {
+        Path* path = path_join(create_path(d), n);
+        if (path_exists(path) && !path_is_dir(path))
+            return path->str;
+    }
+    return NULL;
 }

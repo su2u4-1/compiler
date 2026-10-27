@@ -850,7 +850,7 @@ static void handle_include(ppContext* ctx, ppToken* header_name) {
     }
     string source = get_source(path);
     if (source == NULL) {
-        preprocessor_error(string_splice("Cannot find header file: %s", name), header_name->line, header_name->column);
+        preprocessor_error(string_splice("Cannot read header file: %s", path), header_name->line, header_name->column);
         return;
     }
     ppLexer* lexer = create_pp_lexer(path, source);
