@@ -8,8 +8,6 @@
     if (lexer->pos > 0) lexer->pos -= 1
 #define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
 #define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
-#define pp_lexer_error(message, pos) \
-    if (has_error = true, lexer->output_error) fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: %s\n", lexer->filename, line_pos(lexer, pos), column_pos(lexer, pos), message)
 #define content_string(start) create_string(&lexer->source_code[start], min(lexer->pos, lexer->length) - start)
 
 static bool has_error = false;
@@ -172,28 +170,30 @@ bool pp_lexer(ppLexer* lexer) {
         } else if (c == '"') {
             bool is_header_name = (lexer->include_state == 2);
             size_t start = lexer->pos - 1;
+            bool error = false;
             do {
                 c = next_char(lexer);
                 if (c == '\\' && !is_header_name && peek_char(lexer) != '\0' && peek_char(lexer) != '\n') next_char(lexer);
                 if (c == '\0' || c == '\n') {
-                    pp_lexer_error("Unterminated string literal", start);
+                    error = true;
                     if (c == '\n') unget_char(lexer);
                     break;
                 }
             } while (c != '"');
-            add_pp_token(lexer, is_header_name ? PP_HEADER_NAME : PP_STRING, content_string(start), start);
+            add_pp_token(lexer, error ? PP_OTHER : (is_header_name ? PP_HEADER_NAME : PP_STRING), content_string(start), start);
         } else if (c == '\'') {
             size_t start = lexer->pos - 1;
+            bool error = false;
             do {
                 c = next_char(lexer);
                 if (c == '\\' && peek_char(lexer) != '\0' && peek_char(lexer) != '\n') next_char(lexer);
                 if (c == '\0' || c == '\n') {
-                    pp_lexer_error("Unterminated char literal", start);
+                    error = true;
                     if (c == '\n') unget_char(lexer);
                     break;
                 }
             } while (c != '\'');
-            add_pp_token(lexer, PP_CHAR, content_string(start), start);
+            add_pp_token(lexer, error ? PP_OTHER : PP_CHAR, content_string(start), start);
         } else if (c == '/') {
             size_t start = lexer->pos - 1;
             c = next_char(lexer);
@@ -207,7 +207,9 @@ bool pp_lexer(ppLexer* lexer) {
                 while (true) {
                     c = next_char(lexer);
                     if (c == '\0') {
-                        pp_lexer_error("Unterminated comment", start);
+                        if (lexer->output_error)
+                            fprintf(stderr, "[Syntax Error] at %s:%zu:%zu: Unterminated comment\n", lexer->filename, line_pos(lexer, start), column_pos(lexer, start));
+                        has_error = true;
                         break;
                     } else if (c == '*') {
                         c = next_char(lexer);
@@ -286,15 +288,14 @@ bool pp_lexer(ppLexer* lexer) {
                 while (true) {
                     c = next_char(lexer);
                     if (c == '\0' || c == '\n') {
-                        pp_lexer_error("Unterminated #include <...>", start);
                         if (c == '\n') unget_char(lexer);
+                        add_pp_token(lexer, PP_OTHER, content_string(start), start);
                         break;
                     } else if (c == '>') {
                         add_pp_token(lexer, PP_HEADER_NAME, content_string(start), start);
                         break;
                     }
                 }
-                lexer->include_state = 0;
                 continue;
             }
             c = next_char(lexer);

@@ -2,11 +2,15 @@
 
 #include "file.h"
 
-#define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = true, ctx->lexer->filename), line, column, message)
-#define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
-#define is_eof(t) ((t) == NULL || (t)->type == PP_EOF)
-
 static bool has_error = false;
+
+ppMacro* find_macro(ppContext* ctx, string name) {
+    assert(ctx != NULL);
+    foreach (ppMacro*, macro, ctx->macros)
+        if (macro->name->value == name)
+            return macro;
+    return NULL;
+}
 
 static ppCondFrame* create_pp_cond_frame(ppToken* directive) {
     ppCondFrame* frame = create_struct(ppCondFrame);
@@ -50,35 +54,11 @@ static void skip_to_newline(ppContext* ctx) {
     }
 }
 
-static ppMacro* find_macro(ppContext* ctx, string name) {
-    assert(ctx != NULL);
-    foreach (ppMacro*, macro, ctx->macros)
-        if (macro->name->value == name)
-            return macro;
-    return NULL;
-}
-
 static bool cond_active(ppContext* ctx) {
     assert(ctx != NULL);
     if (list_empty(ctx->cond_stack))
         return true;
     return ((ppCondFrame*)ctx->cond_stack->tail->data)->active;
-}
-
-static ppToken* pp_peek(ppContext* ctx) {
-    if (ctx == NULL) return NULL;
-    if (ctx->current == NULL || ctx->current->data == NULL)
-        return create_pp_token(PP_EOF, NULL, ctx->lexer, ctx->lexer->length);
-    return (ppToken*)ctx->current->data;
-}
-
-static ppToken* pp_get(ppContext* ctx) {
-    if (ctx == NULL) return NULL;
-    if (ctx->current == NULL || ctx->current->data == NULL)
-        return create_pp_token(PP_EOF, NULL, ctx->lexer, ctx->lexer->length);
-    ppToken* t = (ppToken*)ctx->current->data;
-    ctx->current = ctx->current->next;
-    return t;
 }
 
 static bool expect_token(ppContext* ctx, char* message, size_t line, size_t column, ppTokenType type, string value) {
@@ -89,45 +69,6 @@ static bool expect_token(ppContext* ctx, char* message, size_t line, size_t colu
     }
     pp_get(ctx);
     return true;
-}
-
-static int op_prec(ppToken* t) {
-    if (t == NULL || t->type != PP_SYMBOL) return 0;
-    string v = t->value;
-    if (v == SYMBOL_LOGICAL_OR) return 1;
-    if (v == SYMBOL_LOGICAL_AND) return 2;
-    if (v == SYMBOL_BITWISE_OR) return 3;
-    if (v == SYMBOL_XOR) return 4;
-    if (v == SYMBOL_BITWISE_AND) return 5;
-    if (v == SYMBOL_EQ || v == SYMBOL_NE) return 6;
-    if (v == SYMBOL_LT || v == SYMBOL_GT || v == SYMBOL_LE || v == SYMBOL_GE) return 7;
-    if (v == SYMBOL_L_SHIFT || v == SYMBOL_R_SHIFT) return 8;
-    if (v == SYMBOL_ADD || v == SYMBOL_SUB) return 9;
-    if (v == SYMBOL_MUL || v == SYMBOL_DIV || v == SYMBOL_MOD) return 10;
-    return 0;
-}
-
-static long long apply_binop(ppToken* op, long long lhs, long long rhs) {
-    if (op == NULL || op->type != PP_SYMBOL) return 0;
-    else if (op->value == SYMBOL_LOGICAL_OR) return (lhs || rhs) ? 1 : 0;
-    else if (op->value == SYMBOL_LOGICAL_AND) return (lhs && rhs) ? 1 : 0;
-    else if (op->value == SYMBOL_BITWISE_OR) return lhs | rhs;
-    else if (op->value == SYMBOL_XOR) return lhs ^ rhs;
-    else if (op->value == SYMBOL_BITWISE_AND) return lhs & rhs;
-    else if (op->value == SYMBOL_EQ) return lhs == rhs;
-    else if (op->value == SYMBOL_NE) return lhs != rhs;
-    else if (op->value == SYMBOL_LT) return lhs < rhs;
-    else if (op->value == SYMBOL_GT) return lhs > rhs;
-    else if (op->value == SYMBOL_LE) return lhs <= rhs;
-    else if (op->value == SYMBOL_GE) return lhs >= rhs;
-    else if (op->value == SYMBOL_L_SHIFT) return lhs << rhs;
-    else if (op->value == SYMBOL_R_SHIFT) return lhs >> rhs;
-    else if (op->value == SYMBOL_ADD) return lhs + rhs;
-    else if (op->value == SYMBOL_SUB) return lhs - rhs;
-    else if (op->value == SYMBOL_MUL) return lhs * rhs;
-    else if (op->value == SYMBOL_DIV) return rhs == 0 ? 0 : lhs / rhs;
-    else if (op->value == SYMBOL_MOD) return rhs == 0 ? 0 : lhs % rhs;
-    else return 0;
 }
 
 static list(list(ppToken*)) handle_macro_args(ppContext* ctx, ppMacro* macro, ppToken* name) {
@@ -263,8 +204,6 @@ static ppToken* create_pp_token_in_macro(ppTokenType type, string value, ppToken
     return new_token;
 }
 
-static bool expand_macro(ppContext* ctx, ppToken* name);
-
 static list(ppToken*) expand_tokens(ppContext* ctx, list(ppToken*) tokens) {
     ppContext* sub_ctx = create_pp_context(ctx->lexer);
     sub_ctx->macros = ctx->macros;
@@ -336,6 +275,10 @@ static ppToken* paste_two_tokens(ppContext* ctx, ppToken* lhs, ppToken* rhs, ppT
     foreach (ppToken*, token, lexer->pp_tokens) {
         if (token->type == PP_EOF || token->type == PP_NEWLINE)
             continue;
+        if (token->type == PP_OTHER) {
+            preprocessor_error(string_splice("Pasting \"%s\" and \"%s\" does not give a valid preprocessing token", lhs->value, rhs->value), name->line, name->column);
+            return NULL;
+        }
         if (count++ == 0)
             pasted = token;
     }
@@ -533,7 +476,7 @@ static bool expand_builtin(ppContext* ctx, ppToken* name) {
     return true;
 }
 
-static bool expand_macro(ppContext* ctx, ppToken* name) {
+bool expand_macro(ppContext* ctx, ppToken* name) {
     if (name->type != PP_IDENTIFIER)
         return false;
     ppMacro* macro = find_macro(ctx, name->value);
@@ -866,11 +809,6 @@ static void handle_include(ppContext* ctx, ppToken* header_name) {
     process_tokens(sub_ctx);
 }
 
-static bool eval_conditional(ppContext* ctx) {
-    // TODO
-    return false;  // placeholder
-}
-
 static ppToken* build_include_name(ppContext* ctx, ppToken* directive, list(ppToken*) tokens) {
     if (list_empty(tokens)) {
         preprocessor_error("Expected header name in #include", directive->line, directive->column);
@@ -976,7 +914,9 @@ static void handle_directive(ppContext* ctx) {
         ppCondFrame* frame = create_pp_cond_frame(directive);
         if (outer_active) {
             if (directive->value == P_IF) {
-                inner_active = eval_conditional(ctx) != 0;
+                bool eval_error = false;
+                inner_active = eval_conditional(ctx, &eval_error) != 0;
+                if (eval_error) has_error = true;
             } else {
                 ppToken* name = pp_peek(ctx);
                 if (is_eof(name) || name->type != PP_IDENTIFIER) {
@@ -1006,7 +946,9 @@ static void handle_directive(ppContext* ctx) {
         if (frame->taken) {
             frame->active = false;
         } else {
-            bool cond = eval_conditional(ctx) != 0;
+            bool eval_error = false;
+            bool cond = eval_conditional(ctx, &eval_error) != 0;
+            if (eval_error) has_error = true;
             frame->active = cond;
             frame->taken = frame->taken || cond;
         }
@@ -1098,8 +1040,14 @@ static void process_tokens(ppContext* ctx) {
             token = pp_get(ctx);
             if (!cond_active(ctx))
                 continue;
-            if (token->type == PP_OTHER)
-                preprocessor_error(string_splice("Unexpected token: %s", token->value == NULL ? "(null)" : token->value), token->line, token->column);
+            if (token->type == PP_OTHER) {
+                string msg = NULL;
+                if (token->value != NULL && token->value[0] == '"') msg = "Unterminated string literal";
+                else if (token->value != NULL && token->value[0] == '\'') msg = "Unterminated char literal";
+                else if (token->value != NULL && token->value[0] == '<') msg = "Unterminated #include <...>";
+                else msg = string_splice("Unexpected token: %s", token->value == NULL ? "(null)" : token->value);
+                preprocessor_error(msg, token->line, token->column);
+            }
             if (token->type == PP_IDENTIFIER && expand_macro(ctx, token))
                 continue;
             append(ctx->output, token);

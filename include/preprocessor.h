@@ -65,10 +65,18 @@ typedef struct ppContext {
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 #define is_alphabet(c) (((c) >= 'a' && (c) <= 'z') || ((c) >= 'A' && (c) <= 'Z'))
+#define is_eof(t) ((t) == NULL || (t)->type == PP_EOF)
+#define preprocessor_error(message, line, column) fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = true, ctx->lexer->filename), line, column, message)
+#define preprocessor_warn(message, line, column) fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, line, column, message)
 
 list(ppToken*) preprocess(string filename, string source_code, bool* error_flag);
 ppToken* create_pp_token(ppTokenType type, string value, ppLexer* lexer, size_t pos);
 ppLexer* create_pp_lexer(string filename, string source_code);
 bool pp_lexer(ppLexer* lexer);
+bool expand_macro(ppContext* ctx, ppToken* name);
+bool eval_conditional(ppContext* ctx, bool* eval_error);
+ppToken* pp_peek(ppContext* ctx);
+ppToken* pp_get(ppContext* ctx);
+ppMacro* find_macro(ppContext* ctx, string name);
 
 #endif  // PREPROCESSOR_H

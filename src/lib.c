@@ -403,6 +403,7 @@ string P_TIME_ = NULL;
 string P_STDC_ = NULL;
 string P_STDC_VERSION_ = NULL;
 string P_STDC_HOSTED_ = NULL;
+string P_PRAGMA_ = NULL;
 
 void init_constant(void) {
     for (size_t i = 0; i < keyword_count; ++i) {
@@ -523,4 +524,5 @@ void init_constant(void) {
     P_STDC_ = create_string_check("__STDC__", 8, false);
     P_STDC_VERSION_ = create_string_check("__STDC_VERSION__", 16, false);
     P_STDC_HOSTED_ = create_string_check("__STDC_HOSTED__", 15, false);
+    P_PRAGMA_ = create_string_check("_Pragma", 7, false);
 }

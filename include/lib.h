@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -299,5 +300,6 @@ extern string P_TIME_;                // preprocessor `__TIME__`
 extern string P_STDC_;                // preprocessor `__STDC__`
 extern string P_STDC_VERSION_;        // preprocessor `__STDC_VERSION__`
 extern string P_STDC_HOSTED_;         // preprocessor `__STDC_HOSTED__`
+extern string P_PRAGMA_;              // preprocessor `_Pragma`
 
 #endif  // LIB_H
