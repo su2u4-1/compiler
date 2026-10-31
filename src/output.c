@@ -19,6 +19,8 @@ void print_token(FILE* out, Token* token) {
         case TOKEN_KEYWORD: fputs("(keyword, ", out); break;
         case TOKEN_COMMENT: fputs("(comment, ", out); break;
         case TOKEN_SYNTAX_ERROR_NUMBER: fputs("(error number, ", out); break;
+        case TOKEN_SYNTAX_ERROR_CHAR: fputs("(error char, ", out); break;
+        case TOKEN_SYNTAX_ERROR_STRING: fputs("(error string, ", out); break;
         default: fputs("(unknown, \n", out); break;
     }
     fprintf(out, "%zu, %zu, ", token->line, token->column);
@@ -84,29 +86,11 @@ void print_pp_token(FILE* out, ppToken* token) {
 }
 
 void output_token_to_code(FILE* out, list(Token*) tokens) {
-    size_t prev_line = 1;
-    size_t prev_column = 1;
     foreach (Token*, token, tokens) {
-        if (token == NULL) {
-            fprintf(stderr, "[Error] Token is NULL\n");
-            continue;
-        }
-        if (token->value == NULL) {
-            fprintf(stderr, "[Error] Token value is NULL\n");
-            continue;
-        }
-        while (prev_line < token->line) {
-            fputc('\n', out);
-            prev_line++;
-            prev_column = 1;
-        }
-        while (prev_column < token->column) {
-            fputc(' ', out);
-            prev_column++;
-        }
+        if (token == NULL) continue;
+        if (token->type == TOKEN_EOF) break;
+        if (token->at_line_start) fputc('\n', out);
+        else if (token->space_before) fputc(' ', out);
         fputs(token->value, out);
-        prev_column = token->column + strlen(token->value);
-        prev_line = token->line;
     }
-    fputs("\n", out);
 }

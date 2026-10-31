@@ -442,6 +442,8 @@ static list(ppToken*) paste_macro_body(ppContext* ctx, ppMacro* macro, list(list
             prev = t__n;
         }
     }
+    if (name->at_line_start && !list_empty(result))
+        ((ppToken*)result->head->data)->at_line_start = true;
     return result;
 }
 

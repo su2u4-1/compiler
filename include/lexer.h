@@ -14,6 +14,8 @@ typedef enum TokenType {
     TOKEN_COMMENT,
     TOKEN_EOF,
     TOKEN_SYNTAX_ERROR_NUMBER,
+    TOKEN_SYNTAX_ERROR_CHAR,
+    TOKEN_SYNTAX_ERROR_STRING,
 } TokenType;
 
 typedef struct Token {
@@ -21,6 +23,9 @@ typedef struct Token {
     string value;
     size_t line;
     size_t column;
+    string filename;
+    bool space_before;
+    bool at_line_start;
 } Token;
 
 list(Token*) pp_to_tokens(list(ppToken*) pp_tokens);
