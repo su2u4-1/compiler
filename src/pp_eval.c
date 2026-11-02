@@ -46,7 +46,6 @@ static inline ppIntValue pp_bool(ppIntValue b) { return pp_sign(is_true(b) ? 1 :
 #define pp_true pp_sign(1)
 #define pp_false pp_sign(0)
 
-// v-- by ai, need review --v
 static int digit_value(char c) {
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
@@ -54,7 +53,7 @@ static int digit_value(char c) {
     return -1;
 }
 
-static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t) {
+static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
     assert(t != NULL && t->type == PP_NUMBER);
     string s = t->value;
     size_t i = 0;
@@ -79,15 +78,18 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t) {
 
     char e = s[i];
     if (e == '.' || (base == 16 ? (e == 'p' || e == 'P') : (e == 'e' || e == 'E'))) {
-        preprocessor_error("Floating constant in preprocessor expression", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Floating constant in preprocessor expression", t->line, t->column);
         return pp_sign(0);
     }
     if (i == start && base != 8) {
-        preprocessor_error("Integer constant has no digits", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Integer constant has no digits", t->line, t->column);
         return pp_sign(0);
     }
     if (digit_value(s[i]) >= 0) {
-        preprocessor_error("Invalid digit in integer constant", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Invalid digit in integer constant", t->line, t->column);
         return pp_sign(0);
     }
 
@@ -108,24 +110,26 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t) {
             break;
     }
     if (s[i] != '\0') {
-        preprocessor_error("Invalid suffix on integer constant", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Invalid suffix on integer constant", t->line, t->column);
         return pp_sign(0);
     }
 
     if (overflow) {
-        preprocessor_error("Integer constant is too large", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Integer constant is too large", t->line, t->column);
         return pp_sign(0);
     }
     if (u) return pp_unsign(v);
     if (v > (uintmax_t)INTMAX_MAX) {
-        if (base == 10)
+        if (base == 10 && !skip)
             preprocessor_warn("Integer constant is so large that it is unsigned", t->line, t->column);
         return pp_unsign(v);
     }
     return pp_sign((intmax_t)v);
 }
 
-static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_t end, unsigned long* out) {
+static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_t end, bool skip, unsigned long* out) {
     char c = s[(*i)++];
     switch (c) {
         case 'a': *out = 7; return true;
@@ -148,11 +152,13 @@ static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_
                 digits++;
             }
             if (digits == 0) {
-                preprocessor_error("\\x used with no following hex digits", t->line, t->column);
+                if (!skip)
+                    preprocessor_error("\\x used with no following hex digits", t->line, t->column);
                 return false;
             }
             if (v > 0xFF) {
-                preprocessor_warn("Hex escape sequence out of range", t->line, t->column);
+                if (!skip)
+                    preprocessor_warn("Hex escape sequence out of range", t->line, t->column);
                 v &= 0xFF;
             }
             *out = (unsigned long)v;
@@ -161,7 +167,8 @@ static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_
         case 'u':
         case 'U':
             // skip, not currently supported
-            preprocessor_warn("Universal character name in character constant is not supported", t->line, t->column);
+            if (!skip)
+                preprocessor_warn("Universal character name in character constant is not supported", t->line, t->column);
             return false;
         default:
             if (c >= '0' && c <= '7') {
@@ -169,18 +176,20 @@ static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_
                 for (int k = 0; k < 2 && *i < end && s[*i] >= '0' && s[*i] <= '7'; k++)
                     v = v * 8 + (unsigned long)(s[(*i)++] - '0');
                 if (v > 0xFF) {
-                    preprocessor_warn("Octal escape sequence out of range", t->line, t->column);
+                    if (!skip)
+                        preprocessor_warn("Octal escape sequence out of range", t->line, t->column);
                     v &= 0xFF;
                 }
                 *out = v;
                 return true;
             }
-            preprocessor_error("Unknown escape sequence in character constant", t->line, t->column);
+            if (!skip)
+                preprocessor_error("Unknown escape sequence in character constant", t->line, t->column);
             return false;
     }
 }
 
-static int eval_char_literal(ppContext* ctx, ppToken* t) {
+static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
     assert(t != NULL && t->type == PP_CHAR);
     string s = t->value;
     size_t end = strlen(s) - 1;
@@ -192,7 +201,7 @@ static int eval_char_literal(ppContext* ctx, ppToken* t) {
         unsigned long c;
         if (s[i] == '\\') {
             i++;
-            if (!decode_escape(ctx, t, s, &i, end, &c))
+            if (!decode_escape(ctx, t, s, &i, end, skip, &c))
                 return 0;
         } else
             c = (unsigned char)s[i++];
@@ -202,15 +211,15 @@ static int eval_char_literal(ppContext* ctx, ppToken* t) {
         count++;
     }
     if (count == 0) {
-        preprocessor_error("Empty character constant", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Empty character constant", t->line, t->column);
         return 0;
     }
     if (count == 1) return first;
-    else if (count > 4) preprocessor_warn("Multi-character character constant and character constant too long", t->line, t->column);
-    else preprocessor_warn("Multi-character character constant", t->line, t->column);
+    else if (count > 4 && !skip) preprocessor_warn("Multi-character character constant and character constant too long", t->line, t->column);
+    else if (!skip) preprocessor_warn("Multi-character character constant", t->line, t->column);
     return (int)acc;
 }
-// ^-- by ai, need review --^
 
 static ppIntValue eval_conditional_expr(ppContext* ctx, bool skip);
 
@@ -265,10 +274,10 @@ static ppIntValue eval_unary_expr(ppContext* ctx, bool skip) {
         return pp_sign(0);
     } else if (t->type == PP_NUMBER) {
         t = pp_get(ctx);  // consume number
-        return eval_number_literal(ctx, t);
+        return eval_number_literal(ctx, t, skip);
     } else if (t->type == PP_CHAR) {
         t = pp_get(ctx);  // consume char literal
-        return pp_sign((intmax_t)eval_char_literal(ctx, t));
+        return pp_sign((intmax_t)eval_char_literal(ctx, t, skip));
     } else if (t->type == PP_SYMBOL && t->value == SYMBOL_L_PARENTHESIS) {
         t = pp_get(ctx);  // consume '('
         ppIntValue result = eval_conditional_expr(ctx, skip);
@@ -277,7 +286,8 @@ static ppIntValue eval_unary_expr(ppContext* ctx, bool skip) {
             return pp_sign(0);
         return result;
     } else {
-        preprocessor_error("Expected primary expression", t->line, t->column);
+        if (!skip)
+            preprocessor_error("Expected primary expression", t->line, t->column);
         return pp_sign(0);
     }
 }
@@ -295,29 +305,31 @@ static ppIntValue eval_multiplicative_expr(ppContext* ctx, bool skip) {
                 result = pp_unsign(get_unsign(result) * get_unsign(right));
         } else if (t->value == SYMBOL_DIV) {
             if (!is_true(right)) {  // right == 0
-                if (!skip) {
+                if (!skip)
                     preprocessor_error("Division by zero", t->line, t->column);
-                    result = pp_sign(0);
-                    break;
-                }
+                result = pp_sign(0);
+                break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(right) == -1)
-                    result = pp_sign((intmax_t)(0U - (uintmax_t)get_sign(result)));
-                else
+                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                    if (!skip)
+                        preprocessor_error("Integer constant expression overflow", t->line, t->column);
+                    result = pp_sign(0);
+                } else
                     result = pp_sign(get_sign(result) / get_sign(right));
             } else
                 result = pp_unsign(get_unsign(result) / get_unsign(right));
         } else {
             if (!is_true(right)) {  // right == 0
-                if (!skip) {
+                if (!skip)
                     preprocessor_error("Modulo by zero", t->line, t->column);
-                    result = pp_sign(0);
-                    break;
-                }
+                result = pp_sign(0);
+                break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(right) == -1)
+                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                    if (!skip)
+                        preprocessor_error("Integer constant expression overflow", t->line, t->column);
                     result = pp_sign(0);
-                else
+                } else
                     result = pp_sign(get_sign(result) % get_sign(right));
             } else
                 result = pp_unsign(get_unsign(result) % get_unsign(right));
@@ -377,15 +389,30 @@ static ppIntValue eval_shift_expr(ppContext* ctx, bool skip) {
         }
 
         if (t->value == SYMBOL_L_SHIFT) {
-            if (result.is_unsigned)
-                result = pp_unsign(get_unsign(result) << n);
-            else
-                result = pp_sign((intmax_t)((uintmax_t)get_sign(result) << n));
+            uintmax_t shifted = get_unsign(result) << n;
+            if (!result.is_unsigned && shifted > (uintmax_t)INTMAX_MAX) {
+                if (!skip)
+                    preprocessor_error("Integer constant expression overflow", t->line, t->column);
+                result = pp_sign(0);
+                break;
+            }
+            result = result.is_unsigned ? pp_unsign(shifted) : pp_sign((intmax_t)shifted);
         } else {
             if (result.is_unsigned)
                 result = pp_unsign(get_unsign(result) >> n);
-            else
-                result = pp_sign(get_sign(result) >> n);
+            else {
+                intmax_t value = get_sign(result);
+                if (value >= 0)
+                    value >>= n;
+                else {
+                    uintmax_t magnitude = (uintmax_t)(-(value + 1)) + 1;
+                    uintmax_t shifted = magnitude >> n;
+                    if ((magnitude & ((((uintmax_t)1) << n) - 1)) != 0)
+                        shifted++;
+                    value = -(intmax_t)shifted;
+                }
+                result = pp_sign(value);
+            }
         }
         t = pp_peek(ctx);
     }
