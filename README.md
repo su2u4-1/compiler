@@ -6,7 +6,7 @@
 - 平台: windows 11
     - linux 是否支援還沒測試，但我覺得沒問題
 
-> 下文所有`"目前"`都帶入這個時間: 2026/10/31 17:05
+> 下文所有`"目前"`都帶入這個時間: 2026/11/02 21:45
 
 - 編譯腳本在`./build.bat`，直接執行後應該會建立一個`./build`資料夾，裡面有個`./build/program.exe`
 - 執行的話跑`./run.bat <other args>`，會自動把參數傳進去執行
@@ -16,3 +16,5 @@
 - 目前寫完 preprocessor，通過了claude寫的測試(`./test/test_pp/*`, in test_pp run: `./compare.ps1`)
 - 現在`./test`內的t1, t2, t3是舊的測試，沒用了，先留著
 - 目前不支援`#line`和`#pragma`、`_Pragma(...)`、`\uxxx`，其他不支援的我也忘了，應該還有一些
+- `__STDC__`、`__STDC_VERSION__`、`__STDC_HOSTED__`暫不支援，因為並沒有完整實作
+- Trigraph 和 Digraph 都不支援

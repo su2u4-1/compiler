@@ -89,8 +89,11 @@ void output_token_to_code(FILE* out, list(Token*) tokens) {
     foreach (Token*, token, tokens) {
         if (token == NULL) continue;
         if (token->type == TOKEN_EOF) break;
-        if (token->at_line_start) fputc('\n', out);
-        else if (token->space_before) fputc(' ', out);
+        if (token->at_line_start) {
+            fputc('\n', out);
+            for (size_t i = 0; i < token->column; ++i)
+                fputc(' ', out);
+        } else if (token->space_before) fputc(' ', out);
         fputs(token->value, out);
     }
 }
