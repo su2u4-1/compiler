@@ -171,13 +171,14 @@ static Token* number_token(ppToken* t) {
             if (C[i] == 'u' || C[i] == 'U') i++;
         }
     }
-    if (C[i] != '\0')
+    if (C[i] != '\0') {
         error = true;
-
-    if (error) {
         lexer_error("Invalid number format", t->line, t->column);
+    }
+
+    if (error)
         return create_token(TOKEN_SYNTAX_ERROR_NUMBER, t);
-    } else if (is_float)
+    else if (is_float)
         return create_token(TOKEN_FLOAT, t);
     else
         return create_token(TOKEN_INT, t);
@@ -200,7 +201,8 @@ static size_t escape_sequence(char* str, size_t start) {
         return index;
     } else if (c == 'x') {
         // hex escape sequence
-        if (!is_hex_digit(str[index++]))
+        index++;
+        if (!is_hex_digit(str[index]))
             return 0;
         while (is_hex_digit(str[index]))
             ++index;
@@ -217,6 +219,33 @@ static size_t escape_sequence(char* str, size_t start) {
         return index;
     } else
         return 0;
+}
+
+static list(Token*) handle_tokens(list(Token*) tokens) {
+    list(Token*) result = create_list(Token*);
+    Token* prev_token = NULL;
+    foreach (Token*, t, tokens) {
+        if (prev_token != NULL && prev_token->type == TOKEN_STRING) {
+            if (t->type == TOKEN_STRING) {
+                // splice two string tokens
+                size_t len = strlen(prev_token->value);
+                assert(prev_token->value[len - 1] == '"' && t->value[0] == '"');
+                prev_token->value = string_splice("%.*s%s", (int)(len - 1), prev_token->value, t->value + 1);
+                t = prev_token;
+            } else {
+                append(result, prev_token);
+                prev_token = NULL;
+            }
+        }
+        if (t->type == TOKEN_STRING) {
+            prev_token = t;
+            break;
+        }
+        append(result, t);
+    }
+    if (prev_token != NULL)
+        append(result, prev_token);
+    return result;
 }
 
 list(Token*) pp_to_tokens(list(ppToken*) pp_tokens) {
@@ -303,5 +332,5 @@ list(Token*) pp_to_tokens(list(ppToken*) pp_tokens) {
                 break;
         }
     }
-    return tokens;
+    return handle_tokens(tokens);
 }
