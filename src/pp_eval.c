@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #include "lib.h"
 #include "preprocessor.h"
 
