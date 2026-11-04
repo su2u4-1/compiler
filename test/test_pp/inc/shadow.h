@@ -1,1 +1,0 @@
-int shadow_inc;

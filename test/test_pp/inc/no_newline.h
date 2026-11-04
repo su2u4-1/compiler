@@ -1,1 +1,0 @@
-int no_newline_h;

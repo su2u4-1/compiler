@@ -1,8 +1,0 @@
-[Preprocess Error] at err/e05_directive_misc.c:1:2: Unknown preprocessor directive
-[Preprocess Error] at err/e05_directive_misc.c:2:3: Expected directive after #
-[Preprocess Error] at err/e05_directive_misc.c:3:2: Encountered #error directive: this is a custom message
-[Preprocess Error] at err/e05_directive_misc.c:10:11: Unexpected token: @
-[Preprocess Error] at err/e05_directive_misc.c:11:9: Unexpected token: `
-[Preprocess Error] at err/e05_directive_misc.c:12:11: Unterminated string literal
-[Preprocess Error] at err/e05_directive_misc.c:13:10: Unterminated char literal
-[Error] Preprocessing failed due to errors.

@@ -1,7 +1,0 @@
-
- int elif_not_evaluated_ok;
- int nested_ok_1;
- int nested_ok_2;
- int ifdef_ok;
- int undef_ok;
- int ifndef_ok;

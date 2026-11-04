@@ -1,4 +1,0 @@
-[Preprocess Warning] at pp01_object_macro.c:36:9: Macro redefined
-[Syntax Error] at pp06_lexical.c:28:30: Invalid number format
-[Syntax Error] at pp06_lexical.c:28:57: Invalid number format
-[Syntax Error] at pp06_lexical.c:28:63: Invalid number format
