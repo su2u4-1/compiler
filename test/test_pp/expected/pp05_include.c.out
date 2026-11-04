@@ -1,0 +1,18 @@
+
+ int guarded_once;
+ int outer_begin;
+ int inner_begin;
+ int deep_begin;
+ int up_h;
+ int sibling_h;
+ int deep_end;
+ int inner_end;
+ int outer_end;
+ int no_newline_h;
+ int rec_guarded_body;
+ int shadow_root;
+ int uses_shadow_begin;
+ int shadow_inc;
+ int part_2;
+ int macro_included;
+ int version_ok = ((3) * (3)) ;

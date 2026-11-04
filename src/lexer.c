@@ -13,19 +13,18 @@ static Token* create_token(TokenType type, ppToken* t) {
     Token* token = create_struct(Token);
     token->line = t->line;
     token->column = t->column;
-    if (type == TOKEN_IDENTIFIER) {
-        string keyword = is_keyword(t->value);
-        if (keyword != NULL) {
-            token->type = TOKEN_KEYWORD;
-            token->value = keyword;
-            return token;
-        }
-    }
     token->type = type;
     token->value = t->value;
     token->filename = t->filename;
     token->space_before = t->space_before;
     token->at_line_start = t->at_line_start;
+    if (type == TOKEN_IDENTIFIER) {
+        string keyword = is_keyword(t->value);
+        if (keyword != NULL) {
+            token->type = TOKEN_KEYWORD;
+            token->value = keyword;
+        }
+    }
     return token;
 }
 

@@ -1,0 +1,25 @@
+[Preprocess Error] at err/e04_if_expr.c:2:63: Expected primary expression
+[Preprocess Error] at err/e04_if_expr.c:4:63: Expected primary expression
+[Preprocess Error] at err/e04_if_expr.c:6:63: Expected ) after expression
+[Preprocess Error] at err/e04_if_expr.c:8:5: Floating constant in preprocessor expression
+[Preprocess Error] at err/e04_if_expr.c:10:5: Invalid digit in integer constant
+[Preprocess Error] at err/e04_if_expr.c:12:5: Invalid digit in integer constant
+[Preprocess Error] at err/e04_if_expr.c:14:5: Invalid suffix on integer constant
+[Preprocess Error] at err/e04_if_expr.c:16:5: Integer constant has no digits
+[Preprocess Error] at err/e04_if_expr.c:18:5: Integer constant is too large
+[Preprocess Error] at err/e04_if_expr.c:20:7: Division by zero
+[Preprocess Error] at err/e04_if_expr.c:22:7: Modulo by zero
+[Preprocess Error] at err/e04_if_expr.c:24:7: Negative shift count
+[Preprocess Error] at err/e04_if_expr.c:26:7: Shift count too large
+[Preprocess Error] at err/e04_if_expr.c:28:7: Unexpected token after conditional expression
+[Preprocess Error] at err/e04_if_expr.c:30:5: Expected primary expression
+[Preprocess Error] at err/e04_if_expr.c:30:5: Unexpected token after conditional expression
+[Preprocess Error] at err/e04_if_expr.c:32:69: Expected identifier after defined
+[Preprocess Error] at err/e04_if_expr.c:34:13: Expected ) after defined(identifier)
+[Preprocess Error] at err/e04_if_expr.c:36:72: Expected : in conditional expression
+[Preprocess Error] at err/e04_if_expr.c:38:91: Unterminated macro arguments
+[Preprocess Error] at err/e04_if_expr.c:38:6: Unexpected token after conditional expression
+[Preprocess Error] at err/e04_if_expr.c:41:7: Floating constant in preprocessor expression
+[Preprocess Warning] at err/e04_if_expr.c:44:5: Multi-character character constant
+[Preprocess Warning] at err/e04_if_expr.c:46:5: Integer constant is so large that it is unsigned
+[Error] Preprocessing failed due to errors.

@@ -1,0 +1,106 @@
+
+ int a = 3 ;
+ int b = (3 + 3 ) ;
+ int c = 7 ;
+ int d = 42 ;
+ int e = SELF ;
+ int f = LOOP_A + LOOP_B ;
+ int g = (x) (1);
+ int PIPE = 1;
+ int h = 2 ;
+ int i = LAZY_VALUE ;
+ int j = 1 + 2 ;
+ int k = 3 ;
+ int l = 5 + 6 + 7 ;
+ int a = ((1) + (2)) ;
+ int b = 0 ;
+ int c = ((((1) + (2))) + (3)) ;
+ int d = (((1, 2)) + (3)) ;
+ int e = ;
+ int f = 5 ;
+ int g = 3 ;
+ int h = ((2) + (((2) + (2)))) ;
+ int i = fn;
+ int j = (4 + 1) ;
+ int k = (5 + 1) ;
+ int l = ((1) + (2)) ;
+ int m = IDENT (9);
+ int n = ((")") + (',')) ;
+ int o = ((0) > (1) ? (0) : (1)) ;
+ int p = fn
+ ;
+ xy
+ 12
+ <<
+ <<=
+ ->
+ x1
+ y
+ x
+ a bc d
+ var_foo
+ +=
+ <<=
+ L25
+ L__LINE__
+ "a + b"
+ "leading and trailing"
+ "\"quote\\n\""
+ "'\\''"
+ ""
+ "x + y"
+ "ab"
+ "CAT(a, b)"
+ "35"
+ printf("a",)
+ printf("a", 1, 2)
+ 1, 2, 3
+ "1, 2 , 3"
+ ""
+ int elif_not_evaluated_ok;
+ int nested_ok_1;
+ int nested_ok_2;
+ int ifdef_ok;
+ int undef_ok;
+ int ifndef_ok;
+ int guarded_once;
+ int outer_begin;
+ int inner_begin;
+ int deep_begin;
+ int up_h;
+ int sibling_h;
+ int deep_end;
+ int inner_end;
+ int outer_end;
+ int no_newline_h;
+ int rec_guarded_body;
+ int shadow_root;
+ int uses_shadow_begin;
+ int shadow_inc;
+ int part_2;
+ int macro_included;
+ int version_ok = ((3) * (3)) ;
+ int lm = ((1) + (2)) ;
+ int splice_kw;
+ char *spliced = "string";
+ int after_line_comment;
+ int a b;
+ int c = 1 + 2;
+ char *s1 = "/* not comment */ // not comment";
+ char s2 = '/';
+ int d
+     = 1;
+                                   int after_block;
+ int n[] = { 1.5e+10, 0x1p-3, 0xE+1, .5, 5., 1e5, 0b101, 12ab, 1..2 };
+ int s = a+++++b;
+ x <<= 1; x >>= 2; p->q;
+ a && b || c; a ? b : c;
+ a <= b >= c; a == b != c;
+ a .. b; f(...);
+ a ## b # c;
+ a -= 1; a *= 2; a /= 3; a %= 4; a &= 5; a ^= 6; a |= 7;
+ char *e1 = "esc \" quote \\ backslash";
+ char e2 = '\'';
+ char e3 = '"';
+ char *e4 = "'";
+ char e5 = '\\';

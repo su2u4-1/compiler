@@ -1,0 +1,8 @@
+
+ int gap_no_stdc;
+ int gap_no_stdc_version;
+ int gap_defined_line;
+ int gap_defined_file;
+ _Pragma("once") int gap_pragma;
+ int gap_line_ignored = 16;
+ int gap_digraph<:3:>;

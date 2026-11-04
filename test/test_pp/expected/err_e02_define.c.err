@@ -1,0 +1,22 @@
+[Preprocess Error] at err/e02_define.c:1:69: Expected macro name after #define
+[Preprocess Error] at err/e02_define.c:2:9: Expected macro name after #define
+[Preprocess Error] at err/e02_define.c:3:9: Invalid macro name after #define
+[Preprocess Error] at err/e02_define.c:4:9: Invalid macro name after #define
+[Preprocess Error] at err/e02_define.c:5:15: Duplicate parameter name in macro definition
+[Preprocess Error] at err/e02_define.c:6:14: Expected parameter name after , in macro definition
+[Preprocess Error] at err/e02_define.c:7:14: Expected , or ) in macro definition
+[Preprocess Error] at err/e02_define.c:8:71: Expected , or ) in macro definition
+[Preprocess Error] at err/e02_define.c:9:12: Invalid parameter name __VA_ARGS__ in macro definition
+[Preprocess Error] at err/e02_define.c:10:12: Expected parameter name in macro definition
+[Preprocess Error] at err/e02_define.c:11:16: Invalid parameter after # in macro body
+[Preprocess Error] at err/e02_define.c:12:64: Macro body cannot end with #
+[Preprocess Error] at err/e02_define.c:13:17: Expected parameter after # in macro body
+[Preprocess Error] at err/e02_define.c:14:13: Expected ) after ... in macro parameter list
+[Preprocess Error] at err/e02_define.c:15:12: Macro body cannot start with ##
+[Preprocess Error] at err/e02_define.c:16:65: Macro body cannot end with ##
+[Preprocess Error] at err/e02_define.c:17:12: Invalid use of __VA_ARGS__ in macro body
+[Preprocess Error] at err/e02_define.c:18:2: Expected macro name after #undef
+[Preprocess Error] at err/e02_define.c:19:8: Invalid macro name after #undef
+[Preprocess Warning] at err/e02_define.c:21:11: Missing space between macro name and replacement list
+[Preprocess Warning] at err/e02_define.c:22:9: Redefining predefined macro
+[Error] Preprocessing failed due to errors.

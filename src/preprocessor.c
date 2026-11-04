@@ -458,6 +458,10 @@ static bool expand_builtin(ppContext* ctx, ppToken* name) {
         string f = origin->filename;
         size_t len = strlen(f);
         char* buf = malloc(len * 2 + 3);
+        if (buf == NULL) {
+            fprintf(stderr, "[preprocessor Fatal] at <expand_builtin>: Cannot allocate memory\n");
+            abort();
+        }
         size_t pos = 0;
         buf[pos++] = '"';
         for (size_t i = 0; i < len; i++) {
@@ -1032,7 +1036,7 @@ static void process_tokens(ppContext* ctx) {
         ppToken* token = pp_peek(ctx);
         if (is_eof(token)) break;
 
-        if (token->at_line_start && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
+        if (token->at_line_start && token->expanded_from == NULL && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
             pp_get(ctx);  // consume '#'
             ctx->in_directive = true;
             handle_directive(ctx);

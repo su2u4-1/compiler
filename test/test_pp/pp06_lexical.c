@@ -25,7 +25,7 @@ int d // trailing
 /* /* 區塊註解不會巢狀 */ int after_block;   // => int after_block ;
 
 // ---- pp-number：每個都是「一個」token ----
-int n[] = { 1.5e+10, 0x1p-3, .5, 5., 1e5, 0b101 };
+int n[] = { 1.5e+10, 0x1p-3, 0xE+1, .5, 5., 1e5, 0b101, 12ab, 1..2 };
 
 // ---- 符號的最長匹配 ----
 int s = a+++++b;                      // => a ++ ++ + b

@@ -1,0 +1,10 @@
+[Preprocess Error] at err/e01_conditional.c:2:2: #else without #if
+[Preprocess Error] at err/e01_conditional.c:3:2: #elif without #if
+[Preprocess Error] at err/e01_conditional.c:4:2: #endif without #if
+[Preprocess Error] at err/e01_conditional.c:7:2: #else after #else
+[Preprocess Error] at err/e01_conditional.c:8:2: #elif after #else
+[Preprocess Error] at err/e01_conditional.c:10:2: Expected identifier after #if[n]def
+[Preprocess Error] at err/e01_conditional.c:12:2: Expected identifier after #if[n]def
+[Preprocess Error] at err/e01_conditional.c:14:2: Expected identifier after #if[n]def
+[Preprocess Error] at err/e01_conditional.c:16:2: Unterminated conditional directive
+[Error] Preprocessing failed due to errors.
