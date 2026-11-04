@@ -201,9 +201,9 @@ static size_t escape_sequence(char* str, size_t start) {
         return index;
     } else if (c == 'x') {
         // hex escape sequence
-        index++;
         if (!is_hex_digit(str[index]))
             return 0;
+        index++;
         while (is_hex_digit(str[index]))
             ++index;
         // TODO: the value must be within the range of unsigned char
@@ -323,7 +323,7 @@ list(Token*) pp_to_tokens(list(ppToken*) pp_tokens) {
                 break;
             case PP_EOF:
                 append(tokens, create_token(TOKEN_EOF, t));
-                return tokens;
+                return handle_tokens(tokens);
             case PP_NEWLINE:
             case PP_OTHER:
             case PP_PLACE_MARKER:

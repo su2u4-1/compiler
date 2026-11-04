@@ -1034,13 +1034,7 @@ static void handle_directive(ppContext* ctx) {
 static void process_tokens(ppContext* ctx) {
     while (true) {
         ppToken* token = pp_peek(ctx);
-        if (is_eof(token)) {
-            if (token != NULL)
-                append(ctx->output, token);
-            else
-                append(ctx->output, create_pp_token(PP_EOF, NULL, ctx->lexer, ctx->lexer->length));
-            break;
-        }
+        if (is_eof(token)) break;
 
         if (token->at_line_start && token->expanded_from == NULL && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
             pp_get(ctx);  // consume '#'
@@ -1092,5 +1086,6 @@ list(ppToken*) preprocess(string filename, string source_code, bool* error_flag)
     process_tokens(ctx);
 
     *error_flag = has_error;
+    append(ctx->output, create_pp_token(PP_EOF, NULL, lexer, lexer->length));
     return ctx->output;
 }
