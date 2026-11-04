@@ -933,7 +933,7 @@ static void handle_directive(ppContext* ctx) {
                     return;
                 }
                 pp_get(ctx);
-                inner_active = (directive->value == P_IFDEF) == (find_macro(ctx, name->value) != NULL);
+                inner_active = (directive->value == P_IFDEF) == (name->value == P_LINE_ || name->value == P_FILE_ || find_macro(ctx, name->value) != NULL);
             }
         }
         frame->active = outer_active && inner_active;
@@ -1034,7 +1034,13 @@ static void handle_directive(ppContext* ctx) {
 static void process_tokens(ppContext* ctx) {
     while (true) {
         ppToken* token = pp_peek(ctx);
-        if (is_eof(token)) break;
+        if (is_eof(token)) {
+            if (token != NULL)
+                append(ctx->output, token);
+            else
+                append(ctx->output, create_pp_token(PP_EOF, NULL, ctx->lexer, ctx->lexer->length));
+            break;
+        }
 
         if (token->at_line_start && token->expanded_from == NULL && token->type == PP_SYMBOL && token->value == SYMBOL_HASH) {
             pp_get(ctx);  // consume '#'

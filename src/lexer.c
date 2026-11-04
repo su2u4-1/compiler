@@ -271,27 +271,29 @@ list(Token*) pp_to_tokens(list(ppToken*) pp_tokens) {
                         if (next_index == 0) {
                             lexer_error("Invalid escape sequence in string literal", t->line, t->column + i);
                             append(tokens, create_token(TOKEN_SYNTAX_ERROR_STRING, t));
-                            break;
+                            goto skip_append;
                         }
                         if (next_index >= len) {
                             lexer_error("Invalid string literal: unterminated escape sequence", t->line, t->column + i);
                             append(tokens, create_token(TOKEN_SYNTAX_ERROR_STRING, t));
-                            break;
+                            goto skip_append;
                         }
                         i = next_index - 1;
                     } else if (t->value[i] == '\n') {
                         lexer_error("Invalid string literal: contains newline", t->line, t->column + i);
                         append(tokens, create_token(TOKEN_SYNTAX_ERROR_STRING, t));
-                        break;
+                        goto skip_append;
                     }
                 }
                 append(tokens, create_token(TOKEN_STRING, t));
+            skip_append:
                 break;
             }
             case PP_SYMBOL:
                 append(tokens, create_token(TOKEN_SYMBOL, t));
                 break;
             case PP_EOF:
+                append(tokens, create_token(TOKEN_EOF, t));
                 return tokens;
             case PP_NEWLINE:
             case PP_OTHER:

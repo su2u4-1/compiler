@@ -245,7 +245,9 @@ static ppIntValue eval_unary_expr(ppContext* ctx, bool skip) {
             if (!expect_token(ctx, "Expected ) after defined(identifier)", name_token->line, name_token->column, PP_SYMBOL, SYMBOL_R_PARENTHESIS))
                 return pp_sign(0);
         }
-        return find_macro(ctx, name_token->value) != NULL ? pp_true : pp_false;
+        if (name_token->value == P_LINE_ || name_token->value == P_FILE_ || find_macro(ctx, name_token->value) != NULL)
+            return pp_true;
+        return pp_false;
     } else if (t->type == PP_SYMBOL && (t->value == SYMBOL_ADD || t->value == SYMBOL_SUB || t->value == SYMBOL_BITWISE_NOT || t->value == SYMBOL_LOGICAL_NOT)) {
         pp_get(ctx);  // consume '+', '-', '~', or '!'
         ppIntValue operand = eval_unary_expr(ctx, skip);
