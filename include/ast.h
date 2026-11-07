@@ -41,6 +41,7 @@ typedef struct PrimaryExpression PrimaryExpression;
 typedef struct GenericAssociation GenericAssociation;
 
 struct AssignmentExpression {
+    Token* token;
     union {
         ConditionalExpression* cond_expr;
         struct {
@@ -53,12 +54,14 @@ struct AssignmentExpression {
 };
 
 struct ConditionalExpression {
+    Token* token;
     BinaryExpression* binary_expr;
     list(AssignmentExpression*) true_expr;
     ConditionalExpression* false_expr;
 };
 
 struct BinaryExpression {
+    Token* token;
     union {
         struct {
             string op;  // || | && | | | ^ | & | == | != | < | > | <= | >= | << | >> | + | - | * | / | %
@@ -71,6 +74,7 @@ struct BinaryExpression {
 };
 
 struct UnaryExpression {
+    Token* token;
     union {
         struct {
             string op;  // ++ | -- | sizeof
@@ -96,6 +100,7 @@ struct UnaryExpression {
 };
 
 struct PostfixExpression {
+    Token* token;
     union {
         PrimaryExpression* primary_expr;
         struct {
@@ -131,6 +136,7 @@ struct PostfixExpression {
 };
 
 struct PrimaryExpression {
+    Token* token;
     union {
         string identifier;
         string integer_constant;
@@ -154,11 +160,13 @@ struct PrimaryExpression {
     } primary_type;
 };
 struct GenericAssociation {
+    Token* token;
     TypeName* type_name;  // if type_name == NULL, type_name = "default"
     AssignmentExpression* assignment_expr;
 };
 
 struct DeclStmt {
+    Token* token;
     union {
         VarDecl* var_decl;
         Statement* statement;
@@ -167,6 +175,7 @@ struct DeclStmt {
 };
 
 struct LabeledStatement {
+    Token* token;
     union {
         string identifier;                 // identifier
         ConditionalExpression* case_stmt;  // case constant_expression
@@ -181,6 +190,7 @@ struct LabeledStatement {
 };
 
 struct SelectionStatement {
+    Token* token;
     union {
         struct {
             list(AssignmentExpression*) cond_expr;
@@ -196,6 +206,7 @@ struct SelectionStatement {
 };
 
 struct IterationStatement {
+    Token* token;
     union {
         struct {
             list(AssignmentExpression*) expr;
@@ -220,6 +231,7 @@ struct IterationStatement {
 };
 
 struct JumpStatement {
+    Token* token;
     union {
         string identifier;                 // goto identifier
         list(AssignmentExpression*) expr;  // return [ expression ]
@@ -234,6 +246,7 @@ struct JumpStatement {
 };
 
 struct Statement {
+    Token* token;
     union {
         LabeledStatement* label;
         list(DeclStmt*) compound;
@@ -253,15 +266,19 @@ struct Statement {
 };
 
 struct Enumerator {
+    Token* token;
     string identifier;
     ConditionalExpression* constant_expr;
 };
 
 struct StructDeclarator {
+    Token* token;
     Declarator* declarator;
     ConditionalExpression* constant_expr;
 };
+
 struct StructDecl {
+    Token* token;
     union {
         struct {
             list(SpecifierQualifier*) spec_qual_list;
@@ -273,6 +290,7 @@ struct StructDecl {
 };
 
 struct SpecifierQualifier {
+    Token* token;
     union {
         TypeSpec* type_spec;
         string type_qualifier;
@@ -281,22 +299,26 @@ struct SpecifierQualifier {
 };
 
 struct TypeName {
+    Token* token;
     list(SpecifierQualifier*) spec_qual_list;
     AbsDeclarator* abs_declarator;
 };
 
 struct ParamDecl {
+    Token* token;
     list(DeclSpec*) decl_specs;
     Declarator* decl;
     bool is_abs;
 };
 
 struct Pointer {
+    Token* token;
     list(string) type_qualifiers;
     Pointer* pointer;
 };
 
 struct Designator {
+    Token* token;
     union {
         ConditionalExpression* constant_expr;
         string identifier;
@@ -304,10 +326,12 @@ struct Designator {
     bool is_constant_expr;
 };
 struct InitializerItem {
+    Token* token;
     list(Designator*) designation;
     Initializer* initializer;
 };
 struct Initializer {
+    Token* token;
     union {
         AssignmentExpression* assignment_expr;
         list(InitializerItem*) inits;
@@ -316,6 +340,7 @@ struct Initializer {
 };
 
 struct TypeSpec {
+    Token* token;
     union {
         string keyword_spec;    // "void" | "char" | "short" | "int" | "long" | "float" | "double" | "signed" | "unsigned" | "_Bool" | "_Imaginary" | "_Complex"
         TypeName* atomic_spec;  // atomic_type_specifier
@@ -341,6 +366,7 @@ struct TypeSpec {
 
 typedef struct DirectDeclarator DirectDeclarator;
 struct DirectDeclarator {
+    Token* token;
     union {
         string identifier;
         Declarator* declarator;
@@ -370,11 +396,13 @@ struct DirectDeclarator {
     } decl_type;
 };
 struct Declarator {
+    Token* token;
     Pointer* pointer;
     DirectDeclarator* direct_declarator;
 };
 
 struct DeclSpec {
+    Token* token;
     union {
         string keyword_specifier;  // storage_class_specifier | type_qualifier | function_specifier
         struct {
@@ -394,22 +422,26 @@ struct DeclSpec {
 };
 
 struct FuncDecl {
+    Token* token;
     list(DeclSpec*) decl_specs;
     Declarator* declarator;
     list(DeclStmt*) body;
 };
 
 struct InitDecl {
+    Token* token;
     Declarator* declarator;
     Initializer* initializer;
 };
 
 struct StaticAssertDecl {
+    Token* token;
     ConditionalExpression* expr;
     string message;
 };
 
 struct VarDecl {
+    Token* token;
     union {
         struct {
             list(DeclSpec*) decl_specs;
@@ -421,6 +453,7 @@ struct VarDecl {
 };
 
 struct ExternDecl {
+    Token* token;
     union {
         FuncDecl* func_decl;
         VarDecl* var_decl;
@@ -429,6 +462,7 @@ struct ExternDecl {
 };
 
 struct TU {
+    Token* token;
     string filename;
     list(ExternDecl*) extern_decls;
 };
