@@ -115,7 +115,7 @@ static string create_string_check(const char* str, size_t len, bool check) {
     if (check) {
         StringNode* current = string_table->buckets[index];
         while (current != NULL) {
-            if (current->size == len && current->hash == hash_value && strncmp(current->value, str, len) == 0)
+            if (current->size == len && current->hash == hash_value && memcmp(current->value, str, len) == 0)
                 return current->value;
             current = current->next;
         }
@@ -283,6 +283,114 @@ void* list_peek_back(List* self, int type_id) {
         return NULL;
     }
     return self->tail->data;
+}
+
+// literal
+
+int hex_digit_value(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return -1;
+}
+
+IntLiteral parse_int_digits(const char* s) {
+    IntLiteral result = {.base = 10};
+    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
+        result.base = 16;
+        result.digits_start = 2;
+    } else if (s[0] == '0' && (s[1] == 'b' || s[1] == 'B')) {
+        result.base = 2;
+        result.digits_start = 2;
+    } else if (s[0] == '0') {
+        result.base = 8;
+    }
+    size_t i = result.digits_start;
+    for (;; ++i) {
+        int d = hex_digit_value(s[i]);
+        if (d < 0 || (unsigned int)d >= result.base)
+            break;
+        if (result.value > (UINTMAX_MAX - (uintmax_t)d) / result.base)
+            result.overflow = true;
+        result.value = result.value * result.base + (uintmax_t)d;
+    }
+    result.digits_end = i;
+    return result;
+}
+
+EscapeResult decode_literal_char(const char* s, size_t* pos, unsigned int* value) {
+    if (s[*pos] != '\\') {
+        *value = (unsigned char)s[(*pos)++];
+        return ESC_OK;
+    }
+    ++*pos;
+    *value = 0;
+    char c = s[*pos];
+    if (c == '\0')
+        return ESC_UNKNOWN;
+    ++*pos;
+    switch (c) {
+        case 'a': *value = 7; return ESC_OK;
+        case 'b': *value = 8; return ESC_OK;
+        case 'f': *value = 12; return ESC_OK;
+        case 'n': *value = 10; return ESC_OK;
+        case 'r': *value = 13; return ESC_OK;
+        case 't': *value = 9; return ESC_OK;
+        case 'v': *value = 11; return ESC_OK;
+        case 'e':
+        case 'E': *value = 27; return ESC_OK;
+        case '(':
+        case '{':
+        case '[':
+        case '%':
+        case '\\':
+        case '\'':
+        case '"':
+        case '?': *value = (unsigned char)c; return ESC_OK;
+        case 'u':
+        case 'U': return ESC_UNSUPPORTED;
+        case 'x': {
+            if (hex_digit_value(s[*pos]) < 0)
+                return ESC_NO_HEX_DIGITS;
+            bool out_of_range = false;
+            unsigned int v = 0;
+            while (hex_digit_value(s[*pos]) >= 0) {
+                v = v * 16 + (unsigned int)hex_digit_value(s[*pos]);
+                if (v > UCHAR_MAX) {
+                    out_of_range = true;
+                    v &= UCHAR_MAX;
+                }
+                ++*pos;
+            }
+            *value = v;
+            return out_of_range ? ESC_HEX_OUT_OF_RANGE : ESC_OK;
+        }
+        default: {
+            if (c < '0' || c > '7') {
+                *value = (unsigned char)c;
+                return ESC_UNKNOWN;
+            }
+            unsigned int v = (unsigned int)(c - '0');
+            for (int i = 0; i < 2 && s[*pos] >= '0' && s[*pos] <= '7'; ++i) {
+                v = v * 8 + (unsigned int)(s[*pos] - '0');
+                ++*pos;
+            }
+            *value = v & UCHAR_MAX;
+            return v > UCHAR_MAX ? ESC_OCT_OUT_OF_RANGE : ESC_OK;
+        }
+    }
+}
+
+const char* escape_message(EscapeResult result) {
+    switch (result) {
+        case ESC_UNKNOWN: return "Unknown escape sequence";
+        case ESC_NO_HEX_DIGITS: return "\\x used with no following hex digits";
+        case ESC_HEX_OUT_OF_RANGE: return "Hex escape sequence out of range";
+        case ESC_OCT_OUT_OF_RANGE: return "Octal escape sequence out of range";
+        case ESC_UNSUPPORTED: return "Universal character name is not supported";
+        case ESC_OK:
+        default: return NULL;
+    }
 }
 
 // constants

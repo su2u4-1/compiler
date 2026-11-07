@@ -4,6 +4,8 @@
 #include <assert.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +13,7 @@
 // other
 
 typedef char* string;
-typedef size_t* pointer;
+typedef void* pointer;
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
@@ -36,7 +38,7 @@ string string_splice(string format, ...);
 // memory
 
 #define DEFAULT_MEMORY_SIZE 1024
-#define ALIGN_SIZE ((size_t)__SIZEOF_POINTER__)
+#define ALIGN_SIZE _Alignof(max_align_t)
 
 typedef struct MemoryBlock MemoryBlock;
 struct MemoryBlock {
@@ -181,6 +183,30 @@ typedef List List_TypeName;
     for (List* item##__l = (lst); item##__l != NULL && item##__l->head != NULL; item##__l = NULL)   \
         for (ListNode* item##__n = item##__l->head; item##__n != NULL; item##__n = item##__n->next) \
             for (type item = (type)item##__n->data; item != NULL; item = NULL)
+
+// literal
+
+typedef enum EscapeResult {
+    ESC_OK,
+    ESC_UNKNOWN,
+    ESC_NO_HEX_DIGITS,
+    ESC_HEX_OUT_OF_RANGE,
+    ESC_OCT_OUT_OF_RANGE,
+    ESC_UNSUPPORTED,
+} EscapeResult;
+
+typedef struct IntLiteral {
+    uintmax_t value;
+    unsigned int base;
+    size_t digits_start;
+    size_t digits_end;
+    bool overflow;
+} IntLiteral;
+
+int hex_digit_value(char c);
+IntLiteral parse_int_digits(const char* s);
+EscapeResult decode_literal_char(const char* s, size_t* pos, unsigned int* value);
+const char* escape_message(EscapeResult result);
 
 // constants
 

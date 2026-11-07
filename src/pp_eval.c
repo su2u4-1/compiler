@@ -1,5 +1,3 @@
-#include <stdint.h>
-
 #include "lib.h"
 #include "preprocessor.h"
 
@@ -48,35 +46,13 @@ static inline ppIntValue pp_bool(ppIntValue b) { return pp_sign(is_true(b) ? 1 :
 #define pp_true pp_sign(1)
 #define pp_false pp_sign(0)
 
-static int digit_value(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return -1;
-}
-
 static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
     assert(t != NULL && t->type == PP_NUMBER);
     string s = t->value;
-    size_t i = 0;
-    unsigned base = 10;
-    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
-        base = 16;
-        i = 2;
-    } else if (s[0] == '0' && (s[1] == 'b' || s[1] == 'B')) {
-        base = 2;
-        i = 2;
-    } else if (s[0] == '0') base = 8;
-
-    uintmax_t v = 0;
-    bool overflow = false;
-    size_t start = i;
-    for (;; i++) {
-        int d = digit_value(s[i]);
-        if (d < 0 || (unsigned)d >= base) break;
-        if (v > (UINTMAX_MAX - (uintmax_t)d) / base) overflow = true;
-        else v = v * base + (uintmax_t)d;
-    }
+    IntLiteral literal = parse_int_digits(s);
+    unsigned base = literal.base;
+    uintmax_t v = literal.value;
+    size_t i = literal.digits_end;
 
     char e = s[i];
     if (e == '.' || (base == 16 ? (e == 'p' || e == 'P') : (e == 'e' || e == 'E'))) {
@@ -84,12 +60,12 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
             preprocessor_error("Floating constant in preprocessor expression", t->line, t->column);
         return pp_sign(0);
     }
-    if (i == start && base != 8) {
+    if (i == literal.digits_start && base != 8) {
         if (!skip)
             preprocessor_error("Integer constant has no digits", t->line, t->column);
         return pp_sign(0);
     }
-    if (digit_value(s[i]) >= 0) {
+    if (hex_digit_value(s[i]) >= 0) {
         if (!skip)
             preprocessor_error("Invalid digit in integer constant", t->line, t->column);
         return pp_sign(0);
@@ -117,10 +93,10 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
         return pp_sign(0);
     }
 
-    if (overflow) {
+    if (literal.overflow) {
         if (!skip)
-            preprocessor_error("Integer constant is too large", t->line, t->column);
-        return pp_sign(0);
+            preprocessor_warn("Integer constant is too large", t->line, t->column);
+        return u ? pp_unsign(v) : pp_sign((intmax_t)v);
     }
     if (u) return pp_unsign(v);
     if (v > (uintmax_t)INTMAX_MAX) {
@@ -131,66 +107,6 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
     return pp_sign((intmax_t)v);
 }
 
-static bool decode_escape(ppContext* ctx, ppToken* t, string s, size_t* i, size_t end, bool skip, unsigned long* out) {
-    char c = s[(*i)++];
-    switch (c) {
-        case 'a': *out = 7; return true;
-        case 'b': *out = 8; return true;
-        case 'f': *out = 12; return true;
-        case 'n': *out = 10; return true;
-        case 'r': *out = 13; return true;
-        case 't': *out = 9; return true;
-        case 'v': *out = 11; return true;
-        case '\\':
-        case '\'':
-        case '"':
-        case '?': *out = (unsigned char)c; return true;
-        case 'x': {
-            uintmax_t v = 0;
-            size_t digits = 0;
-            while (*i < end && digit_value(s[*i]) >= 0) {
-                if (v <= 0xFFFFFFFFul) v = v * 16 + (unsigned)digit_value(s[*i]);
-                (*i)++;
-                digits++;
-            }
-            if (digits == 0) {
-                if (!skip)
-                    preprocessor_error("\\x used with no following hex digits", t->line, t->column);
-                return false;
-            }
-            if (v > 0xFF) {
-                if (!skip)
-                    preprocessor_warn("Hex escape sequence out of range", t->line, t->column);
-                v &= 0xFF;
-            }
-            *out = (unsigned long)v;
-            return true;
-        }
-        case 'u':
-        case 'U':
-            // skip, not currently supported
-            if (!skip)
-                preprocessor_warn("Universal character name in character constant is not supported", t->line, t->column);
-            return false;
-        default:
-            if (c >= '0' && c <= '7') {
-                unsigned long v = (unsigned long)(c - '0');
-                for (int k = 0; k < 2 && *i < end && s[*i] >= '0' && s[*i] <= '7'; k++)
-                    v = v * 8 + (unsigned long)(s[(*i)++] - '0');
-                if (v > 0xFF) {
-                    if (!skip)
-                        preprocessor_warn("Octal escape sequence out of range", t->line, t->column);
-                    v &= 0xFF;
-                }
-                *out = v;
-                return true;
-            }
-            if (!skip)
-                preprocessor_error("Unknown escape sequence in character constant", t->line, t->column);
-            return false;
-    }
-}
-
 static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
     assert(t != NULL && t->type == PP_CHAR);
     string s = t->value;
@@ -198,18 +114,18 @@ static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
     size_t i = 1;
     size_t count = 0;
     unsigned int acc = 0;
-    int first = 0;
     while (i < end) {
-        unsigned long c;
-        if (s[i] == '\\') {
-            i++;
-            if (!decode_escape(ctx, t, s, &i, end, skip, &c))
-                return 0;
-        } else
-            c = (unsigned char)s[i++];
-        if (count == 0)
-            first = (int)(char)c;
-        acc = (acc << 8) | (unsigned int)(c & 0xFF);
+        unsigned int c;
+        EscapeResult result = decode_literal_char(s, &i, &c);
+        if (result != ESC_OK && !skip) {
+            if (result == ESC_NO_HEX_DIGITS)
+                preprocessor_error(escape_message(result), t->line, t->column);
+            else
+                preprocessor_warn(escape_message(result), t->line, t->column);
+        }
+        if (result == ESC_NO_HEX_DIGITS || result == ESC_UNSUPPORTED)
+            return 0;
+        acc = (acc << 8) | c;  // acc * 256 + c
         count++;
     }
     if (count == 0) {
@@ -217,10 +133,13 @@ static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
             preprocessor_error("Empty character constant", t->line, t->column);
         return 0;
     }
-    if (count == 1) return first;
-    else if (count > 4 && !skip) preprocessor_warn("Multi-character character constant and character constant too long", t->line, t->column);
-    else if (!skip) preprocessor_warn("Multi-character character constant", t->line, t->column);
-    return (int)acc;
+    if (count > 1 && !skip) {
+        preprocessor_warn("Multi-character character constant", t->line, t->column);
+        if (count > 4)
+            preprocessor_warn("character constant too long", t->line, t->column);
+    }
+
+    return count == 1 ? (int)(char)acc : (int)acc;
 }
 
 static ppIntValue eval_conditional_expr(ppContext* ctx, bool skip);

@@ -6,8 +6,6 @@
 #define next_char(lexer) ((lexer->pos++ >= lexer->length) ? '\0' : lexer->source_code[lexer->pos - 1])
 #define unget_char(lexer) \
     if (lexer->pos > 0) lexer->pos -= 1
-#define is_hex_digit(c) (is_digit(c) || ((c) >= 'a' && (c) <= 'f') || ((c) >= 'A' && (c) <= 'F'))
-#define is_oct_digit(c) ((c) >= '0' && (c) <= '7')
 #define content_string(start) create_string(&lexer->source_code[start], min(lexer->pos, lexer->length) - start)
 
 static bool has_error = false;

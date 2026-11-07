@@ -1053,7 +1053,8 @@ static void process_tokens(ppContext* ctx) {
                 else if (token->value != NULL && token->value[0] == '<') msg = "Unterminated #include <...>";
                 else msg = string_splice("Unexpected token: %s", token->value == NULL ? "(null)" : token->value);
                 preprocessor_error(msg, token->line, token->column);
-            }
+            } else if (token->type == PP_HEADER_NAME)
+                preprocessor_error("Unexpected #include header name", token->line, token->column);
             if (token->type == PP_IDENTIFIER && expand_macro(ctx, token))
                 continue;
             append(ctx->output, token);
