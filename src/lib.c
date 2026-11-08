@@ -9,7 +9,7 @@ static size_t malloc_allocated = 0;
 static size_t string_count = 0;
 static StringTable* string_table = NULL;
 
-static void free_all_memory(void) {
+void free_all_memory(void) {
     MemoryBlock* block = string_memory;
     while (block != NULL) {
         MemoryBlock* next = block->next;
@@ -38,7 +38,7 @@ static MemoryBlock* create_memory_block(size_t size) {
     malloc_allocated += sizeof(MemoryBlock);
     block->size = size;
     block->used = 0;
-    block->data = malloc(size);
+    block->data = calloc(1, size);
     if (block->data == NULL) {
         fprintf(stderr, "[lib Fatal] at <create_memory_block>: Cannot allocate memory\n");
         free(block);
@@ -50,8 +50,14 @@ static MemoryBlock* create_memory_block(size_t size) {
     return block;
 }
 
-static void increase_memory(MemoryBlock** block, size_t additional_size) {
-    MemoryBlock* new_block = create_memory_block((*block)->size + additional_size);
+static void add_memory_block(MemoryBlock** block, size_t size) {
+    MemoryBlock* new_block = NULL;
+    if (size >= DEFAULT_MEMORY_SIZE) {
+        if (size % DEFAULT_MEMORY_SIZE != 0)
+            size = (size / DEFAULT_MEMORY_SIZE + 1) * DEFAULT_MEMORY_SIZE;
+        new_block = create_memory_block(size);
+    } else
+        new_block = create_memory_block(DEFAULT_MEMORY_SIZE);
     new_block->next = *block;
     *block = new_block;
 }
@@ -63,18 +69,10 @@ static StringTable* create_string_table(size_t capacity) {
     table->buckets = calloc(capacity, sizeof(StringNode*));
     return table;
 }
+
 pointer alloc_memory(size_t size, bool is_struct) {
-    if (size >= DEFAULT_MEMORY_SIZE) {
-        pointer ptr = malloc(size);
-        if (ptr == NULL) {
-            fprintf(stderr, "[lib Fatal] at <alloc_memory>: Cannot allocate memory\n");
-            free(ptr);
-            free_all_memory();
-            abort();
-        }
-        malloc_allocated += size;
-        return ptr;
-    }
+    if (size >= DEFAULT_MEMORY_SIZE)
+        add_memory_block(is_struct ? &struct_memory : &string_memory, size);
     MemoryBlock* block = string_memory;
     if (is_struct) {
         block = struct_memory;
@@ -91,9 +89,9 @@ pointer alloc_memory(size_t size, bool is_struct) {
         block = block->next;
     }
     if (is_struct)
-        increase_memory(&struct_memory, size);
+        add_memory_block(&struct_memory, size);
     else
-        increase_memory(&string_memory, size);
+        add_memory_block(&string_memory, size);
     return alloc_memory(size, is_struct);
 }
 
@@ -193,7 +191,7 @@ void init(void) {
     if (struct_memory == NULL)
         struct_memory = create_memory_block(DEFAULT_MEMORY_SIZE);
     if (string_table == NULL)
-        string_table = create_string_table(1024);
+        string_table = create_string_table(DEFAULT_MEMORY_SIZE);
     init_constant();
 }
 

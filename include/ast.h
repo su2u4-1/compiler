@@ -404,15 +404,15 @@ struct Declarator {
 struct DeclSpec {
     Token* token;
     union {
-        string keyword_specifier;  // storage_class_specifier | type_qualifier | function_specifier
+        string keyword;  // storage_class_specifier | type_qualifier | function_specifier
         struct {
             union {
                 TypeName* type_name;
                 ConditionalExpression* constant_expression;
             } spec;
             bool is_type_name;
-        } alignment_specifier;     // alignment_specifier
-        TypeSpec* type_specifier;  // type_specifier
+        } alignment;     // alignment_specifier
+        TypeSpec* type;  // type_specifier
     } specifier;
     enum {
         SPEC_KEYWORD,

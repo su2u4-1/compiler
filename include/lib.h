@@ -37,7 +37,7 @@ string string_splice(string format, ...);
 
 // memory
 
-#define DEFAULT_MEMORY_SIZE 1024
+#define DEFAULT_MEMORY_SIZE 4096
 #define ALIGN_SIZE _Alignof(max_align_t)
 
 typedef struct MemoryBlock MemoryBlock;
@@ -64,6 +64,7 @@ extern MemoryBlock* string_memory;
 extern MemoryBlock* struct_memory;
 
 #define create_struct(T) (T*)alloc_memory(sizeof(T), true)
+void free_all_memory(void);
 string create_string(const char* str, size_t len);
 pointer alloc_memory(size_t size, bool is_struct);
 
@@ -108,6 +109,8 @@ enum {
     TYPE_AssignmentExpression,
     TYPE_GenericAssociation,
     TYPE_TypeName,
+    TYPE_Scope,
+    TYPE_Symbol,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
@@ -127,6 +130,8 @@ typedef struct DeclStmt DeclStmt;
 typedef struct AssignmentExpression AssignmentExpression;
 typedef struct GenericAssociation GenericAssociation;
 typedef struct TypeName TypeName;
+typedef struct Scope Scope;
+typedef struct Symbol Symbol;
 // clang-format off
 #define TYPE_TABLE string: TYPE_string,                   \
         ppToken*: TYPE_ppToken,                           \
@@ -147,7 +152,9 @@ typedef struct TypeName TypeName;
         DeclStmt*: TYPE_DeclStmt,                         \
         AssignmentExpression*: TYPE_AssignmentExpression, \
         GenericAssociation*: TYPE_GenericAssociation,     \
-        TypeName*: TYPE_TypeName
+        TypeName*: TYPE_TypeName,                         \
+        Scope*: TYPE_Scope,                               \
+        Symbol*: TYPE_Symbol
 // clang-format on
 typedef List* List_string;
 typedef List List_ppToken;
@@ -169,6 +176,8 @@ typedef List List_DeclStmt;
 typedef List List_AssignmentExpression;
 typedef List List_GenericAssociation;
 typedef List List_TypeName;
+typedef List List_Scope;
+typedef List List_Symbol;
 
 #define list_concat(T) List_##T
 #define list(T) list_concat(T)

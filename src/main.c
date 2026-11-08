@@ -26,6 +26,7 @@ int main(int argc, char* argv[]) {
     string source_code = get_source(source_path);
     if (source_code == NULL) {
         fprintf(stderr, "[Error] at <main>: Failed to read source file: %s\n", source_path);
+        free_all_memory();
         return 1;
     }
 
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
     list(ppToken*) preprocessed_code = preprocess(source_path, source_code, &error_flag);
     if (error_flag) {
         fprintf(stderr, "[Error] Preprocessing failed due to errors.\n");
+        free_all_memory();
         return 1;
     }
 
@@ -44,6 +46,7 @@ int main(int argc, char* argv[]) {
     FILE* out = fopen(output_path, "w");
     if (out == NULL) {
         fprintf(stderr, "[Error] at <main>: Failed to open output file: %s\n", output_path);
+        free_all_memory();
         return 1;
     }
     // foreach (Token*, token, tokens)
@@ -51,5 +54,6 @@ int main(int argc, char* argv[]) {
     output_token_to_code(out, tokens);
     fclose(out);
 
+    free_all_memory();
     return 0;
 }
