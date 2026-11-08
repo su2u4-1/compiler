@@ -41,6 +41,7 @@ typedef struct Token {
         struct {
             uintmax_t data;
             NumberSuffix suffix;
+            bool is_decimal;
         } integer;  // TOKEN_INT
         struct {
             long double data;

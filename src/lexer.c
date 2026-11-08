@@ -60,6 +60,7 @@ static Token* int_token(ppToken* t) {
         token->literal.integer.suffix = long_count == 0 ? SUFFIX_U : (long_count == 1 ? SUFFIX_UL : SUFFIX_ULL);
     else
         token->literal.integer.suffix = long_count == 0 ? SUFFIX_NONE : (long_count == 1 ? SUFFIX_L : SUFFIX_LL);
+    token->literal.integer.is_decimal = literal.base == 10;
     return token;
 }
 
@@ -133,12 +134,14 @@ static Token* number_token(ppToken* t) {
                     t1++;
                 }
                 if (t0 == 0 && t1 == 0) {
+                    if (!error)
+                        lexer_error("Invalid number format, hex number must have at least one digit", t, 0, 0);
                     error = true;
-                    lexer_error("Invalid number format, hex number must have at least one digit", t, 0, 0);
                 }
             } else if (t0 == 0) {
+                if (!error)
+                    lexer_error("Invalid number format, hex number must have at least one digit", t, 0, 0);
                 error = true;
-                lexer_error("Invalid number format, hex number must have at least one digit", t, 0, 0);
             }
         } else if (C[1] == 'b' || C[1] == 'B') {
             i = 2;
@@ -148,12 +151,14 @@ static Token* number_token(ppToken* t) {
                 t0++;
             }
             if ((is_digit(C[i]) && C[i] != '0' && C[i] != '1') || C[i] == '.' || C[i] == 'e' || C[i] == 'E' || C[i] == 'p' || C[i] == 'P') {
+                if (!error)
+                    lexer_error("Invalid number format, binary number can only contain 0 and 1", t, 0, 0);
                 error = true;
-                lexer_error("Invalid number format, binary number can only contain 0 and 1", t, 0, 0);
             }
             if (t0 == 0) {
+                if (!error)
+                    lexer_error("Invalid number format, binary number must have at least one digit", t, 0, 0);
                 error = true;
-                lexer_error("Invalid number format, binary number must have at least one digit", t, 0, 0);
             }
         } else if (C[1] == '.') {
             is_float = true;
@@ -171,8 +176,9 @@ static Token* number_token(ppToken* t) {
             } else {
                 for (size_t k = 0; k < i; k++) {
                     if (C[k] == '8' || C[k] == '9') {
+                        if (!error)
+                            lexer_error("Invalid number format, octal number can only contain digits 0-7", t, 0, 0);
                         error = true;
-                        lexer_error("Invalid number format, octal number can only contain digits 0-7", t, 0, 0);
                         break;
                     }
                 }
@@ -187,25 +193,29 @@ static Token* number_token(ppToken* t) {
             t1++;
         }
         if (t1 == 0) {
+            if (!error)
+                lexer_error("Invalid number format, float number must have at least one digit after decimal point", t, 0, 0);
             error = true;
-            lexer_error("Invalid number format, float number must have at least one digit after decimal point", t, 0, 0);
         }
     }
 
     if (is_float && is_hex && C[i] != 'p' && C[i] != 'P') {
+        if (!error)
+            lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", t, 0, 0);
         error = true;
-        lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", t, 0, 0);
     }
 
     if (C[i] == 'p' || C[i] == 'P' || C[i] == 'e' || C[i] == 'E') {
         char ec = C[i];
         if (is_hex && ec != 'p' && ec != 'P') {
+            if (!error)
+                lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", t, 0, 0);
             error = true;
-            lexer_error("Invalid number format, hex float number must have 'p' or 'P' exponent", t, 0, 0);
         }
         if (!is_hex && (ec == 'p' || ec == 'P')) {
+            if (!error)
+                lexer_error("Invalid number format, decimal float number must have 'e' or 'E' exponent", t, 0, 0);
             error = true;
-            lexer_error("Invalid number format, decimal float number must have 'e' or 'E' exponent", t, 0, 0);
         }
         is_float = true;
         i++;
@@ -216,8 +226,9 @@ static Token* number_token(ppToken* t) {
             t1++;
         }
         if (t1 == 0) {
+            if (!error)
+                lexer_error("Invalid number format, exponent must have at least one digit", t, 0, 0);
             error = true;
-            lexer_error("Invalid number format, exponent must have at least one digit", t, 0, 0);
         }
     }
 
@@ -238,8 +249,9 @@ static Token* number_token(ppToken* t) {
         }
     }
     if (C[i] != '\0') {
+        if (!error)
+            lexer_error("Invalid number format", t, 0, 0);
         error = true;
-        lexer_error("Invalid number format", t, 0, 0);
     }
 
     if (error)
