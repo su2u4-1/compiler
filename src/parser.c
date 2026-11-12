@@ -105,11 +105,12 @@ static bool is_type_specifier_start(Parser* parser, bool seen_type) {
     return false;
 }
 
-static bool is_type_qualifier_start(Parser* parser) {
+static bool is_type_qualifier_start(Parser* parser, bool not_check_atomic) {
     Token* t = peek(parser);
     if (t->type == TOKEN_KEYWORD && (t->value == KEYWORD_CONST || t->value == KEYWORD_RESTRICT || t->value == KEYWORD_VOLATILE))
         return true;
     if (t->type == TOKEN_KEYWORD && t->value == KEYWORD_ATOMIC) {
+        if (not_check_atomic) return true;
         // only '_Atomic' -> qualifier
         Token* p = (Token*)parser->next->next->data;  // peek2
         return p->type != TOKEN_SYMBOL || p->value != SYMBOL_L_PARENTHESIS;
@@ -125,28 +126,284 @@ static bool is_function_declarator(Declarator* d) {
 static ConditionalExpression* parse_conditional_expression(Parser* parser) {
     return NULL;  // placeholder
 }
-
-static Declarator* parse_declarator(Parser* parser) {
-    return NULL;  // placeholder
-}
-
 static list(DeclStmt*) parse_compound_statement(Parser* parser) {
     return NULL;  // placeholder
 }
-
-static Initializer* parse_initializer(Parser* parser) {
-    return NULL;  // placeholder
-}
-
-static TypeSpec* parse_type_specifier(Parser* parser) {
-    return NULL;  // placeholder
-}
-
 static TypeName* parse_type_name(Parser* parser) {
     return NULL;  // placeholder
 }
+static AssignmentExpression* parse_assignment_expression(Parser* parser) {
+    return NULL;  // placeholder
+}
+static StructDecl* parse_struct_decl(Parser* parser) {
+    return NULL;  // placeholder
+}
+static Enumerator* parse_enumerator(Parser* parser) {
+    return NULL;  // placeholder
+}
 
-static list(DeclSpec*) parse_decl_specs(Parser* parser) {
+static Declarator* parse_declarator(Parser* parser, bool* is_abs);
+static list(DeclSpec*) parse_declaration_specifiers(Parser* parser);
+static list(ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_variadic) {
+    Token* t = peek(parser);
+    *is_variadic = false;
+    list(ParamDecl*) param_decls = create_list(ParamDecl*);
+    if (match(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS))
+        return param_decls;
+    do {
+        if (match(parser, TOKEN_SYMBOL, SYMBOL_ELLIPSIS)) {
+            if (list_empty(param_decls))
+                parser_error("Expected parameter declaration before '...'", t);
+            *is_variadic = true;
+            break;
+        }
+        ParamDecl* param_decl = create_struct(ParamDecl);
+        t = peek(parser);
+        *param_decl = (ParamDecl){.token = t, .decl_specs = parse_declaration_specifiers(parser), .decl = NULL, .is_abs = false};
+        t = peek(parser);
+        if (t->type == TOKEN_IDENTIFIER || (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_MUL || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_L_BRACKET))) {
+            param_decl->is_abs = false;
+            param_decl->decl = parse_declarator(parser, &param_decl->is_abs);
+        }
+        append(param_decls, param_decl);
+    } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
+    expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after parameter list");
+    return param_decls;
+}
+
+static Pointer* parse_pointer(Parser* parser) {
+    Token* t = peek(parser);
+    Pointer* pointer = create_struct(Pointer);
+    expect(parser, TOKEN_SYMBOL, SYMBOL_MUL, "Expected '*' in pointer declarator");
+    *pointer = (Pointer){.token = t, .type_qualifiers = NULL, .pointer = NULL};
+    if (is_type_qualifier_start(parser, true)) {
+        pointer->type_qualifiers = create_list(string);
+        while (is_type_qualifier_start(parser, true)) {
+            t = get(parser);
+            append(pointer->type_qualifiers, t->value);
+        }
+    }
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_MUL))
+        pointer->pointer = parse_pointer(parser);
+    return pointer;
+}
+
+static Designator* parse_designator(Parser* parser) {
+    Token* t = peek(parser);
+    Designator* designator = create_struct(Designator);
+    designator->token = t;
+    if (match(parser, TOKEN_SYMBOL, SYMBOL_DOT)) {
+        Token* id = expect(parser, TOKEN_IDENTIFIER, NULL, "Expected identifier after '.' in designator");
+        designator->is_constant_expr = false;
+        designator->designator.identifier = id;
+    } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
+        designator->is_constant_expr = true;
+        designator->designator.constant_expr = parse_conditional_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' after constant expression in designator");
+    } else
+        assert(false);
+    return designator;
+}
+
+static Initializer* parse_initializer(Parser* parser);
+static InitializerItem* parse_initializer_item(Parser* parser) {
+    Token* t = peek(parser);
+    InitializerItem* item = create_struct(InitializerItem);
+    item->token = t;
+    item->designation = NULL;
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_DOT) || check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
+        item->designation = create_list(Designator*);
+        while (check(parser, TOKEN_SYMBOL, SYMBOL_DOT) || check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET))
+            append(item->designation, parse_designator(parser));
+        expect(parser, TOKEN_SYMBOL, SYMBOL_ASSIGN, "Expected '=' after designator");
+    }
+    item->initializer = parse_initializer(parser);
+    return item;
+}
+
+static Initializer* parse_initializer(Parser* parser) {
+    Token* t = peek(parser);
+    Initializer* init = create_struct(Initializer);
+    init->token = t;
+    if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+        init->is_assignment_expr = false;
+        init->init.inits = create_list(InitializerItem*);
+        do {
+            if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE))
+                break;
+            append(init->init.inits, parse_initializer_item(parser));
+        } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' after initializer list");
+        if (list_empty(init->init.inits))
+            parser_warn("Empty initializer list", t);
+    } else {
+        init->is_assignment_expr = true;
+        init->init.assignment_expr = parse_assignment_expression(parser);
+    }
+    return init;
+}
+
+static TypeSpec* parse_type_specifier(Parser* parser) {
+    Token* t = peek(parser);
+    TypeSpec* type = create_struct(TypeSpec);
+    type->token = t;
+    if (t->type == TOKEN_KEYWORD) {
+        if (t->value == KEYWORD_ATOMIC) {
+            type->spec_type = TYPE_SPEC_ATOMIC;
+            get(parser);  // consume '_Atomic'
+            expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Atomic'");
+            type->spec.atomic_spec = parse_type_name(parser);
+            expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after '_Atomic' type name");
+        } else if (t->value == KEYWORD_VOID || t->value == KEYWORD_CHAR || t->value == KEYWORD_SHORT || t->value == KEYWORD_INT || t->value == KEYWORD_LONG || t->value == KEYWORD_FLOAT || t->value == KEYWORD_DOUBLE || t->value == KEYWORD_SIGNED || t->value == KEYWORD_UNSIGNED || t->value == KEYWORD_BOOL || t->value == KEYWORD_IMAGINARY || t->value == KEYWORD_COMPLEX) {
+            t = get(parser);  // consume keyword
+            type->spec_type = TYPE_SPEC_KEYWORD;
+            type->spec.keyword_spec = t->value;
+        } else if (t->value == KEYWORD_STRUCT || t->value == KEYWORD_UNION) {
+            t = get(parser);  // consume 'struct' or 'union'
+            type->spec_type = TYPE_SPEC_STRUCT_UNION;
+            type->spec.struct_union_spec.is_struct = t->value == KEYWORD_STRUCT;
+            t = peek(parser);
+            if (match(parser, TOKEN_IDENTIFIER, NULL))
+                type->spec.struct_union_spec.identifier = t;
+            else
+                type->spec.struct_union_spec.identifier = NULL;
+            list(StructDecl*) members = NULL;
+            if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+                members = create_list(StructDecl*);
+                while (true) {
+                    t = peek(parser);
+                    if (is_type_qualifier_start(parser, false) || is_type_specifier_start(parser, false) || (t->type == TOKEN_KEYWORD && t->value == KEYWORD_STATIC_ASSERT)) {
+                        StructDecl* decl = parse_struct_decl(parser);
+                        append(members, decl);
+                    } else
+                        break;
+                }
+                if (type->spec.struct_union_spec.is_struct)
+                    expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' after struct members");
+                else
+                    expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' after union members");
+            }
+            type->spec.struct_union_spec.members = members;
+            if (type->spec.struct_union_spec.identifier == NULL && members == NULL) {
+                if (type->spec.struct_union_spec.is_struct)
+                    parser_error("Expected identifier or members after 'struct'", t);
+                else
+                    parser_error("Expected identifier or members after 'union'", t);
+            }
+        } else if (t->value == KEYWORD_ENUM) {
+            t = get(parser);  // consume 'enum'
+            type->spec_type = TYPE_SPEC_ENUM;
+            t = peek(parser);
+            if (match(parser, TOKEN_IDENTIFIER, NULL))
+                type->spec.enum_spec.identifier = t;
+            else
+                type->spec.enum_spec.identifier = NULL;
+            list(Enumerator*) enumerators = NULL;
+            if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+                enumerators = create_list(Enumerator*);
+                while (true) {
+                    t = peek(parser);
+                    if (t->type == TOKEN_IDENTIFIER) {
+                        Enumerator* decl = parse_enumerator(parser);
+                        append(enumerators, decl);
+                    } else
+                        break;
+                    if (!match(parser, TOKEN_SYMBOL, SYMBOL_COMMA))
+                        break;
+                }
+                expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' after enum members");
+            }
+            type->spec.enum_spec.enumerators = enumerators;
+            if (type->spec.enum_spec.identifier == NULL && enumerators == NULL)
+                parser_error("Expected identifier or members after 'enum'", t);
+        } else
+            assert(false);
+    } else if (t->type == TOKEN_IDENTIFIER && is_typedef_name(parser, t->value)) {
+        t = get(parser);  // consume typedef_name
+        type->spec_type = TYPE_SPEC_TYPEDEF_NAME;
+        type->spec.typedef_name = t;
+    }
+    return type;
+}
+
+static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
+    Token* t = peek(parser);
+    DirectDeclarator* direct_decl = NULL;
+    *is_abs = true;
+    if (match(parser, TOKEN_IDENTIFIER, NULL)) {
+        direct_decl = create_struct(DirectDeclarator);
+        *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_ID, .decl.identifier = t};
+        *is_abs = false;
+    } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
+        // TODO: check is function pointer declarator or declarator with parentheses
+        bool is_inner_abs = true;
+        direct_decl = create_struct(DirectDeclarator);
+        *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_DECL, .decl.declarator = parse_declarator(parser, &is_inner_abs)};
+        if (!is_inner_abs) *is_abs = false;
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after declarator");
+    } else
+        *is_abs = true;
+    while (true) {
+        if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
+            bool is_variadic = false;
+            list(ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
+            DirectDeclarator* new = create_struct(DirectDeclarator);
+            *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = direct_decl, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic};
+            direct_decl = new;
+        } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
+            bool has_static = false;
+            bool has_star = false;
+            list(string) type_qualifiers = NULL;
+            Token* p = (Token*)parser->next->next->data;
+            if (is_type_qualifier_start(parser, true)) {
+                type_qualifiers = create_list(string);
+                while (is_type_qualifier_start(parser, true)) {
+                    Token* tt = get(parser);
+                    append(type_qualifiers, tt->value);
+                }
+                p = (Token*)parser->next->next->data;
+                if (check(parser, TOKEN_SYMBOL, SYMBOL_MUL) && p->type == TOKEN_SYMBOL && p->value == SYMBOL_R_BRACKET) {
+                    get(parser);  // consume '*'
+                    has_star = true;
+                } else if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC))
+                    has_static = true;
+            } else if (check(parser, TOKEN_SYMBOL, SYMBOL_MUL) && p->type == TOKEN_SYMBOL && p->value == SYMBOL_R_BRACKET) {
+                get(parser);  // consume '*'
+                has_star = true;
+            } else if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC)) {
+                has_static = true;
+                type_qualifiers = create_list(string);
+                while (is_type_qualifier_start(parser, true)) {
+                    Token* tt = get(parser);
+                    append(type_qualifiers, tt->value);
+                }
+            }
+            AssignmentExpression* expr = NULL;
+            if (has_static || (!has_star && !check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET)))
+                expr = parse_assignment_expression(parser);
+            expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' after array declarator");
+            DirectDeclarator* new = create_struct(DirectDeclarator);
+            if (has_static || expr != NULL)
+                *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_ARRAY, .decl.array.direct_declarator = direct_decl, .decl.array.assignment_expression = expr, .decl.array.is_static = has_static, .decl.array.type_qualifiers = type_qualifiers};
+            else
+                *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_INCOMPLETE_ARRAY, .decl.incomplete_array.direct_declarator = direct_decl, .decl.incomplete_array.has_star = has_star, .decl.incomplete_array.type_qualifiers = type_qualifiers};
+            direct_decl = new;
+        } else
+            break;
+    }
+    return direct_decl;
+}
+
+static Declarator* parse_declarator(Parser* parser, bool* is_abs) {
+    Declarator* decl = create_struct(Declarator);
+    *decl = (Declarator){.token = peek(parser), .pointer = NULL, .direct_declarator = NULL};
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_MUL))
+        decl->pointer = parse_pointer(parser);
+    decl->direct_declarator = parse_direct_declarator(parser, is_abs);
+    return decl;
+}
+
+static list(DeclSpec*) parse_declaration_specifiers(Parser* parser) {
     list(DeclSpec*) decl_specs = create_list(DeclSpec*);
     bool seen_type = false;
     for (Token* t = peek(parser); !is_eof(t); t = peek(parser)) {
@@ -157,7 +414,7 @@ static list(DeclSpec*) parse_decl_specs(Parser* parser) {
             decl_spec->specifier_type = SPEC_TYPE_SPEC;
             decl_spec->specifier.type = parse_type_specifier(parser);
             seen_type = true;
-        } else if (is_type_qualifier_start(parser)) {
+        } else if (is_type_qualifier_start(parser, false)) {
             // type_qualifier
             decl_spec->specifier_type = SPEC_KEYWORD;
             decl_spec->specifier.keyword = t->value;
@@ -173,7 +430,7 @@ static list(DeclSpec*) parse_decl_specs(Parser* parser) {
                 decl_spec->specifier_type = SPEC_ALIGNMENT;
                 get(parser);  // consume '_Alignas'
                 expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Alignas'");
-                if (is_type_qualifier_start(parser) || is_type_specifier_start(parser, false)) {
+                if (is_type_qualifier_start(parser, false) || is_type_specifier_start(parser, false)) {
                     decl_spec->specifier.alignment.spec.type_name = parse_type_name(parser);
                     decl_spec->specifier.alignment.is_type_name = true;
                 } else {
@@ -227,7 +484,12 @@ static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Decla
         *init_decl = (InitDecl){.token = decl_t, .declarator = decl, .initializer = init};
         append(var_decl->decl.general_decl.init_decls, init_decl);
         if (!match(parser, TOKEN_SYMBOL, SYMBOL_COMMA)) break;
-        decl = parse_declarator(parser);
+        bool is_abs = false;
+        decl = parse_declarator(parser, &is_abs);
+        if (is_abs) {
+            parser_error("Expected declarator after ',' in variable declaration", decl->token);
+            break;
+        }
     }
     expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after variable declaration");
     return var_decl;
@@ -248,14 +510,17 @@ TU* parse_parser(Parser* parser) {
             var_decl = create_struct(VarDecl);
             *var_decl = (VarDecl){.token = t, .is_static_assert_decl = true, .decl.static_assert_decl = static_assert_decl};
         } else {
-            list(DeclSpec*) decl_specs = parse_decl_specs(parser);
+            list(DeclSpec*) decl_specs = parse_declaration_specifiers(parser);
             if (check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
                 var_decl = parse_var_decl(parser, decl_specs, NULL, t);
             else {
-                Declarator* decl = parse_declarator(parser);
-                if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE) && !is_function_declarator(decl)) {
+                bool is_abs = false;
+                Declarator* decl = parse_declarator(parser, &is_abs);
+                if (is_abs)
+                    parser_error("Expected declarator after declaration specifiers", decl->token);
+                else if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE) && !is_function_declarator(decl))
                     parser_error("Expected ';' after top level declarator", peek(parser));
-                } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+                else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
                     list(DeclStmt*) compound = parse_compound_statement(parser);
                     expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' after function body");
                     FuncDecl* func_decl = create_struct(FuncDecl);

@@ -5,6 +5,7 @@
 
 typedef struct StaticAssertDecl StaticAssertDecl;
 typedef struct Declarator Declarator;
+typedef struct DirectDeclarator DirectDeclarator;
 typedef struct TypeSpec TypeSpec;
 typedef struct Pointer Pointer;
 typedef struct Initializer Initializer;
@@ -117,7 +118,7 @@ struct PostfixExpression {
         } func_call;
         struct {
             PostfixExpression* postfix_expr;
-            string identifier;
+            Token* identifier;
             enum {  // . | -> | ++ | --
                 POSTFIX_MEMBER_ACCESS,
                 POSTFIX_MEMBER_ACCESS_PTR,
@@ -138,11 +139,11 @@ struct PostfixExpression {
 struct PrimaryExpression {
     Token* token;
     union {
-        string identifier;
-        string integer_constant;
-        string character_constant;
-        string floating_constant;
-        string string_literal;
+        Token* identifier;
+        Token* integer_constant;
+        Token* character_constant;
+        Token* floating_constant;
+        Token* string_literal;
         list(AssignmentExpression*) expr;
         struct {
             AssignmentExpression* expr;
@@ -177,7 +178,7 @@ struct DeclStmt {
 struct LabeledStatement {
     Token* token;
     union {
-        string identifier;                 // identifier
+        Token* identifier;                 // identifier
         ConditionalExpression* case_stmt;  // case constant_expression
         void* none;                        // default
     } label;
@@ -233,7 +234,7 @@ struct IterationStatement {
 struct JumpStatement {
     Token* token;
     union {
-        string identifier;                 // goto identifier
+        Token* identifier;                 // goto identifier
         list(AssignmentExpression*) expr;  // return [ expression ]
         void* none;                        // continue | break
     } jump;
@@ -267,7 +268,7 @@ struct Statement {
 
 struct Enumerator {
     Token* token;
-    string identifier;
+    Token* identifier;
     ConditionalExpression* constant_expr;
 };
 
@@ -321,10 +322,11 @@ struct Designator {
     Token* token;
     union {
         ConditionalExpression* constant_expr;
-        string identifier;
+        Token* identifier;
     } designator;
     bool is_constant_expr;
 };
+
 struct InitializerItem {
     Token* token;
     list(Designator*) designation;
@@ -346,14 +348,14 @@ struct TypeSpec {
         TypeName* atomic_spec;  // atomic_type_specifier
         struct {
             bool is_struct;
-            string identifier;
+            Token* identifier;
             list(StructDecl*) members;
         } struct_union_spec;  // struct_or_union_specifier
         struct {
-            string identifier;
+            Token* identifier;
             list(Enumerator*) enumerators;
         } enum_spec;          // enum_specifier
-        string typedef_name;  // typedef_name
+        Token* typedef_name;  // typedef_name
     } spec;
     enum {
         TYPE_SPEC_KEYWORD,
@@ -364,11 +366,10 @@ struct TypeSpec {
     } spec_type;
 };
 
-typedef struct DirectDeclarator DirectDeclarator;
 struct DirectDeclarator {
     Token* token;
     union {
-        string identifier;
+        Token* identifier;
         Declarator* declarator;
         struct {
             DirectDeclarator* direct_declarator;

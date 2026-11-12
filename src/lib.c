@@ -70,7 +70,7 @@ static StringTable* create_string_table(size_t capacity) {
     return table;
 }
 
-pointer alloc_memory(size_t size, bool is_struct) {
+ptr alloc_memory(size_t size, bool is_struct) {
     if (size >= DEFAULT_MEMORY_SIZE)
         add_memory_block(is_struct ? &struct_memory : &string_memory, size);
     MemoryBlock* block = string_memory;
@@ -80,7 +80,7 @@ pointer alloc_memory(size_t size, bool is_struct) {
     }
     while (block != NULL) {
         if (block->size - block->used >= size) {
-            pointer ptr = (void*)(block->data + block->used);
+            ptr ptr = (void*)(block->data + block->used);
             if (is_struct)
                 assert((size_t)ptr % ALIGN_SIZE == 0);
             block->used += size;

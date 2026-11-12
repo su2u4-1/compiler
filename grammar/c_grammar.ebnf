@@ -39,7 +39,7 @@ abstract_declarator ::= [ pointer ] direct_abstract_declarator | pointer;
 direct_abstract_declarator ::= "(" abstract_declarator ")"
                            | [ direct_abstract_declarator ] "[" [ "static" [ type_qualifier_list ] | type_qualifier_list [ "static" ] ] assignment_expression "]"
                            | [ direct_abstract_declarator ] "(" [ parameter_type_list ] ")"
-                           | [ direct_abstract_declarator ] "[" [ "*" ] "]" ;
+                           | [ direct_abstract_declarator ] "[" [ type_qualifier_list ] [ "*" ] "]" ;
 struct_declarator_list ::= struct_declarator { "," struct_declarator } ;
 type_qualifier_list ::= type_qualifier { type_qualifier } ;
 parameter_type_list ::= parameter_list [ "," "..." ] ;

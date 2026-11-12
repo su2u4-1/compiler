@@ -13,7 +13,7 @@
 // other
 
 typedef char* string;
-typedef void* pointer;
+typedef void* ptr;
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 
@@ -66,7 +66,7 @@ extern MemoryBlock* struct_memory;
 #define create_struct(T) (T*)alloc_memory(sizeof(T), true)
 void free_all_memory(void);
 string create_string(const char* str, size_t len);
-pointer alloc_memory(size_t size, bool is_struct);
+ptr alloc_memory(size_t size, bool is_struct);
 
 // list
 
