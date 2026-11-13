@@ -82,20 +82,30 @@ static bool match(Parser* parser, TokenType type, string value) {
     return true;
 }
 
-static void synchronize(Parser* parser) {
+static void synchronize(Parser* parser, bool is_top_level) {
     if (!parser->panic_mode) return;
-    size_t depth = 0;
+    size_t brace_depth = 0;
+    size_t parenthesis_depth = 0;
     for (Token* t = peek(parser); !is_eof(t); t = peek(parser)) {
-        if (t->type == TOKEN_SYMBOL && t->value == SYMBOL_R_BRACE && depth == 0)
-            break;
+        if (t->type == TOKEN_SYMBOL && t->value == SYMBOL_R_BRACE && brace_depth == 0) {
+            if (!is_top_level) break;
+            get(parser);  // consume '}' in top-level
+            continue;
+        }
         get(parser);
         if (t->type != TOKEN_SYMBOL) continue;
+        if (t->value == SYMBOL_L_BRACE || t->value == SYMBOL_R_BRACE)
+            parenthesis_depth = 0;
         if (t->value == SYMBOL_L_BRACE)
-            depth++;
-        else if (t->value == SYMBOL_R_BRACE && --depth == 0)
+            brace_depth++;
+        else if (t->value == SYMBOL_R_BRACE && --brace_depth == 0)
             break;
-        else if (t->value == SYMBOL_SEMICOLON && depth == 0)
+        else if (t->value == SYMBOL_SEMICOLON && brace_depth == 0 && parenthesis_depth == 0)
             break;
+        else if (t->value == SYMBOL_R_PARENTHESIS && parenthesis_depth > 0)
+            --parenthesis_depth;
+        else if (t->value == SYMBOL_L_PARENTHESIS)
+            parenthesis_depth++;
     }
     parser->panic_mode = false;
 }
@@ -137,9 +147,73 @@ static bool is_type_qualifier_start(Parser* parser, bool not_check_atomic) {
     return false;
 }
 
-static bool is_function_declarator(Declarator* d) {
-    // TODO
-    return false;  // placeholder
+static bool is_function_declarator(Declarator* decl, bool outer) {
+    DirectDeclarator* inner = decl->direct_declarator;
+    DirectDeclarator* last = NULL;
+    while (inner != NULL && inner->decl_type != DECLARATOR_ID && inner->decl_type != DECLARATOR_DECL) {
+        last = inner;
+        switch (inner->decl_type) {
+            case DECLARATOR_ARRAY:
+                inner = inner->decl.array.direct_declarator;
+                break;
+            case DECLARATOR_FUNC:
+                inner = inner->decl.func.direct_declarator;
+                break;
+            case DECLARATOR_INCOMPLETE_ARRAY:
+                inner = inner->decl.incomplete_array.direct_declarator;
+                break;
+            case DECLARATOR_ID:
+            case DECLARATOR_DECL:
+            default:
+                break;
+        }
+    }
+    bool nearest = outer;
+    if (last != NULL)
+        nearest = last->decl_type == DECLARATOR_FUNC;
+    else if (decl->pointer != NULL)
+        nearest = false;
+    if (inner != NULL && inner->decl_type == DECLARATOR_DECL)
+        return is_function_declarator(inner->decl.declarator, nearest);
+    return nearest;
+}
+
+static void add_name(Parser* parser, Token* id, SymbolKind kind) {
+    foreach (Symbol*, symbol, parser->current_scope->names) {
+        if (symbol->name == id->value) {
+            if ((kind == SYMBOL_KIND_TYPEDEF) != (symbol->kind == SYMBOL_KIND_TYPEDEF))
+                parser_error("Redeclared as different kind of symbol", id);
+            return;
+        }
+    }
+    Symbol* symbol = create_struct(Symbol);
+    *symbol = (Symbol){.name = id->value, .token = id, .kind = kind};
+    append(parser->current_scope->names, symbol);
+}
+
+static Token* get_declarator_identifier(DirectDeclarator* decl) {
+    if (decl == NULL) return NULL;
+    switch (decl->decl_type) {
+        case DECLARATOR_ID:
+            return decl->decl.identifier;
+        case DECLARATOR_DECL:
+            return get_declarator_identifier(decl->decl.declarator->direct_declarator);
+        case DECLARATOR_ARRAY:
+            return get_declarator_identifier(decl->decl.array.direct_declarator);
+        case DECLARATOR_FUNC:
+            return get_declarator_identifier(decl->decl.func.direct_declarator);
+        case DECLARATOR_INCOMPLETE_ARRAY:
+            return get_declarator_identifier(decl->decl.incomplete_array.direct_declarator);
+        default:
+            assert(false);
+    }
+}
+
+static bool has_typedef(list(DeclSpec*) decl_specs) {
+    foreach (DeclSpec*, spec, decl_specs)
+        if (spec->specifier_type == SPEC_KEYWORD && spec->specifier.keyword == KEYWORD_TYPEDEF)
+            return true;
+    return false;
 }
 
 static ConditionalExpression* parse_conditional_expression(Parser* parser) {
@@ -295,8 +369,13 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
                     if (is_type_qualifier_start(parser, false) || is_type_specifier_start(parser, false) || (t->type == TOKEN_KEYWORD && t->value == KEYWORD_STATIC_ASSERT)) {
                         StructDecl* decl = parse_struct_decl(parser);
                         append(members, decl);
-                    } else
+                        synchronize(parser, false);
+                    } else if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE) || is_eof(t))
                         break;
+                    else {
+                        parser_error("Expected member declaration", t);
+                        synchronize(parser, false);
+                    }
                 }
                 if (type->spec.struct_union_spec.is_struct)
                     expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected member declaration or '}' in struct");
@@ -522,7 +601,12 @@ static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Decla
     }
     Declarator* decl = first;
     while (true) {
-        Token* decl_t = decl != NULL ? decl->token : peek(parser);
+        Token* decl_t = peek(parser);
+        if (decl != NULL) {
+            decl_t = decl->token;
+            SymbolKind kind = has_typedef(decl_specs) ? SYMBOL_KIND_TYPEDEF : (is_function_declarator(decl, false) ? SYMBOL_KIND_FUNC : SYMBOL_KIND_VAR);
+            add_name(parser, get_declarator_identifier(decl->direct_declarator), kind);
+        }
         Initializer* init = NULL;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_ASSIGN))
             init = parse_initializer(parser);
@@ -564,9 +648,10 @@ TU* parse_parser(Parser* parser) {
                 Declarator* decl = parse_declarator(parser, &is_abs);
                 if (is_abs)
                     parser_error("Expected identifier in declarator", decl->token);
-                else if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE) && !is_function_declarator(decl))
+                else if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE) && !is_function_declarator(decl, false))
                     parser_error("Expected ';' after declaration (only a function declarator can have a body)", peek(parser));
                 else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+                    add_name(parser, get_declarator_identifier(decl->direct_declarator), SYMBOL_KIND_FUNC);
                     list(DeclStmt*) compound = parse_compound_statement(parser);
                     expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' at end of function body");
                     FuncDecl* func_decl = create_struct(FuncDecl);
@@ -583,11 +668,10 @@ TU* parse_parser(Parser* parser) {
             *extern_decl = (ExternDecl){.token = t, .decl.var_decl = var_decl, .is_func_decl = false};
             append(tu->extern_decls, extern_decl);
         }
-        synchronize(parser);
+        synchronize(parser, true);
         if (peek(parser) == t)
             get(parser);
         t = peek(parser);
     }
     return tu;
 }
-// TODO: add name into scope
