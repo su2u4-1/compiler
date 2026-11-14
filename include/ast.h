@@ -395,6 +395,7 @@ struct DirectDeclarator {
         DECLARATOR_FUNC,
         DECLARATOR_INCOMPLETE_ARRAY,
     } decl_type;
+    Scope* func_proto_scope;
 };
 struct Declarator {
     Token* token;

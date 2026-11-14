@@ -7,6 +7,7 @@
 #define parser_error(msg, t) report_error(parser, (t), (msg))
 #define parser_warn(msg, t) report_warning(parser, (t), (msg))
 #define peek(parser) ((Token*)((parser)->next->data))
+#define pop_scope(parser) (parser->current_scope = parser->current_scope->parent)
 
 static void report_error(Parser* parser, Token* t, string msg) {
     if (parser->panic_mode) return;
@@ -35,14 +36,22 @@ static Scope* create_scope(ScopeKind kind, Scope* parent) {
     return scope;
 }
 
+static void push_new_scope(Parser* parser, ScopeKind kind) {
+    Scope* scope = create_scope(kind, parser->current_scope);
+    parser->current_scope = scope;
+    append(parser->scopes, scope);
+}
+
 Parser* create_parser(list(Token*) tokens) {
     Parser* parser = create_struct(Parser);
     parser->tokens = tokens;
     parser->next = tokens->head;
     parser->current = NULL;
-    parser->current_scope = create_scope(SCOPE_FILE, NULL);
+    parser->current_scope = NULL;
+    push_new_scope(parser, SCOPE_FILE);
     parser->error_count = 0;
     parser->panic_mode = false;
+    parser->scopes = create_list(Scope*);
     return parser;
 }
 
@@ -216,6 +225,17 @@ static bool has_typedef(list(DeclSpec*) decl_specs) {
     return false;
 }
 
+static bool is_declaration_start(Parser* parser) {
+    Token* t = peek(parser);
+    if (is_type_specifier_start(parser, false) || is_type_qualifier_start(parser, false))
+        return true;
+    if (t->type != TOKEN_KEYWORD)
+        return false;
+    if (t->value == KEYWORD_TYPEDEF || t->value == KEYWORD_EXTERN || t->value == KEYWORD_STATIC || t->value == KEYWORD_THREAD_LOCAL || t->value == KEYWORD_AUTO || t->value == KEYWORD_REGISTER)
+        return true;
+    return t->value == KEYWORD_INLINE || t->value == KEYWORD_NORETURN || t->value == KEYWORD_ALIGNAS || t->value == KEYWORD_STATIC_ASSERT;
+}
+
 static ConditionalExpression* parse_conditional_expression(Parser* parser) {
     return NULL;  // placeholder
 }
@@ -223,19 +243,131 @@ static AssignmentExpression* parse_assignment_expression(Parser* parser) {
     return NULL;  // placeholder
 }
 
-static Statement* parse_statement(Parser* parser);
+static list(AssignmentExpression*) parse_expression(Parser* parser) {
+    list(AssignmentExpression*) expr_list = create_list(AssignmentExpression*);
+    do {
+        append(expr_list, parse_assignment_expression(parser));
+    } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
+    return expr_list;
+}
 
+static VarDecl* parse_declaration(Parser* parser, FuncDecl** func_def);
+static Statement* parse_statement(Parser* parser);
 static list(DeclStmt*) parse_compound_stmt(Parser* parser) {
-    return NULL;  // placeholder
+    list(DeclStmt*) decl_stmts = create_list(DeclStmt*);
+    Token* t = peek(parser);
+    while (!is_eof(t) && !check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE)) {
+        DeclStmt* decl_stmt = create_struct(DeclStmt);
+        decl_stmt->token = t;
+        Token* p = peek2(parser);
+        bool is_label = t->type == TOKEN_IDENTIFIER && p->type == TOKEN_SYMBOL && p->value == SYMBOL_COLON;
+        if (!is_label && is_declaration_start(parser)) {
+            decl_stmt->is_var_decl = true;
+            decl_stmt->item.var_decl = parse_declaration(parser, NULL);
+        } else {
+            decl_stmt->is_var_decl = false;
+            decl_stmt->item.statement = parse_statement(parser);
+        }
+        append(decl_stmts, decl_stmt);
+        synchronize(parser, false);
+        t = peek(parser);
+    }
+    return decl_stmts;
 }
+
 static SelectionStatement* parse_selection_stmt(Parser* parser) {
-    return NULL;  // placeholder
+    Token* t = peek(parser);
+    SelectionStatement* selection = create_struct(SelectionStatement);
+    selection->token = t;
+    push_new_scope(parser, SCOPE_BLOCK);
+    if (match(parser, TOKEN_KEYWORD, KEYWORD_IF)) {
+        selection->is_switch = false;
+        expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'if'");
+        selection->selection.if_stmt.cond_expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'if' condition");
+        selection->selection.if_stmt.then_stmt = parse_statement(parser);
+        if (match(parser, TOKEN_KEYWORD, KEYWORD_ELSE))
+            selection->selection.if_stmt.else_stmt = parse_statement(parser);
+        else
+            selection->selection.if_stmt.else_stmt = NULL;
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_SWITCH)) {
+        selection->is_switch = true;
+        expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'switch'");
+        selection->selection.switch_stmt.cond_expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'switch' condition");
+        selection->selection.switch_stmt.stmt = parse_statement(parser);
+    } else assert(false);
+    pop_scope(parser);
+    return selection;
 }
+
 static IterationStatement* parse_iteration_stmt(Parser* parser) {
-    return NULL;  // placeholder
+    Token* t = peek(parser);
+    IterationStatement* iteration = create_struct(IterationStatement);
+    iteration->token = t;
+    push_new_scope(parser, SCOPE_BLOCK);
+    if (match(parser, TOKEN_KEYWORD, KEYWORD_WHILE)) {
+        iteration->loop_type = LOOP_WHILE;
+        expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'while'");
+        iteration->loop.while_stmt.expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'while' condition");
+        iteration->loop.while_stmt.stmt = parse_statement(parser);
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_DO)) {
+        iteration->loop_type = LOOP_DO_WHILE;
+        iteration->loop.while_stmt.stmt = parse_statement(parser);
+        expect(parser, TOKEN_KEYWORD, KEYWORD_WHILE, "Expected 'while' after 'do' statement");
+        expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'while'");
+        iteration->loop.while_stmt.expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'while' condition");
+        expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after 'do-while' statement");
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_FOR)) {
+        iteration->loop_type = LOOP_FOR;
+        expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'for'");
+        if (is_declaration_start(parser)) {
+            iteration->loop.for_stmt.is_init_decl = true;
+            iteration->loop.for_stmt.init.init_decl = parse_declaration(parser, NULL);
+        } else {
+            iteration->loop.for_stmt.is_init_decl = false;
+            iteration->loop.for_stmt.init.init_expr = NULL;
+            if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
+                iteration->loop.for_stmt.init.init_expr = parse_expression(parser);
+            expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after 'for' initializer");
+        }
+        iteration->loop.for_stmt.cond_expr = NULL;
+        if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
+            iteration->loop.for_stmt.cond_expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after 'for' condition");
+        iteration->loop.for_stmt.loop_expr = NULL;
+        if (!check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS))
+            iteration->loop.for_stmt.loop_expr = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'for' increment");
+        iteration->loop.for_stmt.stmt = parse_statement(parser);
+    } else assert(false);
+    pop_scope(parser);
+    return iteration;
 }
+
 static JumpStatement* parse_jump_stmt(Parser* parser) {
-    return NULL;  // placeholder
+    Token* t = peek(parser);
+    JumpStatement* jump = create_struct(JumpStatement);
+    jump->token = t;
+    if (match(parser, TOKEN_KEYWORD, KEYWORD_GOTO)) {
+        jump->jump_type = JUMP_GOTO;
+        jump->jump.identifier = expect(parser, TOKEN_IDENTIFIER, NULL, "Expected identifier after 'goto'");
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_CONTINUE)) {
+        jump->jump_type = JUMP_CONTINUE;
+        jump->jump.none = NULL;
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_BREAK)) {
+        jump->jump_type = JUMP_BREAK;
+        jump->jump.none = NULL;
+    } else if (match(parser, TOKEN_KEYWORD, KEYWORD_RETURN)) {
+        jump->jump_type = JUMP_RETURN;
+        jump->jump.expr = NULL;
+        if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
+            jump->jump.expr = parse_expression(parser);
+    } else assert(false);
+    expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after jump statement");
+    return jump;
 }
 
 static Statement* parse_statement(Parser* parser) {
@@ -245,11 +377,11 @@ static Statement* parse_statement(Parser* parser) {
     stmt->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
         // compound
-        parser->current_scope = create_scope(SCOPE_BLOCK, parser->current_scope);
+        push_new_scope(parser, SCOPE_BLOCK);
         stmt->stmt_type = STMT_COMPOUND;
         stmt->stmt.compound = parse_compound_stmt(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' to close compound statement");
-        parser->current_scope = parser->current_scope->parent;
+        pop_scope(parser);
     } else if (t->type == TOKEN_KEYWORD && (t->value == KEYWORD_CASE || t->value == KEYWORD_DEFAULT)) {
         // case label or default label
         stmt->stmt_type = STMT_LABELED;
@@ -292,13 +424,10 @@ static Statement* parse_statement(Parser* parser) {
     } else {
         // expression
         stmt->stmt_type = STMT_EXPRESSION;
-        stmt->stmt.expression = create_list(AssignmentExpression*);
-        if (!match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON)) {
-            do {
-                append(stmt->stmt.expression, parse_assignment_expression(parser));
-            } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
-            expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after expression statement");
-        }
+        stmt->stmt.expression = NULL;
+        if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
+            stmt->stmt.expression = parse_expression(parser);
+        expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after expression statement");
     }
     return stmt;
 }
@@ -638,11 +767,13 @@ static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
     while (true) {
         if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
             bool is_variadic = false;
-            parser->current_scope = create_scope(SCOPE_FUNC_PROTO, parser->current_scope);
+            Scope* scope = create_scope(SCOPE_FUNC_PROTO, parser->current_scope);
+            parser->current_scope = scope;
+            append(parser->scopes, scope);
             list(ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
-            parser->current_scope = parser->current_scope->parent;
+            parser->current_scope = scope->parent;
             DirectDeclarator* new = create_struct(DirectDeclarator);
-            *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = direct_decl, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic};
+            *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = direct_decl, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic, .func_proto_scope = scope};
             direct_decl = new;
         } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
             bool has_static = false;
@@ -799,6 +930,47 @@ static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Decla
     return var_decl;
 }
 
+static VarDecl* parse_declaration(Parser* parser, FuncDecl** func_def) {
+    Token* t = peek(parser);
+    if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC_ASSERT)) {
+        VarDecl* var_decl = create_struct(VarDecl);
+        *var_decl = (VarDecl){.token = t, .is_static_assert_decl = true, .decl.static_assert_decl = parse_static_assert(parser, t)};
+        return var_decl;
+    }
+    list(DeclSpec*) decl_specs = parse_declaration_specifiers(parser);
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
+        return parse_var_decl(parser, decl_specs, NULL, t);
+
+    bool is_abs = false;
+    Declarator* decl = parse_declarator(parser, &is_abs);
+    if (is_abs) {
+        parser_error("Expected identifier in declarator", decl->token);
+        return NULL;
+    }
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+        DirectDeclarator* func_declarator = get_function_declarator(decl, NULL);
+        if (func_declarator == NULL)
+            parser_error("Expected ';' after declaration (only a function declarator can have a body)", peek(parser));
+        else if (func_def == NULL)
+            parser_error("Function definition is not allowed here", peek(parser));
+        else {
+            get(parser);  // consume '{'
+            add_name(parser, get_declarator_identifier(decl->direct_declarator), SYMBOL_KIND_FUNC);
+            Scope* body = func_declarator->func_proto_scope;
+            body->kind = SCOPE_FUNC_BODY;
+            parser->current_scope = body;
+            list(DeclStmt*) compound = parse_compound_stmt(parser);
+            expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' at end of function body");
+            parser->current_scope = body->parent;
+            FuncDecl* func_decl = create_struct(FuncDecl);
+            *func_decl = (FuncDecl){.token = t, .decl_specs = decl_specs, .declarator = decl, .body = compound};
+            *func_def = func_decl;
+        }
+        return NULL;
+    }
+    return parse_var_decl(parser, decl_specs, decl, t);
+}
+
 TU* parse_parser(Parser* parser) {
     Token* t = peek(parser);
     TU* tu = create_struct(TU);
@@ -806,51 +978,19 @@ TU* parse_parser(Parser* parser) {
     tu->filename = t->filename;
     tu->extern_decls = create_list(ExternDecl*);
     while (!is_eof(t)) {
-        VarDecl* var_decl = NULL;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
             parser_warn("Extra ';' outside of a function", t);
-        else if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC_ASSERT)) {
-            StaticAssertDecl* static_assert_decl = parse_static_assert(parser, t);
-            var_decl = create_struct(VarDecl);
-            *var_decl = (VarDecl){.token = t, .is_static_assert_decl = true, .decl.static_assert_decl = static_assert_decl};
-        } else {
-            list(DeclSpec*) decl_specs = parse_declaration_specifiers(parser);
-            if (check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
-                var_decl = parse_var_decl(parser, decl_specs, NULL, t);
-            else {
-                bool is_abs = false;
-                Declarator* decl = parse_declarator(parser, &is_abs);
-                if (is_abs)
-                    parser_error("Expected identifier in declarator", decl->token);
-                else if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-                    DirectDeclarator* func_declarator = get_function_declarator(decl, NULL);
-                    if (func_declarator == NULL)
-                        parser_error("Expected ';' after declaration (only a function declarator can have a body)", peek(parser));
-                    else {
-                        get(parser);  // consume '{'
-                        add_name(parser, get_declarator_identifier(decl->direct_declarator), SYMBOL_KIND_FUNC);
-
-                        parser->current_scope = create_scope(SCOPE_FUNC_BODY, parser->current_scope);
-                        foreach (ParamDecl*, param, func_declarator->decl.func.param_decls)
-                            if (!param->is_abs)
-                                add_name(parser, get_declarator_identifier(param->decl->direct_declarator), SYMBOL_KIND_VAR);
-                        list(DeclStmt*) compound = parse_compound_stmt(parser);
-                        expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' at end of function body");
-                        parser->current_scope = parser->current_scope->parent;
-                        FuncDecl* func_decl = create_struct(FuncDecl);
-                        *func_decl = (FuncDecl){.token = t, .decl_specs = decl_specs, .declarator = decl, .body = compound};
-                        ExternDecl* extern_decl = create_struct(ExternDecl);
-                        *extern_decl = (ExternDecl){.token = t, .decl.func_decl = func_decl, .is_func_decl = true};
-                        append(tu->extern_decls, extern_decl);
-                    }
-                } else
-                    var_decl = parse_var_decl(parser, decl_specs, decl, t);
-            }
-        }
-        if (var_decl != NULL) {
-            ExternDecl* extern_decl = create_struct(ExternDecl);
-            *extern_decl = (ExternDecl){.token = t, .decl.var_decl = var_decl, .is_func_decl = false};
-            append(tu->extern_decls, extern_decl);
+        else {
+            FuncDecl* func_decl = NULL;
+            VarDecl* var_decl = parse_declaration(parser, &func_decl);
+            ExternDecl* extern_decl = NULL;
+            extern_decl = create_struct(ExternDecl);
+            if (func_decl != NULL)
+                *extern_decl = (ExternDecl){.token = t, .decl.func_decl = func_decl, .is_func_decl = true};
+            else if (var_decl != NULL)
+                *extern_decl = (ExternDecl){.token = t, .decl.var_decl = var_decl, .is_func_decl = false};
+            if (func_decl != NULL || var_decl != NULL)
+                append(tu->extern_decls, extern_decl);
         }
         synchronize(parser, true);
         if (peek(parser) == t)

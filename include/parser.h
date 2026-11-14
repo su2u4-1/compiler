@@ -42,6 +42,7 @@ typedef struct Parser {
     ListNode* next;
     Token* current;
     Scope* current_scope;
+    list(Scope*) scopes;  // for debug and reporting
     int error_count;
     bool panic_mode;
 } Parser;
