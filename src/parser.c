@@ -535,7 +535,7 @@ static TypeName* parse_type_name(Parser* parser) {
     type_name->spec_qual_list = parse_spec_qual_list(parser);
     t = peek(parser);
     if (t->type == TOKEN_IDENTIFIER || (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_MUL || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_L_BRACKET))) {
-        bool is_abs = false;
+        bool is_abs = true;  // allow abstract
         type_name->abs_declarator = parse_declarator(parser, &is_abs);
         if (!is_abs) {
             parser_error("Expected abstract declarator in type name", get_declarator_identifier(type_name->abs_declarator->direct_declarator));
@@ -564,7 +564,7 @@ static list(ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_va
         *param_decl = (ParamDecl){.token = t, .decl_specs = parse_declaration_specifiers(parser), .decl = NULL, .is_abs = true};
         t = peek(parser);
         if (t->type == TOKEN_IDENTIFIER || (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_MUL || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_L_BRACKET))) {
-            param_decl->is_abs = false;
+            param_decl->is_abs = true;  // allow abstract
             param_decl->decl = parse_declarator(parser, &param_decl->is_abs);
             if (!param_decl->is_abs)
                 add_name(parser, get_declarator_identifier(param_decl->decl->direct_declarator), SYMBOL_KIND_VAR);
@@ -748,33 +748,44 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
     return type;
 }
 
+static DirectDeclarator* parse_function_suffix(Parser* parser, DirectDeclarator* inner, Token* t) {
+    bool is_variadic = false;
+    Scope* scope = create_scope(SCOPE_FUNC_PROTO, parser->current_scope);
+    parser->current_scope = scope;
+    append(parser->scopes, scope);
+    list(ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
+    parser->current_scope = scope->parent;
+    DirectDeclarator* new = create_struct(DirectDeclarator);
+    *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = inner, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic, .func_proto_scope = scope};
+    return new;
+}
+
+// is_abs: in = allow abs, out = result is abs
 static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
     Token* t = peek(parser);
     DirectDeclarator* direct_decl = NULL;
+    bool allow_abs = *is_abs;
     *is_abs = true;
     if (match(parser, TOKEN_IDENTIFIER, NULL)) {
         direct_decl = create_struct(DirectDeclarator);
         *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_ID, .decl.identifier = t};
         *is_abs = false;
     } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
-        // TODO: check is function pointer declarator or declarator with parentheses
-        bool is_inner_abs = true;
-        direct_decl = create_struct(DirectDeclarator);
-        *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_DECL, .decl.declarator = parse_declarator(parser, &is_inner_abs)};
-        if (!is_inner_abs) *is_abs = false;
-        expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' to close parenthesized declarator");
+        if (allow_abs && (check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS) || is_declaration_start(parser))) {
+            // abs func declarator, e.g. int (int)
+            direct_decl = parse_function_suffix(parser, NULL, t);
+        } else {
+            // parenthesized declarator, e.g. int (*fp)(int)
+            bool is_inner_abs = allow_abs;
+            direct_decl = create_struct(DirectDeclarator);
+            *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_DECL, .decl.declarator = parse_declarator(parser, &is_inner_abs)};
+            if (!is_inner_abs) *is_abs = false;
+            expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' to close parenthesized declarator");
+        }
     }
     while (true) {
         if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
-            bool is_variadic = false;
-            Scope* scope = create_scope(SCOPE_FUNC_PROTO, parser->current_scope);
-            parser->current_scope = scope;
-            append(parser->scopes, scope);
-            list(ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
-            parser->current_scope = scope->parent;
-            DirectDeclarator* new = create_struct(DirectDeclarator);
-            *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = direct_decl, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic, .func_proto_scope = scope};
-            direct_decl = new;
+            direct_decl = parse_function_suffix(parser, direct_decl, t);
         } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
             bool has_static = false;
             bool has_star = false;
@@ -821,6 +832,7 @@ static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
     return direct_decl;
 }
 
+// is_abs: in = allow abs, out = result is abs
 static Declarator* parse_declarator(Parser* parser, bool* is_abs) {
     Declarator* decl = create_struct(Declarator);
     *decl = (Declarator){.token = peek(parser), .pointer = NULL, .direct_declarator = NULL};
