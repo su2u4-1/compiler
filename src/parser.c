@@ -47,19 +47,32 @@ Parser* create_parser(list(Token*) tokens) {
     parser->tokens = tokens;
     parser->next = tokens->head;
     parser->current = NULL;
+    parser->brace_depth = 0;
+    parser->paren_depth = 0;
     parser->current_scope = NULL;
-    push_new_scope(parser, SCOPE_FILE);
+    parser->scopes = create_list(Scope*);
     parser->error_count = 0;
     parser->panic_mode = false;
-    parser->scopes = create_list(Scope*);
+    push_new_scope(parser, SCOPE_FILE);
     return parser;
 }
 
 static Token* get(Parser* parser) {
-    parser->current = parser->next->data;
-    if (!is_eof(parser->current))
-        parser->next = parser->next->next;
-    return parser->current;
+    Token* t = parser->next->data;
+    parser->current = t;
+    if (is_eof(t)) return t;
+    parser->next = parser->next->next;
+    if (t->type == TOKEN_SYMBOL) {
+        if (t->value == SYMBOL_L_BRACE)
+            parser->brace_depth++;
+        else if (t->value == SYMBOL_R_BRACE && parser->brace_depth > 0)
+            parser->brace_depth--;
+        else if (t->value == SYMBOL_L_PARENTHESIS)
+            parser->paren_depth++;
+        else if (t->value == SYMBOL_R_PARENTHESIS && parser->paren_depth > 0)
+            parser->paren_depth--;
+    }
+    return t;
 }
 
 static Token* peek2(Parser* parser) {
@@ -91,32 +104,45 @@ static bool match(Parser* parser, TokenType type, string value) {
     return true;
 }
 
-static void synchronize(Parser* parser, bool is_top_level) {
+static void synchronize(Parser* parser, Token* start, size_t start_depth, bool is_top_level) {
     if (!parser->panic_mode) return;
-    size_t brace_depth = 0;
+    parser->panic_mode = false;
+    Token* last = parser->current;
+    if (peek(parser) != start && parser->brace_depth == start_depth && last->type == TOKEN_SYMBOL && (last->value == SYMBOL_SEMICOLON || last->value == SYMBOL_R_BRACE))
+        return;
     size_t parenthesis_depth = 0;
     for (Token* t = peek(parser); !is_eof(t); t = peek(parser)) {
-        if (t->type == TOKEN_SYMBOL && t->value == SYMBOL_R_BRACE && brace_depth == 0) {
-            if (!is_top_level) break;
-            get(parser);  // consume '}' in top-level
-            continue;
+        bool at_start_level = parser->brace_depth == start_depth;
+        if (t->type == TOKEN_SYMBOL && t->value == SYMBOL_R_BRACE && at_start_level) {
+            if (is_top_level)
+                get(parser);
+            return;
         }
         get(parser);
         if (t->type != TOKEN_SYMBOL) continue;
-        if (t->value == SYMBOL_L_BRACE || t->value == SYMBOL_R_BRACE)
-            parenthesis_depth = 0;
-        if (t->value == SYMBOL_L_BRACE)
-            brace_depth++;
-        else if (t->value == SYMBOL_R_BRACE && --brace_depth == 0)
-            break;
-        else if (t->value == SYMBOL_SEMICOLON && brace_depth == 0 && parenthesis_depth == 0)
-            break;
-        else if (t->value == SYMBOL_R_PARENTHESIS && parenthesis_depth > 0)
-            --parenthesis_depth;
-        else if (t->value == SYMBOL_L_PARENTHESIS)
+        if (t->value == SYMBOL_R_BRACE && parser->brace_depth == start_depth) {
+            match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON);
+            return;
+        }
+        if (t->value == SYMBOL_SEMICOLON && at_start_level && parenthesis_depth == 0)
+            return;
+        if (t->value == SYMBOL_L_PARENTHESIS)
             parenthesis_depth++;
+        else if (t->value == SYMBOL_R_PARENTHESIS && parenthesis_depth > 0)
+            parenthesis_depth--;
+        else if (t->value == SYMBOL_L_BRACE || t->value == SYMBOL_R_BRACE)
+            parenthesis_depth = 0;
     }
+}
+
+static void synchronize_paren(Parser* parser, size_t start_depth) {
+    if (!parser->panic_mode) return;
     parser->panic_mode = false;
+    for (Token* t = peek(parser); !is_eof(t) && parser->paren_depth > start_depth; t = peek(parser)) {
+        if (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_L_BRACE || t->value == SYMBOL_R_BRACE))
+            break;  // missing ')'
+        get(parser);
+    }
 }
 
 static bool is_typedef_name(Parser* parser, string name) {
@@ -292,6 +318,12 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
     Token* t = peek(parser);
     PrimaryExpression* primary_expr = create_struct(PrimaryExpression);
     primary_expr->token = t;
+    if (t->type == TOKEN_SYNTAX_ERROR_NUMBER)
+        parser_error("Invalid number literal", t);
+    else if (t->type == TOKEN_SYNTAX_ERROR_CHAR)
+        parser_error("Invalid character literal", t);
+    else if (t->type == TOKEN_SYNTAX_ERROR_STRING)
+        parser_error("Invalid string literal", t);
     if (t->type == TOKEN_IDENTIFIER) {
         primary_expr->primary_type = PRIMARY_IDENTIFIER;
         primary_expr->primary.identifier = get(parser);
@@ -301,7 +333,7 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
     } else if (t->type == TOKEN_CHAR || t->type == TOKEN_SYNTAX_ERROR_CHAR) {
         primary_expr->primary_type = PRIMARY_CHARACTER_CONSTANT;
         primary_expr->primary.character_constant = get(parser);
-    } else if (t->type == TOKEN_FLOAT || t->type == TOKEN_SYNTAX_ERROR_NUMBER) {
+    } else if (t->type == TOKEN_FLOAT) {
         primary_expr->primary_type = PRIMARY_FLOATING_CONSTANT;
         primary_expr->primary.floating_constant = get(parser);
     } else if (t->type == TOKEN_STRING || t->type == TOKEN_SYNTAX_ERROR_STRING) {
@@ -430,9 +462,16 @@ static UnaryExpression* parse_unary_expression(Parser* parser) {
         if (check(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS) && is_type_start(parser, peek2(parser))) {
             unary_expr->expr_type = UNARY_FUNCTION_LIKE;
             unary_expr->expr.function_like.is_sizeof = true;
-            expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'sizeof'");
+            Token* tt = expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'sizeof'");
             unary_expr->expr.function_like.type_name = parse_type_name(parser);
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
+            if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
+                TypeName* type_name = unary_expr->expr.function_like.type_name;
+                unary_expr->expr_type = UNARY_PREFIX;
+                unary_expr->expr.prefix.op = KEYWORD_SIZEOF;
+                unary_expr->expr.prefix.unary_expr = create_struct(UnaryExpression);
+                *unary_expr->expr.prefix.unary_expr = (UnaryExpression){.token = tt, .expr_type = UNARY_POSTFIX, .expr.postfix = parse_compound_literal(parser, type_name)};
+            }
         } else {
             unary_expr->expr_type = UNARY_PREFIX;
             unary_expr->expr.prefix.op = KEYWORD_SIZEOF;
@@ -542,6 +581,7 @@ static list(DeclStmt*) parse_compound_stmt(Parser* parser) {
     list(DeclStmt*) decl_stmts = create_list(DeclStmt*);
     Token* t = peek(parser);
     while (!is_eof(t) && !check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE)) {
+        size_t start_depth = parser->brace_depth;
         DeclStmt* decl_stmt = create_struct(DeclStmt);
         decl_stmt->token = t;
         Token* p = peek2(parser);
@@ -554,7 +594,7 @@ static list(DeclStmt*) parse_compound_stmt(Parser* parser) {
             decl_stmt->item.statement = parse_statement(parser);
         }
         append(decl_stmts, decl_stmt);
-        synchronize(parser, false);
+        synchronize(parser, t, start_depth, false);
         t = peek(parser);
     }
     return decl_stmts;
@@ -564,12 +604,14 @@ static SelectionStatement* parse_selection_stmt(Parser* parser) {
     Token* t = peek(parser);
     SelectionStatement* selection = create_struct(SelectionStatement);
     selection->token = t;
+    size_t paren_depth = parser->paren_depth;
     push_new_scope(parser, SCOPE_BLOCK);
     if (match(parser, TOKEN_KEYWORD, KEYWORD_IF)) {
         selection->is_switch = false;
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'if'");
         selection->selection.if_stmt.cond_expr = parse_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'if' condition");
+        synchronize_paren(parser, paren_depth);
         selection->selection.if_stmt.then_stmt = parse_statement(parser);
         if (match(parser, TOKEN_KEYWORD, KEYWORD_ELSE))
             selection->selection.if_stmt.else_stmt = parse_statement(parser);
@@ -580,6 +622,7 @@ static SelectionStatement* parse_selection_stmt(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'switch'");
         selection->selection.switch_stmt.cond_expr = parse_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'switch' condition");
+        synchronize_paren(parser, paren_depth);
         selection->selection.switch_stmt.stmt = parse_statement(parser);
     } else assert(false);
     pop_scope(parser);
@@ -590,12 +633,14 @@ static IterationStatement* parse_iteration_stmt(Parser* parser) {
     Token* t = peek(parser);
     IterationStatement* iteration = create_struct(IterationStatement);
     iteration->token = t;
+    size_t paren_depth = parser->paren_depth;
     push_new_scope(parser, SCOPE_BLOCK);
     if (match(parser, TOKEN_KEYWORD, KEYWORD_WHILE)) {
         iteration->loop_type = LOOP_WHILE;
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'while'");
         iteration->loop.while_stmt.expr = parse_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'while' condition");
+        synchronize_paren(parser, paren_depth);
         iteration->loop.while_stmt.stmt = parse_statement(parser);
     } else if (match(parser, TOKEN_KEYWORD, KEYWORD_DO)) {
         iteration->loop_type = LOOP_DO_WHILE;
@@ -604,6 +649,7 @@ static IterationStatement* parse_iteration_stmt(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'while'");
         iteration->loop.while_stmt.expr = parse_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'while' condition");
+        synchronize_paren(parser, paren_depth);
         expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after 'do-while' statement");
     } else if (match(parser, TOKEN_KEYWORD, KEYWORD_FOR)) {
         iteration->loop_type = LOOP_FOR;
@@ -626,6 +672,7 @@ static IterationStatement* parse_iteration_stmt(Parser* parser) {
         if (!check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS))
             iteration->loop.for_stmt.loop_expr = parse_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'for' increment");
+        synchronize_paren(parser, paren_depth);
         iteration->loop.for_stmt.stmt = parse_statement(parser);
     } else assert(false);
     pop_scope(parser);
@@ -962,15 +1009,16 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
                 members = create_list(StructDecl*);
                 while (true) {
                     t = peek(parser);
+                    size_t start_depth = parser->brace_depth;
                     if (is_type_start(parser, t) || (t->type == TOKEN_KEYWORD && t->value == KEYWORD_STATIC_ASSERT)) {
                         StructDecl* decl = parse_struct_decl(parser);
                         append(members, decl);
-                        synchronize(parser, false);
+                        synchronize(parser, t, start_depth, false);
                     } else if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE) || is_eof(t))
                         break;
                     else {
                         parser_error("Expected member declaration", t);
-                        synchronize(parser, false);
+                        synchronize(parser, t, start_depth, false);
                     }
                 }
                 if (type->spec.struct_union_spec.is_struct)
@@ -1275,6 +1323,7 @@ TU* parse_parser(Parser* parser) {
     tu->filename = t->filename;
     tu->extern_decls = create_list(ExternDecl*);
     while (!is_eof(t)) {
+        size_t start_depth = parser->brace_depth;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
             parser_warn("Extra ';' outside of a function", t);
         else {
@@ -1289,7 +1338,7 @@ TU* parse_parser(Parser* parser) {
             if (func_decl != NULL || var_decl != NULL)
                 append(tu->extern_decls, extern_decl);
         }
-        synchronize(parser, true);
+        synchronize(parser, t, start_depth, true);
         if (peek(parser) == t)
             get(parser);
         t = peek(parser);

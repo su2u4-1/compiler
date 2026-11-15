@@ -41,6 +41,8 @@ typedef struct Parser {
     list(Token*) tokens;
     ListNode* next;
     Token* current;
+    size_t brace_depth;
+    size_t paren_depth;
     Scope* current_scope;
     list(Scope*) scopes;  // for debug and reporting
     int error_count;
