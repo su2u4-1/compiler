@@ -316,6 +316,7 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Generic'");
         primary_expr->primary.generic_selection.expr = parse_assignment_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_COMMA, "Expected ',' after assignment expression in '_Generic'");
+        primary_expr->primary.generic_selection.generic_assoc_list = create_list(GenericAssociation*);
         do {
             append(primary_expr->primary.generic_selection.generic_assoc_list, parse_generic_association(parser));
         } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
@@ -330,14 +331,15 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
 static PostfixExpression* parse_postfix_suffix(Parser* parser, PostfixExpression* outer) {
     Token* t = peek(parser);
     while (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_L_BRACKET || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_DOT || t->value == SYMBOL_ARROW || t->value == SYMBOL_INCREMENT || t->value == SYMBOL_DECREMENT)) {
-        t = peek(parser);
         PostfixExpression* postfix_expr = create_struct(PostfixExpression);
         postfix_expr->token = t;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
+            postfix_expr->expr_type = POSTFIX_ARRAY_ACCESS;
             postfix_expr->expr.array_access.postfix_expr = outer;
             postfix_expr->expr.array_access.index_expr = parse_expression(parser);
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' after array index expression");
         } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
+            postfix_expr->expr_type = POSTFIX_FUNC_CALL;
             postfix_expr->expr.func_call.postfix_expr = outer;
             postfix_expr->expr.func_call.args = create_list(AssignmentExpression*);
             if (!check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS)) {
@@ -347,6 +349,7 @@ static PostfixExpression* parse_postfix_suffix(Parser* parser, PostfixExpression
             }
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after function call arguments");
         } else if (match(parser, TOKEN_SYMBOL, SYMBOL_DOT) || match(parser, TOKEN_SYMBOL, SYMBOL_ARROW) || match(parser, TOKEN_SYMBOL, SYMBOL_INCREMENT) || match(parser, TOKEN_SYMBOL, SYMBOL_DECREMENT)) {
+            postfix_expr->expr_type = POSTFIX_OP;
             postfix_expr->expr.postfix_op.postfix_expr = outer;
             if (t->value == SYMBOL_DOT)
                 postfix_expr->expr.postfix_op.op_type = POSTFIX_MEMBER_ACCESS;
@@ -385,23 +388,23 @@ static PostfixExpression* parse_compound_literal(Parser* parser, TypeName* type_
 }
 
 static PostfixExpression* parse_postfix_expression(Parser* parser) {
-    PostfixExpression* postfix_expr = NULL;
-    if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS) && is_type_start(parser, peek2(parser))) {
+        get(parser);  // consume '('
         TypeName* type_name = parse_type_name(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
         if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-            postfix_expr = parse_compound_literal(parser, type_name);
+            return parse_compound_literal(parser, type_name);
         } else {
             parser_error("Expected '{' after type name for compound literal", peek(parser));
             return NULL;
         }
     } else {
-        postfix_expr = create_struct(PostfixExpression);
+        PostfixExpression* postfix_expr = create_struct(PostfixExpression);
         postfix_expr->token = peek(parser);
         postfix_expr->expr_type = POSTFIX_PRIMARY;
         postfix_expr->expr.primary_expr = parse_primary_expression(parser);
+        return parse_postfix_suffix(parser, postfix_expr);
     }
-    return parse_postfix_suffix(parser, postfix_expr);
 }
 
 static CastExpression* parse_cast_expression(Parser* parser);
@@ -415,7 +418,7 @@ static UnaryExpression* parse_unary_expression(Parser* parser) {
         unary_expr->expr.prefix.unary_expr = parse_unary_expression(parser);
     } else if (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_BITWISE_AND || t->value == SYMBOL_MUL || t->value == SYMBOL_ADD || t->value == SYMBOL_SUB || t->value == SYMBOL_BITWISE_NOT || t->value == SYMBOL_LOGICAL_NOT)) {
         unary_expr->expr_type = UNARY_UNARY_OP;
-        unary_expr->expr.unary_op.op = t->value;
+        unary_expr->expr.unary_op.op = get(parser)->value;
         unary_expr->expr.unary_op.cast_expr = parse_cast_expression(parser);
     } else if (match(parser, TOKEN_KEYWORD, KEYWORD_ALIGNOF)) {
         unary_expr->expr_type = UNARY_FUNCTION_LIKE;
@@ -446,7 +449,8 @@ static CastExpression* parse_cast_expression(Parser* parser) {
     Token* t = peek(parser);
     CastExpression* cast_expr = create_struct(CastExpression);
     cast_expr->token = t;
-    if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
+    if (check(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS) && is_type_start(parser, peek2(parser))) {
+        t = get(parser);  // consume '('
         TypeName* type_name = parse_type_name(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
         if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
@@ -503,14 +507,20 @@ static AssignmentExpression* parse_assignment_expression(Parser* parser) {
     Token* t = peek(parser);
     if (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_ASSIGN || t->value == SYMBOL_MUL_ASSIGN || t->value == SYMBOL_DIV_ASSIGN || t->value == SYMBOL_MOD_ASSIGN || t->value == SYMBOL_ADD_ASSIGN || t->value == SYMBOL_SUB_ASSIGN || t->value == SYMBOL_L_SHIFT_ASSIGN || t->value == SYMBOL_R_SHIFT_ASSIGN || t->value == SYMBOL_AND_ASSIGN || t->value == SYMBOL_XOR_ASSIGN || t->value == SYMBOL_OR_ASSIGN)) {
         t = get(parser);  // consume assignment operator
-        if (cond_expr->false_expr != NULL || cond_expr->true_expr != NULL)
+        if (cond_expr->false_expr != NULL || cond_expr->true_expr != NULL) {
             parser_error("Not an assignable expression", cond_expr->token);
+            return NULL;
+        }
         BinaryExpression* binary_expr = cond_expr->binary_expr;
-        if (!binary_expr->is_cast)
+        if (!binary_expr->is_cast) {
             parser_error("Not an assignable expression", binary_expr->token);
+            return NULL;
+        }
         CastExpression* cast_expr = binary_expr->expr.cast;
-        if (!cast_expr->is_cast)
+        if (cast_expr->is_cast) {
             parser_error("Not an assignable expression", cast_expr->token);
+            return NULL;
+        }
         UnaryExpression* unary_expr = cast_expr->expr.unary_expr;
         *assign_expr = (AssignmentExpression){.token = t, .is_conditional = false, .expr.binary = {.left = unary_expr, .right = parse_assignment_expression(parser), .op = t->value}};
     } else
