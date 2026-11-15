@@ -36,6 +36,7 @@ typedef struct DeclStmt DeclStmt;
 typedef struct AssignmentExpression AssignmentExpression;
 typedef struct ConditionalExpression ConditionalExpression;
 typedef struct BinaryExpression BinaryExpression;
+typedef struct CastExpression CastExpression;
 typedef struct UnaryExpression UnaryExpression;
 typedef struct PostfixExpression PostfixExpression;
 typedef struct PrimaryExpression PrimaryExpression;
@@ -69,9 +70,21 @@ struct BinaryExpression {
             BinaryExpression* left;
             BinaryExpression* right;
         } binary;
-        UnaryExpression* unary;
+        CastExpression* cast;
     } expr;
-    bool is_unary;
+    bool is_cast;
+};
+
+struct CastExpression {
+    Token* token;
+    union {
+        struct {
+            TypeName* type_name;
+            CastExpression* cast_expr;
+        } cast;
+        UnaryExpression* unary_expr;
+    } expr;
+    bool is_cast;
 };
 
 struct UnaryExpression {
@@ -83,9 +96,8 @@ struct UnaryExpression {
         } prefix;
         struct {
             string op;  // * | & | + | - | ~ | !
-            list(TypeName*) type_names;
-            UnaryExpression* unary_expr;
-        } cast;
+            CastExpression* cast_expr;
+        } unary_op;
         struct {
             TypeName* type_name;
             bool is_sizeof;
@@ -94,7 +106,7 @@ struct UnaryExpression {
     } expr;
     enum {
         UNARY_PREFIX,
-        UNARY_CAST,
+        UNARY_UNARY_OP,
         UNARY_FUNCTION_LIKE,
         UNARY_POSTFIX,
     } expr_type;

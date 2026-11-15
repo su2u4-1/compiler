@@ -6,7 +6,7 @@
 - 平台: windows 11
     - linux 目前有稍微測試過了，應該是沒問題
 
-> 下文所有`"目前"`都帶入這個時間: 2026/11/04 21:25
+> 下文所有`"目前"`都帶入這個時間: 2026/11/15 18:00
 
 - 編譯腳本在`./build.bat`，直接執行後應該會建立一個`./build`資料夾，裡面有個`./build/program.exe`
 - 執行的話跑`./run.bat <other args>`，會自動把參數傳進去執行
@@ -22,3 +22,5 @@
 - 目前不支援`#line`和`#pragma`、`_Pragma(...)`、`\uxxx`，其他不支援的我也忘了，應該還有一些
 - `__STDC__`、`__STDC_VERSION__`、`__STDC_HOSTED__`暫不支援，因為並沒有完整實作
 - Trigraph 和 Digraph 都不支援
+
+- parser 應該是寫完了，但還沒 review 也還沒測試，先 push 上來，等 claude 重置後叫他 review
