@@ -1,0 +1,9 @@
+.\build\program.exe ./src/file.c -o ./test/file.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/lexer.c -o ./test/lexer.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/lib.c -o ./test/lib.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/main.c -o ./test/main.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/output.c -o ./test/output.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/parser.c -o ./test/parser.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/pp_eval.c -o ./test/pp_eval.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/pp_lexer.c -o ./test/pp_lexer.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test
+.\build\program.exe ./src/preprocessor.c -o ./test/preprocessor.out -p -pc -t -tc -a -ac -Iinclude -Itemp_header_for_test

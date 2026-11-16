@@ -6,7 +6,8 @@
 #include "preprocessor.h"
 
 /*
-<exe> <source_files> [-o <output_file>] [output option...]
+<exe> <source_files> [-o <output_file>] [-I<dir>...] [output option...]
+-I<dir> or -I <dir>: add include search directory (can be repeated)
 output option (can be combined, each writes <output_file> with its own extension):
     -p : output pp-tokens         -> .pp
     -pc: render pp-tokens to code -> .pp.c
@@ -42,6 +43,16 @@ static bool parse_args(int argc, char* argv[], Options* opt) {
             }
             i++;
             opt->output = create_string(argv[i], strlen(argv[i]));
+        } else if (strncmp(arg, "-I", 2) == 0) {
+            char* dir = arg + 2;
+            if (dir[0] == '\0') {
+                if (i + 1 >= argc) {
+                    fprintf(stderr, "[Error] at <main>: Missing directory after '-I'\n");
+                    return false;
+                }
+                dir = argv[++i];
+            }
+            add_include_dir(create_string(dir, strlen(dir)));
         } else if (arg[0] == '-') {
             if (strcmp(arg, "-p") == 0) opt->p = true;
             else if (strcmp(arg, "-pc") == 0) opt->pc = true;
@@ -121,7 +132,7 @@ int main(int argc, char* argv[]) {
     Options* opt = create_struct(Options);
     *opt = (Options){.source_path = create_list(string), .output = NULL, .output_path = NULL, .p = false, .pc = false, .t = false, .tc = false, .a = false, .ac = false};
     if (!parse_args(argc, argv, opt)) {
-        fprintf(stderr, "Usage: %s <source_files> [-o <output_file>] [-p|-pc|-t|-tc|-a|-ac]...\n", argv[0]);
+        fprintf(stderr, "Usage: %s <source_files> [-o <output_file>] [-I<dir>...] [-p|-pc|-t|-tc|-a|-ac]...\n", argv[0]);
         free_all_memory();
         return 1;
     }

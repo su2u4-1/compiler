@@ -6,7 +6,7 @@
 - 平台: windows 11
     - linux 目前有稍微測試過了，應該是沒問題
 
-> 下文所有`"目前"`都帶入這個時間: 2026/11/16 10:12
+> 下文所有`"目前"`都帶入這個時間: 2026/11/16 21:56
 
 - 編譯腳本在`./build.bat`，直接執行後應該會建立一個`./build`資料夾，裡面有個`./build/program.exe`
 - 執行的話跑`./run.bat <other args>`，會自動把參數傳進去執行
@@ -25,6 +25,7 @@
         - `-ac`: 把 AST 還原成 code -> `.ast.c`
     - 有多個 source file 時，中間結果的檔名會換成 source file 的檔名，避免互相覆蓋(例: `-o build/a.out x.c y.c -a` -> `build/x.ast`, `build/y.ast`)
     - 不管有沒有給 output option 都會編譯到底；preprocess 或 parse 有錯就停在該檔案
+    - 現在有 -I 了，順便新增了個 temp_header_for_test，為了測試
 
 - ~~目前寫完 preprocessor，通過了claude寫的測試(`./test/test_pp/*`, in test_pp run: `./compare.ps1`)~~
 - ~~完善了一遍 test_pp 的測試，並且在 windows 與 linux 上都通過了(linux 上的測試是 claude 跑的，因為我懶得開 wsl)~~
@@ -35,4 +36,8 @@
 - `__STDC__`、`__STDC_VERSION__`、`__STDC_HOSTED__`暫不支援，因為並沒有完整實作
 - Trigraph 和 Digraph 都不支援
 
-- parser 應該是寫完了，但還沒 review 也還沒測試，先 push 上來，等 claude 重置後叫他 review
+- parser 應該是寫完了~~，但還沒 review 也還沒測試，先 push 上來，等 claude 重置後叫他 review~~
+- 目前 parser 應該是正確了，開始寫 output 了
+
+- 目前增加了 runall.bat，會拿所有參數去跑 ./src 的所有檔案，跑之前記得 ./build.bat 過一遍
+- runall 的結果在 ./test， ./temp_header_for_test 是為了讓檔案過 parser 而寫的，暫時沒法過語意檢查
