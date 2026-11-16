@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void* va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void* placeholder;
 } FILE;
+extern FILE* stderr;
+FILE* fopen(const char* filename, const char* mode);
+int fclose(FILE* stream);
+int ferror(FILE* stream);
+int fseek(FILE* stream, long offset, int origin);
+long ftell(FILE* stream);
+void rewind(FILE* stream);
+size_t fread(void* buffer, size_t size, size_t count, FILE* stream);
+int fputc(int c, FILE* stream);
+int fputs(const char* str, FILE* stream);
+int fprintf(FILE* stream, const char* format, ...);
+int vsnprintf(char* buffer, size_t count, const char* format, va_list args);
+void* malloc(size_t size);
+void* calloc(size_t count, size_t size);
+void free(void* p);
+void abort(void);
+double strtod(const char* str, char** end);
+float strtof(const char* str, char** end);
+long double strtold(const char* str, char** end);
+size_t strlen(const char* str);
+int strcmp(const char* a, const char* b);
+int strncmp(const char* a, const char* b, size_t count);
+int memcmp(const void* a, const void* b, size_t size);
+void* memcpy(void* dst, const void* src, size_t size);
+void* memmove(void* dst, const void* src, size_t size);
+void* memset(void* dst, int value, size_t size);
 typedef char* string;
 typedef void* ptr;
 void init(void);
@@ -303,6 +332,7 @@ typedef struct Token {
     _Bool at_line_start;
 } Token;
 List_Token* pp_to_tokens(List_ppToken* pp_tokens);
+int isinf(double x);
 typedef enum ppTokenType {
     PP_IDENTIFIER,
     PP_NUMBER,
@@ -409,7 +439,7 @@ static Token* int_token(ppToken* t) {
     }
     if (literal.overflow)
         fprintf(stderr, "[Syntax Warning] at %s:%zu:%zu: %s\n", t->filename, t->line + 0, t->column + 0, "Integer constant is too large") ;
-    else if (literal.base == 10 && !is_unsigned && literal.value > (uintmax_t)INTMAX_MAX)
+    else if (literal.base == 10 && !is_unsigned && literal.value > (uintmax_t)9223372036854775807LL)
         fprintf(stderr, "[Syntax Warning] at %s:%zu:%zu: %s\n", t->filename, t->line + 0, t->column + 0, "Integer constant is so large that it is unsigned") ;
     Token* token = create_token(TOKEN_INT, t);
     token->literal.integer.data = literal.value;
@@ -620,7 +650,7 @@ static _Bool report_escape(ppToken* t, EscapeResult result, size_t offset) {
 }
 static Token* char_token(ppToken* t) {
     size_t end = strlen(t->value) - 1;
-    assert(end >= 1 && t->value[0] == '\'' && t->value[end] == '\'');
+    ((void)(end >= 1 && t->value[0] == '\'' && t->value[end] == '\'')) ;
     size_t i = 1;
     size_t count = 0;
     unsigned int acc = 0;
@@ -647,7 +677,7 @@ static Token* char_token(ppToken* t) {
 }
 static Token* string_token(ppToken* t) {
     size_t end = strlen(t->value) - 1;
-    assert(end >= 1 && t->value[0] == '"' && t->value[end] == '"');
+    ((void)(end >= 1 && t->value[0] == '"' && t->value[end] == '"')) ;
     char* data = (char*)alloc_memory(end - 1, 0 );
     size_t length = 0;
     size_t i = 1;
@@ -733,7 +763,7 @@ List_Token* pp_to_tokens(List_ppToken* pp_tokens) {
             case PP_OTHER:
             case PP_PLACE_MARKER:
             case PP_HEADER_NAME:
-                assert(0);
+                ((void)(0)) ;
             case PP_NEWLINE:
             default:
                 break;

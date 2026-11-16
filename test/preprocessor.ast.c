@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void *va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void *placeholder;
 } FILE;
+extern FILE *stderr;
+FILE *fopen(const char *filename, const char *mode);
+int fclose(FILE *stream);
+int ferror(FILE *stream);
+int fseek(FILE *stream, long offset, int origin);
+long ftell(FILE *stream);
+void rewind(FILE *stream);
+size_t fread(void *buffer, size_t size, size_t count, FILE *stream);
+int fputc(int c, FILE *stream);
+int fputs(const char *str, FILE *stream);
+int fprintf(FILE *stream, const char *format, ...);
+int vsnprintf(char *buffer, size_t count, const char *format, va_list args);
+void *malloc(size_t size);
+void *calloc(size_t count, size_t size);
+void free(void *p);
+void abort(void);
+double strtod(const char *str, char **end);
+float strtof(const char *str, char **end);
+long double strtold(const char *str, char **end);
+size_t strlen(const char *str);
+int strcmp(const char *a, const char *b);
+int strncmp(const char *a, const char *b, size_t count);
+int memcmp(const void *a, const void *b, size_t size);
+void *memcpy(void *dst, const void *src, size_t size);
+void *memmove(void *dst, const void *src, size_t size);
+void *memset(void *dst, int value, size_t size);
 typedef char *string;
 typedef void *ptr;
 void init(void);
@@ -347,7 +376,7 @@ void add_include_dir(string dir);
 string find_file(string name, _Bool is_system, string current_file);
 static _Bool has_error = 0;
 ppMacro *find_macro(ppContext *ctx, string name) {
-    assert(ctx != ((void *)0));
+    ((void)(ctx != ((void *)0)));
     for (List *macro__l = (ctx->macros); macro__l != ((void *)0) && macro__l->head != ((void *)0); macro__l = ((void *)0))
         for (ListNode *macro__n = macro__l->head; macro__n != ((void *)0); macro__n = macro__n->next)
             for (ppMacro *macro = (ppMacro *)macro__n->data; macro != ((void *)0); macro = ((void *)0))
@@ -385,7 +414,7 @@ static ppContext *create_pp_context(ppLexer *lexer) {
     return context;
 }
 static void skip_to_newline(ppContext *ctx) {
-    assert(ctx != ((void *)0));
+    ((void)(ctx != ((void *)0)));
     while (ctx->current != ((void *)0)) {
         if (ctx->current->data == ((void *)0))
             return;
@@ -396,7 +425,7 @@ static void skip_to_newline(ppContext *ctx) {
     }
 }
 static _Bool cond_active(ppContext *ctx) {
-    assert(ctx != ((void *)0));
+    ((void)(ctx != ((void *)0)));
     if (((ctx->cond_stack) == ((void *)0) || (ctx->cond_stack)->head == ((void *)0)))
         return 1;
     return ((ppCondFrame *)ctx->cond_stack->tail->data)->active;
@@ -652,7 +681,7 @@ static List_ppToken *paste_macro_body(ppContext *ctx, ppMacro *macro, List_List_
     }
     size_t expected = 0;
     if (macro->params != ((void *)0)) {
-        assert(args != ((void *)0));
+        ((void)(args != ((void *)0)));
         for (List *param__l = (macro->params); param__l != ((void *)0) && param__l->head != ((void *)0); param__l = ((void *)0))
             for (ListNode *param__n = param__l->head; param__n != ((void *)0); param__n = param__n->next)
                 for (ppToken *param = (ppToken *)param__n->data; param != ((void *)0); param = ((void *)0))
@@ -679,11 +708,11 @@ static List_ppToken *paste_macro_body(ppContext *ctx, ppMacro *macro, List_List_
     ListNode *node = macro->body->head;
     while (node != ((void *)0)) {
         ppToken *t = (ppToken *)node->data;
-        assert(t != ((void *)0));
+        ((void)(t != ((void *)0)));
         if (t->type == PP_SYMBOL && t->value == SYMBOL_HASH && expected > 0) {
             _Bool space_before = t->space_before;
             node = node->next;
-            assert(node != ((void *)0));
+            ((void)(node != ((void *)0)));
             t = (ppToken *)node->data;
             int index = find_arg_index(macro->params, t, expected);
             if (index == -1) {
@@ -717,7 +746,7 @@ static List_ppToken *paste_macro_body(ppContext *ctx, ppMacro *macro, List_List_
                 }
                 node = node->next;
                 ppToken *lhs = ((ppToken *)list_pop_back((result), _Generic((ppToken *)0, string: TYPE_string, ppToken *: TYPE_ppToken, ppMacro *: TYPE_ppMacro, ppCondFrame *: TYPE_ppCondFrame, List_ppToken *: TYPE_List_ppToken, Token *: TYPE_Token, ExternDecl *: TYPE_ExternDecl, DeclSpec *: TYPE_DeclSpec, InitDecl *: TYPE_InitDecl, ParamDecl *: TYPE_ParamDecl, StructDecl *: TYPE_StructDecl, Enumerator *: TYPE_Enumerator, InitializerItem *: TYPE_InitializerItem, Designator *: TYPE_Designator, SpecifierQualifier *: TYPE_SpecifierQualifier, StructDeclarator *: TYPE_StructDeclarator, DeclStmt *: TYPE_DeclStmt, AssignmentExpression *: TYPE_AssignmentExpression, GenericAssociation *: TYPE_GenericAssociation, TypeName *: TYPE_TypeName, Scope *: TYPE_Scope, Symbol *: TYPE_Symbol)));
-                assert(lhs != ((void *)0));
+                ((void)(lhs != ((void *)0)));
                 ListNode *r = (rhs == ((void *)0)) ? ((void *)0) : rhs->head;
                 if (r == ((void *)0)) {
                     list_append((result), (void *)(lhs), _Generic((lhs), string: TYPE_string, ppToken *: TYPE_ppToken, ppMacro *: TYPE_ppMacro, ppCondFrame *: TYPE_ppCondFrame, List_ppToken *: TYPE_List_ppToken, Token *: TYPE_Token, ExternDecl *: TYPE_ExternDecl, DeclSpec *: TYPE_DeclSpec, InitDecl *: TYPE_InitDecl, ParamDecl *: TYPE_ParamDecl, StructDecl *: TYPE_StructDecl, Enumerator *: TYPE_Enumerator, InitializerItem *: TYPE_InitializerItem, Designator *: TYPE_Designator, SpecifierQualifier *: TYPE_SpecifierQualifier, StructDeclarator *: TYPE_StructDeclarator, DeclStmt *: TYPE_DeclStmt, AssignmentExpression *: TYPE_AssignmentExpression, GenericAssociation *: TYPE_GenericAssociation, TypeName *: TYPE_TypeName, Scope *: TYPE_Scope, Symbol *: TYPE_Symbol));
@@ -1102,6 +1131,12 @@ static void add_predefined(ppContext *ctx, string name, ppTokenType type, string
     list_append((ctx->macros), (void *)(macro), _Generic((macro), string: TYPE_string, ppToken *: TYPE_ppToken, ppMacro *: TYPE_ppMacro, ppCondFrame *: TYPE_ppCondFrame, List_ppToken *: TYPE_List_ppToken, Token *: TYPE_Token, ExternDecl *: TYPE_ExternDecl, DeclSpec *: TYPE_DeclSpec, InitDecl *: TYPE_InitDecl, ParamDecl *: TYPE_ParamDecl, StructDecl *: TYPE_StructDecl, Enumerator *: TYPE_Enumerator, InitializerItem *: TYPE_InitializerItem, Designator *: TYPE_Designator, SpecifierQualifier *: TYPE_SpecifierQualifier, StructDeclarator *: TYPE_StructDeclarator, DeclStmt *: TYPE_DeclStmt, AssignmentExpression *: TYPE_AssignmentExpression, GenericAssociation *: TYPE_GenericAssociation, TypeName *: TYPE_TypeName, Scope *: TYPE_Scope, Symbol *: TYPE_Symbol));
 }
 typedef long long time_t;
+struct tm {
+    int placeholder;
+};
+time_t time(time_t *t);
+struct tm *localtime(const time_t *t);
+size_t strftime(char *buffer, size_t size, const char *format, const struct tm *tm);
 static void add_predefined_macros(ppContext *ctx) {
     time_t now = time(((void *)0));
     struct tm *tm = now == (time_t)-1 ? ((void *)0) : localtime(&now);
@@ -1120,8 +1155,8 @@ static void add_predefined_macros(ppContext *ctx) {
 }
 static void process_tokens(ppContext *ctx);
 static void handle_include(ppContext *ctx, ppToken *header_name) {
-    assert(ctx != ((void *)0) && header_name != ((void *)0));
-    assert(header_name->type == PP_HEADER_NAME);
+    ((void)(ctx != ((void *)0) && header_name != ((void *)0)));
+    ((void)(header_name->type == PP_HEADER_NAME));
     if (ctx->include_depth >= 200) {
         fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = 1, ctx->lexer->filename), header_name->line, header_name->column, "Maximum include depth exceeded");
         return;

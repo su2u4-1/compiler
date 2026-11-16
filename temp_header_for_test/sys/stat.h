@@ -1,15 +1,8 @@
-#include "../time.h"
-
+#ifndef _SYS_STAT_H
+#define _SYS_STAT_H
 struct stat {
-    // _dev_t st_dev;
-    // _ino_t st_ino;
     unsigned short st_mode;
-    short st_nlink;
-    short st_uid;
-    short st_gid;
-    // _dev_t st_rdev;
-    // _off_t st_size;
-    time_t st_atime;
-    time_t st_mtime;
-    time_t st_ctime;
 };
+#define S_ISDIR(m) (((m) & 0170000) == 0040000)
+int stat(const char* path, struct stat* buf);
+#endif

@@ -1,5 +1,5 @@
 TU: {
-	token: (keyword, 1, 1, `typedef`),
+	token: (keyword, 3, 1, `typedef`),
 	filename: `temp_header_for_test/stddef.h`,
 	extern_decls: [
 		VarDecl: {
@@ -9,88 +9,88 @@ TU: {
 					keyword: `typedef`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 9, `unsigned`),
+					token: (keyword, 3, 9, `unsigned`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `unsigned`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 18, `long`),
+					token: (keyword, 3, 18, `long`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `long`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 23, `long`),
+					token: (keyword, 3, 23, `long`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `long`,
 				},
 			],
 			init_decls: [
 				InitDecl: {
-					token: (identifier, 1, 28, `size_t`),
+					token: (identifier, 3, 28, `size_t`),
 					DirectDeclarator: {
 						decl_type: DECLARATOR_ID,
-						identifier: (identifier, 1, 28, `size_t`),
+						identifier: (identifier, 3, 28, `size_t`),
 					},
 					Initializer: null,
 				},
 			],
 		},
 		VarDecl: {
-			token: (keyword, 2, 1, `typedef`),
+			token: (keyword, 4, 1, `typedef`),
 			decl_specs: [
 				DeclSpec: {
 					specifier_type: SPEC_KEYWORD,
 					keyword: `typedef`,
 				},
 				TypeSpec: {
-					token: (keyword, 2, 9, `struct`),
+					token: (keyword, 4, 9, `struct`),
 					spec_type: TYPE_SPEC_STRUCT_UNION,
 					is_struct: true,
 					identifier: (null),
 					members: [
 						StructDecl: {
-							token: (keyword, 3, 5, `long`),
+							token: (keyword, 5, 5, `long`),
 							spec_qual_list: [
 								TypeSpec: {
 									spec_type: TYPE_SPEC_KEYWORD,
 									keyword_spec: `long`,
 								},
 								TypeSpec: {
-									token: (keyword, 3, 10, `long`),
+									token: (keyword, 5, 10, `long`),
 									spec_type: TYPE_SPEC_KEYWORD,
 									keyword_spec: `long`,
 								},
 							],
 							struct_declarators: [
 								StructDeclarator: {
-									token: (identifier, 3, 15, `a`),
+									token: (identifier, 5, 15, `a`),
 									DirectDeclarator: {
 										decl_type: DECLARATOR_ID,
-										identifier: (identifier, 3, 15, `a`),
+										identifier: (identifier, 5, 15, `a`),
 									},
 									ConditionalExpression: null,
 								},
 							],
 						},
 						StructDecl: {
-							token: (keyword, 4, 5, `long`),
+							token: (keyword, 6, 5, `long`),
 							spec_qual_list: [
 								TypeSpec: {
 									spec_type: TYPE_SPEC_KEYWORD,
 									keyword_spec: `long`,
 								},
 								TypeSpec: {
-									token: (keyword, 4, 10, `double`),
+									token: (keyword, 6, 10, `double`),
 									spec_type: TYPE_SPEC_KEYWORD,
 									keyword_spec: `double`,
 								},
 							],
 							struct_declarators: [
 								StructDeclarator: {
-									token: (identifier, 4, 17, `b`),
+									token: (identifier, 6, 17, `b`),
 									DirectDeclarator: {
 										decl_type: DECLARATOR_ID,
-										identifier: (identifier, 4, 17, `b`),
+										identifier: (identifier, 6, 17, `b`),
 									},
 									ConditionalExpression: null,
 								},
@@ -101,93 +101,204 @@ TU: {
 			],
 			init_decls: [
 				InitDecl: {
-					token: (identifier, 5, 3, `max_align_t`),
+					token: (identifier, 7, 3, `max_align_t`),
 					DirectDeclarator: {
 						decl_type: DECLARATOR_ID,
-						identifier: (identifier, 5, 3, `max_align_t`),
+						identifier: (identifier, 7, 3, `max_align_t`),
 					},
 					Initializer: null,
 				},
 			],
 		},
 		VarDecl: {
-			token: (keyword, 1, 1, `typedef`),
+			token: (keyword, 3, 1, `typedef`),
 			decl_specs: [
 				DeclSpec: {
 					specifier_type: SPEC_KEYWORD,
 					keyword: `typedef`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 9, `unsigned`),
+					token: (keyword, 3, 9, `unsigned`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `unsigned`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 18, `long`),
+					token: (keyword, 3, 18, `long`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `long`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 23, `long`),
-					spec_type: TYPE_SPEC_KEYWORD,
-					keyword_spec: `long`,
-				},
-			],
-			init_decls: [
-				InitDecl: {
-					token: (identifier, 1, 28, `uintmax_t`),
-					DirectDeclarator: {
-						decl_type: DECLARATOR_ID,
-						identifier: (identifier, 1, 28, `uintmax_t`),
-					},
-					Initializer: null,
-				},
-			],
-		},
-		VarDecl: {
-			token: (keyword, 2, 1, `typedef`),
-			decl_specs: [
-				DeclSpec: {
-					specifier_type: SPEC_KEYWORD,
-					keyword: `typedef`,
-				},
-				TypeSpec: {
-					token: (keyword, 2, 9, `long`),
-					spec_type: TYPE_SPEC_KEYWORD,
-					keyword_spec: `long`,
-				},
-				TypeSpec: {
-					token: (keyword, 2, 14, `long`),
+					token: (keyword, 3, 23, `long`),
 					spec_type: TYPE_SPEC_KEYWORD,
 					keyword_spec: `long`,
 				},
 			],
 			init_decls: [
 				InitDecl: {
-					token: (identifier, 2, 19, `intmax_t`),
+					token: (identifier, 3, 28, `uintmax_t`),
 					DirectDeclarator: {
 						decl_type: DECLARATOR_ID,
-						identifier: (identifier, 2, 19, `intmax_t`),
+						identifier: (identifier, 3, 28, `uintmax_t`),
 					},
 					Initializer: null,
 				},
 			],
 		},
 		VarDecl: {
-			token: (keyword, 1, 1, `typedef`),
+			token: (keyword, 4, 1, `typedef`),
 			decl_specs: [
 				DeclSpec: {
 					specifier_type: SPEC_KEYWORD,
 					keyword: `typedef`,
 				},
 				TypeSpec: {
-					token: (keyword, 1, 9, `struct`),
+					token: (keyword, 4, 9, `long`),
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `long`,
+				},
+				TypeSpec: {
+					token: (keyword, 4, 14, `long`),
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `long`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 4, 19, `intmax_t`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_ID,
+						identifier: (identifier, 4, 19, `intmax_t`),
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 3, 1, `typedef`),
+			decl_specs: [
+				DeclSpec: {
+					specifier_type: SPEC_KEYWORD,
+					keyword: `typedef`,
+				},
+				TypeSpec: {
+					token: (keyword, 3, 9, `void`),
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 3, 13, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 3, 15, `va_list`),
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 3, 15, `va_list`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 4, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 4, 6, `va_start`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: true,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 4, 15, `va_list`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 4, 15, `va_list`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 4, 23, `ap`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 4, 23, `ap`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 4, 6, `va_start`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 5, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 5, 6, `va_end`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 5, 13, `va_list`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 5, 13, `va_list`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 5, 21, `ap`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 5, 21, `ap`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 5, 6, `va_end`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 5, 1, `typedef`),
+			decl_specs: [
+				DeclSpec: {
+					specifier_type: SPEC_KEYWORD,
+					keyword: `typedef`,
+				},
+				TypeSpec: {
+					token: (keyword, 5, 9, `struct`),
 					spec_type: TYPE_SPEC_STRUCT_UNION,
 					is_struct: true,
 					identifier: (null),
 					members: [
 						StructDecl: {
-							token: (keyword, 2, 5, `void`),
+							token: (keyword, 6, 5, `void`),
 							spec_qual_list: [
 								TypeSpec: {
 									spec_type: TYPE_SPEC_KEYWORD,
@@ -196,16 +307,16 @@ TU: {
 							],
 							struct_declarators: [
 								StructDeclarator: {
-									token: (symbol, 2, 9, `*`),
+									token: (symbol, 6, 9, `*`),
 									Declarator: {
 										Pointer: {
 											type_qualifiers: [],
 											Pointer: null,
 										},
 										DirectDeclarator: {
-											token: (identifier, 2, 11, `placeholder`),
+											token: (identifier, 6, 11, `placeholder`),
 											decl_type: DECLARATOR_ID,
-											identifier: (identifier, 2, 11, `placeholder`),
+											identifier: (identifier, 6, 11, `placeholder`),
 										},
 									},
 									ConditionalExpression: null,
@@ -217,10 +328,1831 @@ TU: {
 			],
 			init_decls: [
 				InitDecl: {
-					token: (identifier, 3, 3, `FILE`),
+					token: (identifier, 7, 3, `FILE`),
 					DirectDeclarator: {
 						decl_type: DECLARATOR_ID,
-						identifier: (identifier, 3, 3, `FILE`),
+						identifier: (identifier, 7, 3, `FILE`),
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 8, 1, `extern`),
+			decl_specs: [
+				DeclSpec: {
+					specifier_type: SPEC_KEYWORD,
+					keyword: `extern`,
+				},
+				TypeSpec: {
+					token: (identifier, 8, 8, `FILE`),
+					spec_type: TYPE_SPEC_TYPEDEF_NAME,
+					typedef_name: (identifier, 8, 8, `FILE`),
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 8, 12, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 8, 14, `stderr`),
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 8, 14, `stderr`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (identifier, 10, 1, `FILE`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_TYPEDEF_NAME,
+					typedef_name: (identifier, 10, 1, `FILE`),
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 10, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 10, 7, `fopen`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (keyword, 10, 13, `const`),
+									is_abs: false,
+									decl_specs: [
+										DeclSpec: {
+											specifier_type: SPEC_KEYWORD,
+											keyword: `const`,
+										},
+										TypeSpec: {
+											token: (keyword, 10, 19, `char`),
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `char`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 10, 23, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 10, 25, `filename`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 10, 25, `filename`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (keyword, 10, 35, `const`),
+									is_abs: false,
+									decl_specs: [
+										DeclSpec: {
+											specifier_type: SPEC_KEYWORD,
+											keyword: `const`,
+										},
+										TypeSpec: {
+											token: (keyword, 10, 41, `char`),
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `char`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 10, 45, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 10, 47, `mode`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 10, 47, `mode`),
+										},
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 10, 7, `fopen`),
+							},
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 11, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 11, 5, `fclose`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 11, 12, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 11, 12, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 11, 16, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 11, 18, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 11, 18, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 11, 5, `fclose`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 12, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 12, 5, `ferror`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 12, 12, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 12, 12, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 12, 16, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 12, 18, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 12, 18, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 12, 5, `ferror`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 13, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 13, 5, `fseek`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 13, 11, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 13, 11, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 13, 15, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 13, 17, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 13, 17, `stream`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 13, 25, `long`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `long`,
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 13, 30, `offset`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 13, 30, `offset`),
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 13, 38, `int`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `int`,
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 13, 42, `origin`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 13, 42, `origin`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 13, 5, `fseek`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 14, 1, `long`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `long`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 14, 6, `ftell`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 14, 12, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 14, 12, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 14, 16, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 14, 18, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 14, 18, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 14, 6, `ftell`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 15, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 15, 6, `rewind`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 15, 13, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 15, 13, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 15, 17, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 15, 19, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 15, 19, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 15, 6, `rewind`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (identifier, 16, 1, `size_t`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_TYPEDEF_NAME,
+					typedef_name: (identifier, 16, 1, `size_t`),
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 16, 8, `fread`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 16, 14, `void`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `void`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 16, 18, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 16, 20, `buffer`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 16, 20, `buffer`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 16, 28, `size_t`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 16, 28, `size_t`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 16, 35, `size`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 16, 35, `size`),
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 16, 41, `size_t`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 16, 41, `size_t`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 16, 48, `count`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 16, 48, `count`),
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 16, 55, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 16, 55, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 16, 59, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 16, 61, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 16, 61, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 16, 8, `fread`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 17, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 17, 5, `fputc`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 17, 11, `int`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `int`,
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 17, 15, `c`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 17, 15, `c`),
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 17, 18, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 17, 18, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 17, 22, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 17, 24, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 17, 24, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 17, 5, `fputc`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 18, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 18, 5, `fputs`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 18, 11, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 18, 17, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 18, 21, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 18, 23, `str`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 18, 23, `str`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 18, 28, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 18, 28, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 18, 32, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 18, 34, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 18, 34, `stream`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 18, 5, `fputs`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 19, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 19, 5, `fprintf`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: true,
+						param_decls: [
+							ParamDecl: {
+								token: (identifier, 19, 13, `FILE`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 19, 13, `FILE`),
+									},
+								],
+								Declarator: {
+									token: (symbol, 19, 17, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 19, 19, `stream`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 19, 19, `stream`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 19, 27, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 19, 33, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 19, 37, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 19, 39, `format`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 19, 39, `format`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 19, 5, `fprintf`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 20, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 20, 5, `vsnprintf`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 20, 15, `char`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 20, 19, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 20, 21, `buffer`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 20, 21, `buffer`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 20, 29, `size_t`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 20, 29, `size_t`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 20, 36, `count`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 20, 36, `count`),
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 20, 43, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 20, 49, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 20, 53, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 20, 55, `format`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 20, 55, `format`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 20, 63, `va_list`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 20, 63, `va_list`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 20, 71, `args`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 20, 71, `args`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 20, 5, `vsnprintf`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 4, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 4, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 4, 7, `malloc`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (identifier, 4, 14, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 4, 14, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 4, 21, `size`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 4, 21, `size`),
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 4, 7, `malloc`),
+							},
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 5, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 5, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 5, 7, `calloc`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (identifier, 5, 14, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 5, 14, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 5, 21, `count`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 5, 21, `count`),
+									},
+								},
+								ParamDecl: {
+									token: (identifier, 5, 28, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 5, 28, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 5, 35, `size`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 5, 35, `size`),
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 5, 7, `calloc`),
+							},
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 6, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 6, 6, `free`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 6, 11, `void`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `void`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 6, 15, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 6, 17, `p`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 6, 17, `p`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 6, 6, `free`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 7, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 7, 6, `abort`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 7, 12, `void`),
+								is_abs: true,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `void`,
+									},
+								],
+								Declarator: null,
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 7, 6, `abort`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 8, 1, `double`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `double`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 8, 8, `strtod`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 8, 15, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 8, 21, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 8, 25, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 8, 27, `str`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 8, 27, `str`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 8, 32, `char`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 8, 36, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: {
+											token: (symbol, 8, 37, `*`),
+											type_qualifiers: [],
+											Pointer: null,
+										},
+									},
+									DirectDeclarator: {
+										token: (identifier, 8, 39, `end`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 8, 39, `end`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 8, 8, `strtod`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 9, 1, `float`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `float`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 9, 7, `strtof`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 9, 14, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 9, 20, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 9, 24, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 9, 26, `str`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 9, 26, `str`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 9, 31, `char`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 9, 35, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: {
+											token: (symbol, 9, 36, `*`),
+											type_qualifiers: [],
+											Pointer: null,
+										},
+									},
+									DirectDeclarator: {
+										token: (identifier, 9, 38, `end`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 9, 38, `end`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 9, 7, `strtof`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 10, 1, `long`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `long`,
+				},
+				TypeSpec: {
+					token: (keyword, 10, 6, `double`),
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `double`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 10, 13, `strtold`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 10, 21, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 10, 27, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 10, 31, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 10, 33, `str`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 10, 33, `str`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 10, 38, `char`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 10, 42, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: {
+											token: (symbol, 10, 43, `*`),
+											type_qualifiers: [],
+											Pointer: null,
+										},
+									},
+									DirectDeclarator: {
+										token: (identifier, 10, 45, `end`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 10, 45, `end`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 10, 13, `strtold`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (identifier, 4, 1, `size_t`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_TYPEDEF_NAME,
+					typedef_name: (identifier, 4, 1, `size_t`),
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 4, 8, `strlen`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 4, 15, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 4, 21, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 4, 25, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 4, 27, `str`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 4, 27, `str`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 4, 8, `strlen`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 5, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 5, 5, `strcmp`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 5, 12, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 5, 18, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 5, 22, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 5, 24, `a`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 5, 24, `a`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 5, 27, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 5, 33, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 5, 37, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 5, 39, `b`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 5, 39, `b`),
+									},
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 5, 5, `strcmp`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 6, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 6, 5, `strncmp`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 6, 13, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 6, 19, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 6, 23, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 6, 25, `a`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 6, 25, `a`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 6, 28, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 6, 34, `char`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `char`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 6, 38, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 6, 40, `b`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 6, 40, `b`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 6, 43, `size_t`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 6, 43, `size_t`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 6, 50, `count`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 6, 50, `count`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 6, 5, `strncmp`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 7, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 7, 5, `memcmp`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 7, 12, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 7, 18, `void`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `void`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 7, 22, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 7, 24, `a`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 7, 24, `a`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (keyword, 7, 27, `const`),
+								is_abs: false,
+								decl_specs: [
+									DeclSpec: {
+										specifier_type: SPEC_KEYWORD,
+										keyword: `const`,
+									},
+									TypeSpec: {
+										token: (keyword, 7, 33, `void`),
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `void`,
+									},
+								],
+								Declarator: {
+									token: (symbol, 7, 37, `*`),
+									Pointer: {
+										type_qualifiers: [],
+										Pointer: null,
+									},
+									DirectDeclarator: {
+										token: (identifier, 7, 39, `b`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 7, 39, `b`),
+									},
+								},
+							},
+							ParamDecl: {
+								token: (identifier, 7, 42, `size_t`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_TYPEDEF_NAME,
+										typedef_name: (identifier, 7, 42, `size_t`),
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 7, 49, `size`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 7, 49, `size`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 7, 5, `memcmp`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 8, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 8, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 8, 7, `memcpy`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (keyword, 8, 14, `void`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `void`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 8, 18, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 8, 20, `dst`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 8, 20, `dst`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (keyword, 8, 25, `const`),
+									is_abs: false,
+									decl_specs: [
+										DeclSpec: {
+											specifier_type: SPEC_KEYWORD,
+											keyword: `const`,
+										},
+										TypeSpec: {
+											token: (keyword, 8, 31, `void`),
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `void`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 8, 35, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 8, 37, `src`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 8, 37, `src`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (identifier, 8, 42, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 8, 42, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 8, 49, `size`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 8, 49, `size`),
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 8, 7, `memcpy`),
+							},
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 9, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 9, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 9, 7, `memmove`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (keyword, 9, 15, `void`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `void`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 9, 19, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 9, 21, `dst`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 9, 21, `dst`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (keyword, 9, 26, `const`),
+									is_abs: false,
+									decl_specs: [
+										DeclSpec: {
+											specifier_type: SPEC_KEYWORD,
+											keyword: `const`,
+										},
+										TypeSpec: {
+											token: (keyword, 9, 32, `void`),
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `void`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 9, 36, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 9, 38, `src`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 9, 38, `src`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (identifier, 9, 43, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 9, 43, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 9, 50, `size`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 9, 50, `size`),
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 9, 7, `memmove`),
+							},
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
+			token: (keyword, 10, 1, `void`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `void`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (symbol, 10, 5, `*`),
+					Declarator: {
+						Pointer: {
+							type_qualifiers: [],
+							Pointer: null,
+						},
+						DirectDeclarator: {
+							token: (identifier, 10, 7, `memset`),
+							decl_type: DECLARATOR_FUNC,
+							is_variadic: false,
+							param_decls: [
+								ParamDecl: {
+									token: (keyword, 10, 14, `void`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `void`,
+										},
+									],
+									Declarator: {
+										token: (symbol, 10, 18, `*`),
+										Pointer: {
+											type_qualifiers: [],
+											Pointer: null,
+										},
+										DirectDeclarator: {
+											token: (identifier, 10, 20, `dst`),
+											decl_type: DECLARATOR_ID,
+											identifier: (identifier, 10, 20, `dst`),
+										},
+									},
+								},
+								ParamDecl: {
+									token: (keyword, 10, 25, `int`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_KEYWORD,
+											keyword_spec: `int`,
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 10, 29, `value`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 10, 29, `value`),
+									},
+								},
+								ParamDecl: {
+									token: (identifier, 10, 36, `size_t`),
+									is_abs: false,
+									decl_specs: [
+										TypeSpec: {
+											spec_type: TYPE_SPEC_TYPEDEF_NAME,
+											typedef_name: (identifier, 10, 36, `size_t`),
+										},
+									],
+									DirectDeclarator: {
+										token: (identifier, 10, 43, `size`),
+										decl_type: DECLARATOR_ID,
+										identifier: (identifier, 10, 43, `size`),
+									},
+								},
+							],
+							DirectDeclarator: {
+								decl_type: DECLARATOR_ID,
+								identifier: (identifier, 10, 7, `memset`),
+							},
+						},
 					},
 					Initializer: null,
 				},
@@ -6587,6 +8519,46 @@ TU: {
 			],
 		},
 		VarDecl: {
+			token: (keyword, 3, 1, `int`),
+			decl_specs: [
+				TypeSpec: {
+					spec_type: TYPE_SPEC_KEYWORD,
+					keyword_spec: `int`,
+				},
+			],
+			init_decls: [
+				InitDecl: {
+					token: (identifier, 3, 5, `isinf`),
+					DirectDeclarator: {
+						decl_type: DECLARATOR_FUNC,
+						is_variadic: false,
+						param_decls: [
+							ParamDecl: {
+								token: (keyword, 3, 11, `double`),
+								is_abs: false,
+								decl_specs: [
+									TypeSpec: {
+										spec_type: TYPE_SPEC_KEYWORD,
+										keyword_spec: `double`,
+									},
+								],
+								DirectDeclarator: {
+									token: (identifier, 3, 18, `x`),
+									decl_type: DECLARATOR_ID,
+									identifier: (identifier, 3, 18, `x`),
+								},
+							},
+						],
+						DirectDeclarator: {
+							decl_type: DECLARATOR_ID,
+							identifier: (identifier, 3, 5, `isinf`),
+						},
+					},
+					Initializer: null,
+				},
+			],
+		},
+		VarDecl: {
 			token: (keyword, 6, 1, `typedef`),
 			decl_specs: [
 				DeclSpec: {
@@ -9589,9 +11561,9 @@ TU: {
 														Declarator: null,
 													},
 													PrimaryExpression: {
-														token: (identifier, 54, 79, `INTMAX_MAX`),
-														primary_type: PRIMARY_IDENTIFIER,
-														identifier: (identifier, 54, 79, `INTMAX_MAX`),
+														token: (integer, 54, 79, `9223372036854775807LL`),
+														primary_type: PRIMARY_INTEGER_CONSTANT,
+														integer_constant: (integer, 54, 79, `9223372036854775807LL`),
 													},
 												},
 											},
@@ -18310,120 +20282,133 @@ TU: {
 					],
 				},
 				Statement: {
-					token: (identifier, 278, 5, `assert`),
+					token: (symbol, 278, 5, `(`),
 					stmt_type: STMT_EXPRESSION,
 					expression: [
-						PostfixExpression: {
-							token: (symbol, 278, 11, `(`),
-							expr_type: POSTFIX_FUNC_CALL,
-							PrimaryExpression: {
-								token: (identifier, 278, 5, `assert`),
-								primary_type: PRIMARY_IDENTIFIER,
-								identifier: (identifier, 278, 5, `assert`),
-							},
-							args: [
-								BinaryExpression: {
-									token: (symbol, 278, 44, `&&`),
-									op: `&&`,
-									left: {
-										BinaryExpression: {
-											token: (symbol, 278, 21, `&&`),
-											op: `&&`,
-											left: {
-												BinaryExpression: {
-													token: (symbol, 278, 16, `>=`),
-													op: `>=`,
-													left: {
-														PrimaryExpression: {
-															token: (identifier, 278, 12, `end`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 278, 12, `end`),
-														},
-													},
-													right: {
-														PrimaryExpression: {
-															token: (integer, 278, 19, `1`),
-															primary_type: PRIMARY_INTEGER_CONSTANT,
-															integer_constant: (integer, 278, 19, `1`),
-														},
-													},
-												},
+						PrimaryExpression: {
+							primary_type: PRIMARY_EXPRESSION,
+							expr: [
+								CastExpression: {
+									token: (symbol, 278, 5, `(`),
+									TypeName: {
+										token: (keyword, 278, 5, `void`),
+										spec_qual_list: [
+											TypeSpec: {
+												spec_type: TYPE_SPEC_KEYWORD,
+												keyword_spec: `void`,
 											},
-											right: {
-												BinaryExpression: {
-													token: (symbol, 278, 36, `==`),
-													op: `==`,
-													left: {
-														PostfixExpression: {
-															token: (symbol, 278, 32, `[`),
-															expr_type: POSTFIX_ARRAY_ACCESS,
-															PostfixExpression: {
-																token: (symbol, 278, 25, `->`),
-																expr_type: POSTFIX_OP,
-																op_type: POSTFIX_MEMBER_ACCESS_PTR,
-																identifier: (identifier, 278, 27, `value`),
-																PrimaryExpression: {
-																	token: (identifier, 278, 24, `t`),
-																	primary_type: PRIMARY_IDENTIFIER,
-																	identifier: (identifier, 278, 24, `t`),
+										],
+										Declarator: null,
+									},
+									PrimaryExpression: {
+										token: (symbol, 278, 5, `(`),
+										primary_type: PRIMARY_EXPRESSION,
+										expr: [
+											BinaryExpression: {
+												token: (symbol, 278, 5, `&&`),
+												op: `&&`,
+												left: {
+													BinaryExpression: {
+														token: (symbol, 278, 5, `&&`),
+														op: `&&`,
+														left: {
+															BinaryExpression: {
+																token: (symbol, 278, 5, `>=`),
+																op: `>=`,
+																left: {
+																	PrimaryExpression: {
+																		token: (identifier, 278, 5, `end`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 278, 5, `end`),
+																	},
+																},
+																right: {
+																	PrimaryExpression: {
+																		token: (integer, 278, 5, `1`),
+																		primary_type: PRIMARY_INTEGER_CONSTANT,
+																		integer_constant: (integer, 278, 5, `1`),
+																	},
 																},
 															},
-															index_expr: [
-																PrimaryExpression: {
-																	token: (integer, 278, 33, `0`),
-																	primary_type: PRIMARY_INTEGER_CONSTANT,
-																	integer_constant: (integer, 278, 33, `0`),
+														},
+														right: {
+															BinaryExpression: {
+																token: (symbol, 278, 5, `==`),
+																op: `==`,
+																left: {
+																	PostfixExpression: {
+																		token: (symbol, 278, 5, `[`),
+																		expr_type: POSTFIX_ARRAY_ACCESS,
+																		PostfixExpression: {
+																			token: (symbol, 278, 5, `->`),
+																			expr_type: POSTFIX_OP,
+																			op_type: POSTFIX_MEMBER_ACCESS_PTR,
+																			identifier: (identifier, 278, 5, `value`),
+																			PrimaryExpression: {
+																				token: (identifier, 278, 5, `t`),
+																				primary_type: PRIMARY_IDENTIFIER,
+																				identifier: (identifier, 278, 5, `t`),
+																			},
+																		},
+																		index_expr: [
+																			PrimaryExpression: {
+																				token: (integer, 278, 5, `0`),
+																				primary_type: PRIMARY_INTEGER_CONSTANT,
+																				integer_constant: (integer, 278, 5, `0`),
+																			},
+																		],
+																	},
 																},
-															],
+																right: {
+																	PrimaryExpression: {
+																		token: (char, 278, 5, `'\''`),
+																		primary_type: PRIMARY_CHARACTER_CONSTANT,
+																		character_constant: (char, 278, 5, `'\''`),
+																	},
+																},
+															},
 														},
 													},
-													right: {
-														PrimaryExpression: {
-															token: (char, 278, 39, `'\''`),
-															primary_type: PRIMARY_CHARACTER_CONSTANT,
-															character_constant: (char, 278, 39, `'\''`),
+												},
+												right: {
+													BinaryExpression: {
+														token: (symbol, 278, 5, `==`),
+														op: `==`,
+														left: {
+															PostfixExpression: {
+																token: (symbol, 278, 5, `[`),
+																expr_type: POSTFIX_ARRAY_ACCESS,
+																PostfixExpression: {
+																	token: (symbol, 278, 5, `->`),
+																	expr_type: POSTFIX_OP,
+																	op_type: POSTFIX_MEMBER_ACCESS_PTR,
+																	identifier: (identifier, 278, 5, `value`),
+																	PrimaryExpression: {
+																		token: (identifier, 278, 5, `t`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 278, 5, `t`),
+																	},
+																},
+																index_expr: [
+																	PrimaryExpression: {
+																		token: (identifier, 278, 5, `end`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 278, 5, `end`),
+																	},
+																],
+															},
+														},
+														right: {
+															PrimaryExpression: {
+																token: (char, 278, 5, `'\''`),
+																primary_type: PRIMARY_CHARACTER_CONSTANT,
+																character_constant: (char, 278, 5, `'\''`),
+															},
 														},
 													},
 												},
 											},
-										},
-									},
-									right: {
-										BinaryExpression: {
-											token: (symbol, 278, 61, `==`),
-											op: `==`,
-											left: {
-												PostfixExpression: {
-													token: (symbol, 278, 55, `[`),
-													expr_type: POSTFIX_ARRAY_ACCESS,
-													PostfixExpression: {
-														token: (symbol, 278, 48, `->`),
-														expr_type: POSTFIX_OP,
-														op_type: POSTFIX_MEMBER_ACCESS_PTR,
-														identifier: (identifier, 278, 50, `value`),
-														PrimaryExpression: {
-															token: (identifier, 278, 47, `t`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 278, 47, `t`),
-														},
-													},
-													index_expr: [
-														PrimaryExpression: {
-															token: (identifier, 278, 56, `end`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 278, 56, `end`),
-														},
-													],
-												},
-											},
-											right: {
-												PrimaryExpression: {
-													token: (char, 278, 64, `'\''`),
-													primary_type: PRIMARY_CHARACTER_CONSTANT,
-													character_constant: (char, 278, 64, `'\''`),
-												},
-											},
-										},
+										],
 									},
 								},
 							],
@@ -19432,120 +21417,133 @@ TU: {
 					],
 				},
 				Statement: {
-					token: (identifier, 306, 5, `assert`),
+					token: (symbol, 306, 5, `(`),
 					stmt_type: STMT_EXPRESSION,
 					expression: [
-						PostfixExpression: {
-							token: (symbol, 306, 11, `(`),
-							expr_type: POSTFIX_FUNC_CALL,
-							PrimaryExpression: {
-								token: (identifier, 306, 5, `assert`),
-								primary_type: PRIMARY_IDENTIFIER,
-								identifier: (identifier, 306, 5, `assert`),
-							},
-							args: [
-								BinaryExpression: {
-									token: (symbol, 306, 43, `&&`),
-									op: `&&`,
-									left: {
-										BinaryExpression: {
-											token: (symbol, 306, 21, `&&`),
-											op: `&&`,
-											left: {
-												BinaryExpression: {
-													token: (symbol, 306, 16, `>=`),
-													op: `>=`,
-													left: {
-														PrimaryExpression: {
-															token: (identifier, 306, 12, `end`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 306, 12, `end`),
-														},
-													},
-													right: {
-														PrimaryExpression: {
-															token: (integer, 306, 19, `1`),
-															primary_type: PRIMARY_INTEGER_CONSTANT,
-															integer_constant: (integer, 306, 19, `1`),
-														},
-													},
-												},
+						PrimaryExpression: {
+							primary_type: PRIMARY_EXPRESSION,
+							expr: [
+								CastExpression: {
+									token: (symbol, 306, 5, `(`),
+									TypeName: {
+										token: (keyword, 306, 5, `void`),
+										spec_qual_list: [
+											TypeSpec: {
+												spec_type: TYPE_SPEC_KEYWORD,
+												keyword_spec: `void`,
 											},
-											right: {
-												BinaryExpression: {
-													token: (symbol, 306, 36, `==`),
-													op: `==`,
-													left: {
-														PostfixExpression: {
-															token: (symbol, 306, 32, `[`),
-															expr_type: POSTFIX_ARRAY_ACCESS,
-															PostfixExpression: {
-																token: (symbol, 306, 25, `->`),
-																expr_type: POSTFIX_OP,
-																op_type: POSTFIX_MEMBER_ACCESS_PTR,
-																identifier: (identifier, 306, 27, `value`),
-																PrimaryExpression: {
-																	token: (identifier, 306, 24, `t`),
-																	primary_type: PRIMARY_IDENTIFIER,
-																	identifier: (identifier, 306, 24, `t`),
+										],
+										Declarator: null,
+									},
+									PrimaryExpression: {
+										token: (symbol, 306, 5, `(`),
+										primary_type: PRIMARY_EXPRESSION,
+										expr: [
+											BinaryExpression: {
+												token: (symbol, 306, 5, `&&`),
+												op: `&&`,
+												left: {
+													BinaryExpression: {
+														token: (symbol, 306, 5, `&&`),
+														op: `&&`,
+														left: {
+															BinaryExpression: {
+																token: (symbol, 306, 5, `>=`),
+																op: `>=`,
+																left: {
+																	PrimaryExpression: {
+																		token: (identifier, 306, 5, `end`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 306, 5, `end`),
+																	},
+																},
+																right: {
+																	PrimaryExpression: {
+																		token: (integer, 306, 5, `1`),
+																		primary_type: PRIMARY_INTEGER_CONSTANT,
+																		integer_constant: (integer, 306, 5, `1`),
+																	},
 																},
 															},
-															index_expr: [
-																PrimaryExpression: {
-																	token: (integer, 306, 33, `0`),
-																	primary_type: PRIMARY_INTEGER_CONSTANT,
-																	integer_constant: (integer, 306, 33, `0`),
+														},
+														right: {
+															BinaryExpression: {
+																token: (symbol, 306, 5, `==`),
+																op: `==`,
+																left: {
+																	PostfixExpression: {
+																		token: (symbol, 306, 5, `[`),
+																		expr_type: POSTFIX_ARRAY_ACCESS,
+																		PostfixExpression: {
+																			token: (symbol, 306, 5, `->`),
+																			expr_type: POSTFIX_OP,
+																			op_type: POSTFIX_MEMBER_ACCESS_PTR,
+																			identifier: (identifier, 306, 5, `value`),
+																			PrimaryExpression: {
+																				token: (identifier, 306, 5, `t`),
+																				primary_type: PRIMARY_IDENTIFIER,
+																				identifier: (identifier, 306, 5, `t`),
+																			},
+																		},
+																		index_expr: [
+																			PrimaryExpression: {
+																				token: (integer, 306, 5, `0`),
+																				primary_type: PRIMARY_INTEGER_CONSTANT,
+																				integer_constant: (integer, 306, 5, `0`),
+																			},
+																		],
+																	},
 																},
-															],
+																right: {
+																	PrimaryExpression: {
+																		token: (char, 306, 5, `'"'`),
+																		primary_type: PRIMARY_CHARACTER_CONSTANT,
+																		character_constant: (char, 306, 5, `'"'`),
+																	},
+																},
+															},
 														},
 													},
-													right: {
-														PrimaryExpression: {
-															token: (char, 306, 39, `'"'`),
-															primary_type: PRIMARY_CHARACTER_CONSTANT,
-															character_constant: (char, 306, 39, `'"'`),
+												},
+												right: {
+													BinaryExpression: {
+														token: (symbol, 306, 5, `==`),
+														op: `==`,
+														left: {
+															PostfixExpression: {
+																token: (symbol, 306, 5, `[`),
+																expr_type: POSTFIX_ARRAY_ACCESS,
+																PostfixExpression: {
+																	token: (symbol, 306, 5, `->`),
+																	expr_type: POSTFIX_OP,
+																	op_type: POSTFIX_MEMBER_ACCESS_PTR,
+																	identifier: (identifier, 306, 5, `value`),
+																	PrimaryExpression: {
+																		token: (identifier, 306, 5, `t`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 306, 5, `t`),
+																	},
+																},
+																index_expr: [
+																	PrimaryExpression: {
+																		token: (identifier, 306, 5, `end`),
+																		primary_type: PRIMARY_IDENTIFIER,
+																		identifier: (identifier, 306, 5, `end`),
+																	},
+																],
+															},
+														},
+														right: {
+															PrimaryExpression: {
+																token: (char, 306, 5, `'"'`),
+																primary_type: PRIMARY_CHARACTER_CONSTANT,
+																character_constant: (char, 306, 5, `'"'`),
+															},
 														},
 													},
 												},
 											},
-										},
-									},
-									right: {
-										BinaryExpression: {
-											token: (symbol, 306, 60, `==`),
-											op: `==`,
-											left: {
-												PostfixExpression: {
-													token: (symbol, 306, 54, `[`),
-													expr_type: POSTFIX_ARRAY_ACCESS,
-													PostfixExpression: {
-														token: (symbol, 306, 47, `->`),
-														expr_type: POSTFIX_OP,
-														op_type: POSTFIX_MEMBER_ACCESS_PTR,
-														identifier: (identifier, 306, 49, `value`),
-														PrimaryExpression: {
-															token: (identifier, 306, 46, `t`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 306, 46, `t`),
-														},
-													},
-													index_expr: [
-														PrimaryExpression: {
-															token: (identifier, 306, 55, `end`),
-															primary_type: PRIMARY_IDENTIFIER,
-															identifier: (identifier, 306, 55, `end`),
-														},
-													],
-												},
-											},
-											right: {
-												PrimaryExpression: {
-													token: (char, 306, 63, `'"'`),
-													primary_type: PRIMARY_CHARACTER_CONSTANT,
-													character_constant: (char, 306, 63, `'"'`),
-												},
-											},
-										},
+										],
 									},
 								},
 							],
@@ -28054,22 +30052,35 @@ TU: {
 																identifier: (identifier, 393, 18, `PP_HEADER_NAME`),
 															},
 															Statement: {
-																token: (identifier, 394, 17, `assert`),
+																token: (symbol, 394, 17, `(`),
 																stmt_type: STMT_EXPRESSION,
 																expression: [
-																	PostfixExpression: {
-																		token: (symbol, 394, 23, `(`),
-																		expr_type: POSTFIX_FUNC_CALL,
-																		PrimaryExpression: {
-																			token: (identifier, 394, 17, `assert`),
-																			primary_type: PRIMARY_IDENTIFIER,
-																			identifier: (identifier, 394, 17, `assert`),
-																		},
-																		args: [
-																			PrimaryExpression: {
-																				token: (integer, 394, 24, `0`),
-																				primary_type: PRIMARY_INTEGER_CONSTANT,
-																				integer_constant: (integer, 394, 24, `0`),
+																	PrimaryExpression: {
+																		primary_type: PRIMARY_EXPRESSION,
+																		expr: [
+																			CastExpression: {
+																				token: (symbol, 394, 17, `(`),
+																				TypeName: {
+																					token: (keyword, 394, 17, `void`),
+																					spec_qual_list: [
+																						TypeSpec: {
+																							spec_type: TYPE_SPEC_KEYWORD,
+																							keyword_spec: `void`,
+																						},
+																					],
+																					Declarator: null,
+																				},
+																				PrimaryExpression: {
+																					token: (symbol, 394, 17, `(`),
+																					primary_type: PRIMARY_EXPRESSION,
+																					expr: [
+																						PrimaryExpression: {
+																							token: (integer, 394, 17, `0`),
+																							primary_type: PRIMARY_INTEGER_CONSTANT,
+																							integer_constant: (integer, 394, 17, `0`),
+																						},
+																					],
+																				},
 																			},
 																		],
 																	},

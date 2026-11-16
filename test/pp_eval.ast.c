@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void *va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void *placeholder;
 } FILE;
+extern FILE *stderr;
+FILE *fopen(const char *filename, const char *mode);
+int fclose(FILE *stream);
+int ferror(FILE *stream);
+int fseek(FILE *stream, long offset, int origin);
+long ftell(FILE *stream);
+void rewind(FILE *stream);
+size_t fread(void *buffer, size_t size, size_t count, FILE *stream);
+int fputc(int c, FILE *stream);
+int fputs(const char *str, FILE *stream);
+int fprintf(FILE *stream, const char *format, ...);
+int vsnprintf(char *buffer, size_t count, const char *format, va_list args);
+void *malloc(size_t size);
+void *calloc(size_t count, size_t size);
+void free(void *p);
+void abort(void);
+double strtod(const char *str, char **end);
+float strtof(const char *str, char **end);
+long double strtold(const char *str, char **end);
+size_t strlen(const char *str);
+int strcmp(const char *a, const char *b);
+int strncmp(const char *a, const char *b, size_t count);
+int memcmp(const void *a, const void *b, size_t size);
+void *memcpy(void *dst, const void *src, size_t size);
+void *memmove(void *dst, const void *src, size_t size);
+void *memset(void *dst, int value, size_t size);
 typedef char *string;
 typedef void *ptr;
 void init(void);
@@ -366,7 +395,7 @@ static inline ppIntValue pp_bool(ppIntValue b) {
     return ((ppIntValue){.value.sign = (is_true(b) ? 1 : 0), .is_unsigned = 0});
 }
 static ppIntValue eval_number_literal(ppContext *ctx, ppToken *t, _Bool skip) {
-    assert(t != ((void *)0) && t->type == PP_NUMBER);
+    ((void)(t != ((void *)0) && t->type == PP_NUMBER));
     string s = t->value;
     IntLiteral literal = parse_int_digits(s);
     unsigned base = literal.base;
@@ -416,7 +445,7 @@ static ppIntValue eval_number_literal(ppContext *ctx, ppToken *t, _Bool skip) {
     }
     if (u)
         return ((ppIntValue){.value.unsign = (v), .is_unsigned = 1});
-    if (v > (uintmax_t)INTMAX_MAX) {
+    if (v > (uintmax_t)9223372036854775807LL) {
         if (base == 10 && !skip)
             fprintf(stderr, "[Preprocess Warning] at %s:%zu:%zu: %s\n", ctx->lexer->filename, t->line, t->column, "Integer constant is so large that it is unsigned");
         return ((ppIntValue){.value.unsign = (v), .is_unsigned = 1});
@@ -424,7 +453,7 @@ static ppIntValue eval_number_literal(ppContext *ctx, ppToken *t, _Bool skip) {
     return ((ppIntValue){.value.sign = ((intmax_t)v), .is_unsigned = 0});
 }
 static int eval_char_literal(ppContext *ctx, ppToken *t, _Bool skip) {
-    assert(t != ((void *)0) && t->type == PP_CHAR);
+    ((void)(t != ((void *)0) && t->type == PP_CHAR));
     string s = t->value;
     size_t end = strlen(s) - 1;
     size_t i = 1;
@@ -545,7 +574,7 @@ static ppIntValue eval_multiplicative_expr(ppContext *ctx, _Bool skip) {
                 result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});
                 break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                if (!right.is_unsigned && get_sign(result) == (-9223372036854775807LL - 1) && get_sign(right) == -1) {
                     if (!skip)
                         fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = 1, ctx->lexer->filename), t->line, t->column, "Integer constant expression overflow");
                     result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});
@@ -560,7 +589,7 @@ static ppIntValue eval_multiplicative_expr(ppContext *ctx, _Bool skip) {
                 result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});
                 break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                if (!right.is_unsigned && get_sign(result) == (-9223372036854775807LL - 1) && get_sign(right) == -1) {
                     if (!skip)
                         fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = 1, ctx->lexer->filename), t->line, t->column, "Integer constant expression overflow");
                     result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});
@@ -611,7 +640,7 @@ static ppIntValue eval_shift_expr(ppContext *ctx, _Bool skip) {
             }
         } else
             n = (uintmax_t)get_sign(right);
-        if (n >= sizeof(intmax_t) * CHAR_BIT) {
+        if (n >= sizeof(intmax_t) * 8) {
             if (!skip) {
                 fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = 1, ctx->lexer->filename), t->line, t->column, "Shift count too large");
                 result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});
@@ -621,7 +650,7 @@ static ppIntValue eval_shift_expr(ppContext *ctx, _Bool skip) {
         }
         if (t->value == SYMBOL_L_SHIFT) {
             uintmax_t shifted = get_unsign(result) << n;
-            if (!result.is_unsigned && shifted > (uintmax_t)INTMAX_MAX) {
+            if (!result.is_unsigned && shifted > (uintmax_t)9223372036854775807LL) {
                 if (!skip)
                     fprintf(stderr, "[Preprocess Error] at %s:%zu:%zu: %s\n", (has_error = 1, ctx->lexer->filename), t->line, t->column, "Integer constant expression overflow");
                 result = ((ppIntValue){.value.sign = (0), .is_unsigned = 0});

@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void* va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void* placeholder;
 } FILE;
+extern FILE* stderr;
+FILE* fopen(const char* filename, const char* mode);
+int fclose(FILE* stream);
+int ferror(FILE* stream);
+int fseek(FILE* stream, long offset, int origin);
+long ftell(FILE* stream);
+void rewind(FILE* stream);
+size_t fread(void* buffer, size_t size, size_t count, FILE* stream);
+int fputc(int c, FILE* stream);
+int fputs(const char* str, FILE* stream);
+int fprintf(FILE* stream, const char* format, ...);
+int vsnprintf(char* buffer, size_t count, const char* format, va_list args);
+void* malloc(size_t size);
+void* calloc(size_t count, size_t size);
+void free(void* p);
+void abort(void);
+double strtod(const char* str, char** end);
+float strtof(const char* str, char** end);
+long double strtold(const char* str, char** end);
+size_t strlen(const char* str);
+int strcmp(const char* a, const char* b);
+int strncmp(const char* a, const char* b, size_t count);
+int memcmp(const void* a, const void* b, size_t size);
+void* memcpy(void* dst, const void* src, size_t size);
+void* memmove(void* dst, const void* src, size_t size);
+void* memset(void* dst, int value, size_t size);
 typedef char* string;
 typedef void* ptr;
 void init(void);
@@ -854,7 +883,7 @@ static Token* get(Parser* parser) {
     return t;
 }
 static Token* peek2(Parser* parser) {
-    assert(parser->next != ((void*)0) );
+    ((void)(parser->next != ((void*)0))) ;
     Token* t = ((Token*)((parser)->next->data)) ;
     if (((t)->type == TOKEN_EOF) || parser->next->next == ((void*)0) )
         return t;
@@ -862,7 +891,7 @@ static Token* peek2(Parser* parser) {
 }
 static _Bool check(Parser* parser, TokenType type, string value) {
     Token* t = ((Token*)((parser)->next->data)) ;
-    assert(t != ((void*)0) );
+    ((void)(t != ((void*)0))) ;
     return t->type == type && (value == ((void*)0) || t->value == value);
 }
 static Token* expect(Parser* parser, TokenType type, string value, string msg) {
@@ -1012,7 +1041,7 @@ static Token* get_declarator_identifier(DirectDeclarator* decl) {
         case DECLARATOR_INCOMPLETE_ARRAY:
             return get_declarator_identifier(decl->decl.incomplete_array.direct_declarator);
         default:
-            assert(0);
+            ((void)(0)) ;
     }
 }
 static _Bool has_typedef(List_DeclSpec* decl_specs) {
@@ -1355,7 +1384,7 @@ static SelectionStatement* parse_selection_stmt(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'switch' condition");
         synchronize_paren(parser, paren_depth);
         selection->selection.switch_stmt.stmt = parse_statement(parser);
-    } else assert(0);
+    } else ((void)(0)) ;
     (parser->current_scope = parser->current_scope->parent) ;
     return selection;
 }
@@ -1404,7 +1433,7 @@ static IterationStatement* parse_iteration_stmt(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after 'for' increment");
         synchronize_paren(parser, paren_depth);
         iteration->loop.for_stmt.stmt = parse_statement(parser);
-    } else assert(0);
+    } else ((void)(0)) ;
     (parser->current_scope = parser->current_scope->parent) ;
     return iteration;
 }
@@ -1426,7 +1455,7 @@ static JumpStatement* parse_jump_stmt(Parser* parser) {
         jump->jump.expr = ((void*)0) ;
         if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
             jump->jump.expr = parse_expression(parser);
-    } else assert(0);
+    } else ((void)(0)) ;
     expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after jump statement");
     return jump;
 }
@@ -1654,7 +1683,7 @@ static Designator* parse_designator(Parser* parser) {
         designator->designator.constant_expr = parse_conditional_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' after array index in designator");
     } else
-        assert(0);
+        ((void)(0)) ;
     return designator;
 }
 static Initializer* parse_initializer(Parser* parser);
@@ -1785,7 +1814,7 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
             else if (type->spec.enum_spec.identifier == ((void*)0) && enumerators == ((void*)0) )
                 report_error(parser, (t), ("Expected tag name or '{' after 'enum'")) ;
         } else
-            assert(0);
+            ((void)(0)) ;
     } else if (t->type == TOKEN_IDENTIFIER && is_typedef_name(parser, t->value)) {
         t = get(parser);
         type->spec_type = TYPE_SPEC_TYPEDEF_NAME;

@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void* va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void* placeholder;
 } FILE;
+extern FILE* stderr;
+FILE* fopen(const char* filename, const char* mode);
+int fclose(FILE* stream);
+int ferror(FILE* stream);
+int fseek(FILE* stream, long offset, int origin);
+long ftell(FILE* stream);
+void rewind(FILE* stream);
+size_t fread(void* buffer, size_t size, size_t count, FILE* stream);
+int fputc(int c, FILE* stream);
+int fputs(const char* str, FILE* stream);
+int fprintf(FILE* stream, const char* format, ...);
+int vsnprintf(char* buffer, size_t count, const char* format, va_list args);
+void* malloc(size_t size);
+void* calloc(size_t count, size_t size);
+void free(void* p);
+void abort(void);
+double strtod(const char* str, char** end);
+float strtof(const char* str, char** end);
+long double strtold(const char* str, char** end);
+size_t strlen(const char* str);
+int strcmp(const char* a, const char* b);
+int strncmp(const char* a, const char* b, size_t count);
+int memcmp(const void* a, const void* b, size_t size);
+void* memcpy(void* dst, const void* src, size_t size);
+void* memmove(void* dst, const void* src, size_t size);
+void* memset(void* dst, int value, size_t size);
 typedef char* string;
 typedef void* ptr;
 void init(void);
@@ -278,16 +307,11 @@ _Bool path_exists(const Path* p);
 _Bool path_is_dir(const Path* p);
 void add_include_dir(string dir);
 string find_file(string name, _Bool is_system, string current_file);
-typedef long long time_t;
 struct stat {
     unsigned short st_mode;
-    short st_nlink;
-    short st_uid;
-    short st_gid;
-    time_t st_atime;
-    time_t st_mtime;
-    time_t st_ctime;
 };
+int stat(const char* path, struct stat* buf);
+char* getcwd(char* buffer, size_t size);
 static size_t root_length(string s, size_t n, _Bool * rooted) {
     *rooted = 0 ;
     if (n >= 1 && s[0] == '/') {
@@ -297,7 +321,7 @@ static size_t root_length(string s, size_t n, _Bool * rooted) {
     return 0;
 }
 static void path_normalize(Path* p, const char* raw) {
-    assert(p != ((void*)0) && raw != ((void*)0) );
+    ((void)(p != ((void*)0) && raw != ((void*)0))) ;
     size_t len = strlen(raw);
     char* out = (char*)malloc(len + 2);
     if (out == ((void*)0) ) {
@@ -396,13 +420,13 @@ static string compose(const char* root, const char* dir, const char* filename, c
     return string_splice("%s%s%s%s", root, dir, filename, extension);
 }
 Path* create_path(string raw) {
-    assert(raw != ((void*)0) );
+    ((void)(raw != ((void*)0))) ;
     Path* p = (Path*)alloc_memory(sizeof(Path), 1 ) ;
     path_normalize(p, raw);
     return p;
 }
 Path* path_join(const Path* a, const Path* b) {
-    assert(a != ((void*)0) && b != ((void*)0) );
+    ((void)(a != ((void*)0) && b != ((void*)0))) ;
     if (b->rooted || a->str == SYMBOL_DOT)
         return create_path(b->str);
     size_t la = strlen(a->str);
@@ -412,18 +436,18 @@ Path* path_join(const Path* a, const Path* b) {
         return create_path(string_splice("%s/%s", a->str, b->str));
 }
 Path* path_change_ext(const Path* p, string ext) {
-    assert(p != ((void*)0) && ext != ((void*)0) );
+    ((void)(p != ((void*)0) && ext != ((void*)0))) ;
     if (p->filename[0] == '\0' || p->filename == SYMBOL_DOT || strcmp(p->filename, "..") == 0)
         return create_path(p->str);
     string new_ext = (ext[0] == '\0' || ext[0] == '.') ? ext : string_splice(".%s", ext);
     return create_path(compose(p->root, p->dir, p->filename, new_ext));
 }
 Path* path_change_filename(const Path* p, string name) {
-    assert(p != ((void*)0) && name != ((void*)0) );
+    ((void)(p != ((void*)0) && name != ((void*)0))) ;
     return create_path(compose(p->root, p->dir, name, p->extension));
 }
 Path* path_absolute(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     if (p->rooted)
         return create_path(p->str);
     char cwd[4096];
@@ -434,42 +458,42 @@ Path* path_absolute(const Path* p) {
     return path_join(create_path(cwd), p);
 }
 string path_str(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return p->str;
 }
 string path_dirname(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return compose(p->root, p->dir, "", "");
 }
 string path_root_str(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return p->root;
 }
 string path_filename(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return p->filename;
 }
 string path_extension(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return p->extension;
 }
 _Bool path_is_absolute(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     return p->rooted;
 }
 _Bool path_equal(const Path* a, const Path* b) {
-    assert(a != ((void*)0) && b != ((void*)0) );
+    ((void)(a != ((void*)0) && b != ((void*)0))) ;
     return a->str == b->str;
 }
 _Bool path_exists(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     struct stat st;
     return stat(p->str, &st) == 0;
 }
 _Bool path_is_dir(const Path* p) {
-    assert(p != ((void*)0) );
+    ((void)(p != ((void*)0))) ;
     struct stat st;
-    return stat(p->str, &st) == 0 && S_ISDIR(st.st_mode);
+    return stat(p->str, &st) == 0 && (((st.st_mode) & 0170000) == 0040000) ;
 }
 static List_string include_dir = ((void*)0) ;
 void add_include_dir(string dir) {

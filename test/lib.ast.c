@@ -5,9 +5,38 @@ typedef struct {
 } max_align_t;
 typedef unsigned long long uintmax_t;
 typedef long long intmax_t;
+typedef void *va_list;
+void va_start(va_list ap, ...);
+void va_end(va_list ap);
 typedef struct {
     void *placeholder;
 } FILE;
+extern FILE *stderr;
+FILE *fopen(const char *filename, const char *mode);
+int fclose(FILE *stream);
+int ferror(FILE *stream);
+int fseek(FILE *stream, long offset, int origin);
+long ftell(FILE *stream);
+void rewind(FILE *stream);
+size_t fread(void *buffer, size_t size, size_t count, FILE *stream);
+int fputc(int c, FILE *stream);
+int fputs(const char *str, FILE *stream);
+int fprintf(FILE *stream, const char *format, ...);
+int vsnprintf(char *buffer, size_t count, const char *format, va_list args);
+void *malloc(size_t size);
+void *calloc(size_t count, size_t size);
+void free(void *p);
+void abort(void);
+double strtod(const char *str, char **end);
+float strtof(const char *str, char **end);
+long double strtold(const char *str, char **end);
+size_t strlen(const char *str);
+int strcmp(const char *a, const char *b);
+int strncmp(const char *a, const char *b, size_t count);
+int memcmp(const void *a, const void *b, size_t size);
+void *memcpy(void *dst, const void *src, size_t size);
+void *memmove(void *dst, const void *src, size_t size);
+void *memset(void *dst, int value, size_t size);
 typedef char *string;
 typedef void *ptr;
 void init(void);
@@ -327,7 +356,7 @@ ptr alloc_memory(size_t size, _Bool is_struct) {
         if (block->size - block->used >= size) {
             ptr ptr = (void *)(block->data + block->used);
             if (is_struct)
-                assert((size_t)ptr % _Alignof(max_align_t) == 0);
+                ((void)((size_t)ptr % _Alignof(max_align_t) == 0));
             block->used += size;
             return ptr;
         }
@@ -377,7 +406,7 @@ string get_source(string path) {
     FILE *file = fopen(path, "rb");
     if (file == ((void *)0))
         return ((void *)0);
-    if (fseek(file, 0, SEEK_END) != 0) {
+    if (fseek(file, 0, 2) != 0) {
         fclose(file);
         return ((void *)0);
     }
@@ -397,7 +426,6 @@ string get_source(string path) {
     source_code[got] = '\0';
     return source_code;
 }
-typedef void *va_list;
 string string_splice(string format, ...) {
     va_list args;
     va_start(args, format);
@@ -535,7 +563,7 @@ IntLiteral parse_int_digits(const char *s) {
         int d = hex_digit_value(s[i]);
         if (d < 0 || (unsigned int)d >= result.base)
             break;
-        if (result.value > (UINTMAX_MAX - (uintmax_t)d) / result.base)
+        if (result.value > (18446744073709551615ULL - (uintmax_t)d) / result.base)
             result.overflow = 1;
         result.value = result.value * result.base + (uintmax_t)d;
     }
@@ -600,9 +628,9 @@ EscapeResult decode_literal_char(const char *s, size_t *pos, unsigned int *value
             unsigned int v = 0;
             while (hex_digit_value(s[*pos]) >= 0) {
                 v = v * 16 + (unsigned int)hex_digit_value(s[*pos]);
-                if (v > UCHAR_MAX) {
+                if (v > 255) {
                     out_of_range = 1;
-                    v &= UCHAR_MAX;
+                    v &= 255;
                 }
                 ++*pos;
             }
@@ -620,8 +648,8 @@ EscapeResult decode_literal_char(const char *s, size_t *pos, unsigned int *value
                 v = v * 8 + (unsigned int)(s[*pos] - '0');
                 ++*pos;
             }
-            *value = v & UCHAR_MAX;
-            return v > UCHAR_MAX ? ESC_OCT_OUT_OF_RANGE : ESC_OK;
+            *value = v & 255;
+            return v > 255 ? ESC_OCT_OUT_OF_RANGE : ESC_OK;
         }
     }
 }
