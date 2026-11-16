@@ -294,12 +294,13 @@ static AssignmentExpression* parse_assignment_expression(Parser* parser);
 static TypeName* parse_type_name(Parser* parser);
 static GenericAssociation* parse_generic_association(Parser* parser) {
     GenericAssociation* assoc = create_struct(GenericAssociation);
+    assoc->token = peek(parser);
     assoc->type_name = NULL;
     if (!match(parser, TOKEN_KEYWORD, KEYWORD_DEFAULT))
         assoc->type_name = parse_type_name(parser);
     expect(parser, TOKEN_SYMBOL, SYMBOL_COLON, "Expected ':' in generic association");
     assoc->assignment_expr = parse_assignment_expression(parser);
-    return NULL;  // placeholder
+    return assoc;
 }
 
 static list(AssignmentExpression*) parse_expression(Parser* parser);
