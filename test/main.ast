@@ -25326,27 +25326,31 @@ TU: {
                                             },
                                         },
                                         StructDecl: {
-                                            token: (identifier, 454, 5, `string`),
+                                            token: (identifier, 454, 5, `Token`),
                                             is_static_assert_decl: false,
                                             general_struct_decl: {
                                                 spec_qual_list: [
                                                     SpecifierQualifier: {
-                                                        token: (identifier, 454, 5, `string`),
+                                                        token: (identifier, 454, 5, `Token`),
                                                         is_type_spec: true,
                                                         TypeSpec: {
-                                                            token: (identifier, 454, 5, `string`),
+                                                            token: (identifier, 454, 5, `Token`),
                                                             spec_type: TYPE_SPEC_TYPEDEF_NAME,
-                                                            typedef_name: (identifier, 454, 5, `string`),
+                                                            typedef_name: (identifier, 454, 5, `Token`),
                                                         },
                                                     },
                                                 ],
                                                 struct_declarators: [
                                                     StructDeclarator: {
-                                                        token: (identifier, 454, 12, `message`),
+                                                        token: (symbol, 454, 10, `*`),
                                                         Declarator: {
-                                                            token: (identifier, 454, 12, `message`),
+                                                            token: (symbol, 454, 10, `*`),
                                                             Pointer: {
-                                                                (null)
+                                                                token: (symbol, 454, 10, `*`),
+                                                                type_qualifiers: [],
+                                                                Pointer: {
+                                                                    (null)
+                                                                },
                                                             },
                                                             DirectDeclarator: {
                                                                 token: (identifier, 454, 12, `message`),

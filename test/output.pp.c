@@ -670,7 +670,7 @@ struct InitDecl {
 struct StaticAssertDecl {
     Token* token;
     ConditionalExpression* expr;
-    string message;
+    Token* message;
 };
 struct VarDecl {
     Token* token;
@@ -1423,7 +1423,7 @@ static void output_init_decl(FILE* out, InitDecl* node, size_t indent) {
 static void output_static_assert_decl(FILE* out, StaticAssertDecl* node, size_t indent) {
     do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("StaticAssertDecl" ": {\n", out); } while (0) ; if (node == ((void*)0) ) { do { for (size_t i_ = 0; i_ < (indent + 1); ++i_) fputs("    ", out) ; fputs("(null)\n", out); } while (0) ; do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("}", out); } while (0) ; return; } do { for (size_t i_ = 0; i_ < (indent + 1); ++i_) fputs("    ", out) ; fputs("token: ", out); } while (0) ; output_one_token(out, node->token); fputs(",\n", out) ;
     do { output_conditional_expression(out, (node->expr), indent + (1)); fputs(",\n", out); } while (0) ;
-    do { do { for (size_t i_ = 0; i_ < (indent + (1)); ++i_) fputs("    ", out) ; fputs("message" ": ", out); } while (0) ; write_value(out, (node->message)); fputs(",\n", out); } while (0) ;
+    do { do { for (size_t i_ = 0; i_ < (indent + (1)); ++i_) fputs("    ", out) ; fputs("message" ": ", out); } while (0) ; output_one_token(out, (node->message)); fputs(",\n", out); } while (0) ;
     do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("}", out); } while (0) ;
 }
 static void output_var_decl(FILE* out, VarDecl* node, size_t indent) {
@@ -1461,9 +1461,583 @@ void output_ast(string filename, TU* tu) {
     fputc('\n', out);
     fclose(out);
 }
+static void print_assignment_expression(FILE* out, AssignmentExpression* node);
+static void print_conditional_expression(FILE* out, ConditionalExpression* node);
+static void print_cast_expression(FILE* out, CastExpression* node);
+static void print_unary_expression(FILE* out, UnaryExpression* node);
+static void print_type_name(FILE* out, TypeName* node);
+static void print_type_spec(FILE* out, TypeSpec* node, size_t indent);
+static void print_initializer_item(FILE* out, InitializerItem* node);
+static void print_initializer(FILE* out, Initializer* node);
+static void print_declarator(FILE* out, Declarator* node);
+static void print_decl_spec(FILE* out, DeclSpec* node, size_t indent);
+static void print_static_assert_decl(FILE* out, StaticAssertDecl* node);
+static void print_var_decl(FILE* out, VarDecl* node, size_t indent);
+static void print_statement(FILE* out, Statement* node, size_t indent);
+static void print_generic_association(FILE* out, GenericAssociation* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "GenericAssociation" ": NULL\n", out); return; } } while (0) ;
+    if (node->type_name == ((void*)0) )
+        fputs("default", out);
+    else
+        print_type_name(out, node->type_name);
+    fputs(": ", out);
+    print_assignment_expression(out, node->assignment_expr);
+}
+static void print_primary_expression(FILE* out, PrimaryExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "PrimaryExpression" ": NULL\n", out); return; } } while (0) ;
+    switch (node->primary_type) {
+        case PRIMARY_IDENTIFIER: fputs(node->primary.identifier->value, out); break;
+        case PRIMARY_INTEGER_CONSTANT: fputs(node->primary.integer_constant->value, out); break;
+        case PRIMARY_CHARACTER_CONSTANT: fputs(node->primary.character_constant->value, out); break;
+        case PRIMARY_FLOATING_CONSTANT: fputs(node->primary.floating_constant->value, out); break;
+        case PRIMARY_STRING_LITERAL: fputs(node->primary.string_literal->value, out); break;
+        case PRIMARY_EXPRESSION:
+            fputc('(', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->primary.expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(')', out);
+            break;
+        case PRIMARY_GENERIC_SELECTION:
+            fputs("_Generic(", out);
+            print_assignment_expression(out, node->primary.generic_selection.expr);
+            fputs(", ", out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->primary.generic_selection.generic_assoc_list)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (GenericAssociation* item_ = (GenericAssociation*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_generic_association(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(')', out);
+            break;
+        default: fputs("// error PrimaryExpression: unknown type\n", out); break;
+    }
+}
+static void print_postfix_expression(FILE* out, PostfixExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "PostfixExpression" ": NULL\n", out); return; } } while (0) ;
+    switch (node->expr_type) {
+        case POSTFIX_PRIMARY: print_primary_expression(out, node->expr.primary_expr); break;
+        case POSTFIX_COMPOUND_LITERAL:
+            fputc('(', out);
+            print_type_name(out, node->expr.compound_literal.type_name);
+            fputs("){", out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->expr.compound_literal.initializer_list)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (InitializerItem* item_ = (InitializerItem*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_initializer_item(out, item_); first_ = 0 ; } } while (0) ;
+            fputc('}', out);
+            break;
+        case POSTFIX_ARRAY_ACCESS:
+            print_postfix_expression(out, node->expr.array_access.postfix_expr);
+            fputc('[', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->expr.array_access.index_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(']', out);
+            break;
+        case POSTFIX_FUNC_CALL:
+            print_postfix_expression(out, node->expr.func_call.postfix_expr);
+            fputc('(', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->expr.func_call.args)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(')', out);
+            break;
+        case POSTFIX_OP:
+            print_postfix_expression(out, node->expr.postfix_op.postfix_expr);
+            switch (node->expr.postfix_op.op_type) {
+                case POSTFIX_MEMBER_ACCESS:
+                    fputc('.', out);
+                    fputs(node->expr.postfix_op.identifier->value, out);
+                    break;
+                case POSTFIX_MEMBER_ACCESS_PTR:
+                    fputs("->", out);
+                    fputs(node->expr.postfix_op.identifier->value, out);
+                    break;
+                case POSTFIX_INCREMENT: fputs("++", out); break;
+                case POSTFIX_DECREMENT: fputs("--", out); break;
+                default: fputs("// error PostfixExpression: unknown op\n", out); break;
+            }
+            break;
+        default: fputs("// error PostfixExpression: unknown type\n", out); break;
+    }
+}
+static string unary_leading_op(UnaryExpression* node) {
+    if (node == ((void*)0) ) return ((void*)0) ;
+    if (node->expr_type == UNARY_PREFIX) return node->expr.prefix.op;
+    if (node->expr_type == UNARY_UNARY_OP) return node->expr.unary_op.op;
+    return ((void*)0) ;
+}
+static void print_unary_op(FILE* out, string op, string next_op) {
+    fputs(op, out);
+    if (strcmp(op, "sizeof") == 0 || (next_op != ((void*)0) && next_op[0] == op[0]))
+        fputc(' ', out);
+}
+static void print_unary_expression(FILE* out, UnaryExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "UnaryExpression" ": NULL\n", out); return; } } while (0) ;
+    switch (node->expr_type) {
+        case UNARY_PREFIX:
+            print_unary_op(out, node->expr.prefix.op, unary_leading_op(node->expr.prefix.unary_expr));
+            print_unary_expression(out, node->expr.prefix.unary_expr);
+            break;
+        case UNARY_UNARY_OP: {
+            CastExpression* cast = node->expr.unary_op.cast_expr;
+            print_unary_op(out, node->expr.unary_op.op, (cast != ((void*)0) && !cast->is_cast) ? unary_leading_op(cast->expr.unary_expr) : ((void*)0) );
+            print_cast_expression(out, cast);
+            break;
+        }
+        case UNARY_FUNCTION_LIKE:
+            fputs(node->expr.function_like.is_sizeof ? "sizeof(" : "_Alignof(", out);
+            print_type_name(out, node->expr.function_like.type_name);
+            fputc(')', out);
+            break;
+        case UNARY_POSTFIX: print_postfix_expression(out, node->expr.postfix); break;
+        default: fputs("// error UnaryExpression: unknown type\n", out); break;
+    }
+}
+static void print_cast_expression(FILE* out, CastExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "CastExpression" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_cast) {
+        fputc('(', out);
+        print_type_name(out, node->expr.cast.type_name);
+        fputc(')', out);
+        print_cast_expression(out, node->expr.cast.cast_expr);
+    } else {
+        print_unary_expression(out, node->expr.unary_expr);
+    }
+}
+static void print_binary_expression(FILE* out, BinaryExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "BinaryExpression" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_cast) {
+        print_cast_expression(out, node->expr.cast);
+    } else {
+        print_binary_expression(out, node->expr.binary.left);
+        fprintf(out, " %s ", node->expr.binary.op);
+        print_binary_expression(out, node->expr.binary.right);
+    }
+}
+static void print_conditional_expression(FILE* out, ConditionalExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "ConditionalExpression" ": NULL\n", out); return; } } while (0) ;
+    print_binary_expression(out, node->binary_expr);
+    if (node->false_expr != ((void*)0) ) {
+        fputs(" ? ", out);
+        do { _Bool first_ = 1 ; for (List* item___l = ((node->true_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+        fputs(" : ", out);
+        print_conditional_expression(out, node->false_expr);
+    }
+}
+static void print_assignment_expression(FILE* out, AssignmentExpression* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "AssignmentExpression" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_conditional) {
+        print_conditional_expression(out, node->expr.cond_expr);
+    } else {
+        print_unary_expression(out, node->expr.binary.left);
+        fprintf(out, " %s ", node->expr.binary.op);
+        print_assignment_expression(out, node->expr.binary.right);
+    }
+}
+static void print_specifier_qualifier(FILE* out, SpecifierQualifier* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "SpecifierQualifier" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_type_spec)
+        print_type_spec(out, node->spec.type_spec, indent);
+    else
+        fputs(node->spec.type_qualifier, out);
+}
+static void print_struct_declarator(FILE* out, StructDeclarator* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "StructDeclarator" ": NULL\n", out); return; } } while (0) ;
+    if (node->declarator != ((void*)0) )
+        print_declarator(out, node->declarator);
+    if (node->constant_expr != ((void*)0) ) {
+        fputs(node->declarator != ((void*)0) ? " : " : ": ", out);
+        print_conditional_expression(out, node->constant_expr);
+    }
+}
+static void print_struct_decl(FILE* out, StructDecl* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "StructDecl" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_static_assert_decl) {
+        print_static_assert_decl(out, node->decl.static_assert_decl);
+    } else {
+        do { _Bool first_ = 1 ; for (List* item___l = ((node->decl.general_struct_decl.spec_qual_list)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (SpecifierQualifier* item_ = (SpecifierQualifier*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(" ", out); print_specifier_qualifier(out, item_, (indent)); first_ = 0 ; } } while (0) ;
+        if (!((node->decl.general_struct_decl.struct_declarators) == ((void*)0) || (node->decl.general_struct_decl.struct_declarators)->head == ((void*)0) )) {
+            fputc(' ', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->decl.general_struct_decl.struct_declarators)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (StructDeclarator* item_ = (StructDeclarator*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_struct_declarator(out, item_); first_ = 0 ; } } while (0) ;
+        }
+    }
+    fputc(';', out);
+}
+static void print_enumerator(FILE* out, Enumerator* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Enumerator" ": NULL\n", out); return; } } while (0) ;
+    fputs(node->identifier->value, out);
+    if (node->constant_expr != ((void*)0) ) {
+        fputs(" = ", out);
+        print_conditional_expression(out, node->constant_expr);
+    }
+}
+static void print_type_spec(FILE* out, TypeSpec* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "TypeSpec" ": NULL\n", out); return; } } while (0) ;
+    switch (node->spec_type) {
+        case TYPE_SPEC_KEYWORD: fputs(node->spec.keyword_spec, out); break;
+        case TYPE_SPEC_ATOMIC:
+            fputs("_Atomic(", out);
+            print_type_name(out, node->spec.atomic_spec);
+            fputc(')', out);
+            break;
+        case TYPE_SPEC_STRUCT_UNION:
+            fputs(node->spec.struct_union_spec.is_struct ? "struct" : "union", out);
+            if (node->spec.struct_union_spec.identifier != ((void*)0) )
+                fprintf(out, " %s", node->spec.struct_union_spec.identifier->value);
+            if (node->spec.struct_union_spec.members != ((void*)0) ) {
+                fputs(" {\n", out);
+                for (List* member__l = (node->spec.struct_union_spec.members); member__l != ((void*)0) && member__l->head != ((void*)0) ; member__l = ((void*)0) ) for (ListNode* member__n = member__l->head; member__n != ((void*)0) ; member__n = member__n->next) for (StructDecl* member = (StructDecl*)member__n->data; member != ((void*)0) ; member = ((void*)0) ) {
+                    for (size_t i_ = 0; i_ < (indent + 1); ++i_) fputs("    ", out) ;
+                    print_struct_decl(out, member, indent + 1);
+                    fputc('\n', out);
+                }
+                do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("}", out); } while (0) ;
+            }
+            break;
+        case TYPE_SPEC_ENUM:
+            fputs("enum", out);
+            if (node->spec.enum_spec.identifier != ((void*)0) )
+                fprintf(out, " %s", node->spec.enum_spec.identifier->value);
+            if (node->spec.enum_spec.enumerators != ((void*)0) ) {
+                fputs(" {\n", out);
+                for (List* enumerator__l = (node->spec.enum_spec.enumerators); enumerator__l != ((void*)0) && enumerator__l->head != ((void*)0) ; enumerator__l = ((void*)0) ) for (ListNode* enumerator__n = enumerator__l->head; enumerator__n != ((void*)0) ; enumerator__n = enumerator__n->next) for (Enumerator* enumerator = (Enumerator*)enumerator__n->data; enumerator != ((void*)0) ; enumerator = ((void*)0) ) {
+                    for (size_t i_ = 0; i_ < (indent + 1); ++i_) fputs("    ", out) ;
+                    print_enumerator(out, enumerator);
+                    fputs(",\n", out);
+                }
+                do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("}", out); } while (0) ;
+            }
+            break;
+        case TYPE_SPEC_TYPEDEF_NAME: fputs(node->spec.typedef_name->value, out); break;
+        default: fputs("// error TypeSpec: unknown type\n", out); break;
+    }
+}
+static void print_type_name(FILE* out, TypeName* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "TypeName" ": NULL\n", out); return; } } while (0) ;
+    do { _Bool first_ = 1 ; for (List* item___l = ((node->spec_qual_list)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (SpecifierQualifier* item_ = (SpecifierQualifier*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(" ", out); print_specifier_qualifier(out, item_, (0)); first_ = 0 ; } } while (0) ;
+    Declarator* decl = node->abs_declarator;
+    if (decl != ((void*)0) && (decl->pointer != ((void*)0) || decl->direct_declarator != ((void*)0) )) {
+        fputc(' ', out);
+        print_declarator(out, decl);
+    }
+}
+static void print_param_decl(FILE* out, ParamDecl* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "ParamDecl" ": NULL\n", out); return; } } while (0) ;
+    do { _Bool first_ = 1 ; for (List* item___l = ((node->decl_specs)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (DeclSpec* item_ = (DeclSpec*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(" ", out); print_decl_spec(out, item_, (0)); first_ = 0 ; } } while (0) ;
+    if (node->decl != ((void*)0) && (node->decl->pointer != ((void*)0) || node->decl->direct_declarator != ((void*)0) )) {
+        fputc(' ', out);
+        print_declarator(out, node->decl);
+    }
+}
+static void print_pointer(FILE* out, Pointer* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Pointer" ": NULL\n", out); return; } } while (0) ;
+    fputc('*', out);
+    for (List* qualifier__l = (node->type_qualifiers); qualifier__l != ((void*)0) && qualifier__l->head != ((void*)0) ; qualifier__l = ((void*)0) ) for (ListNode* qualifier__n = qualifier__l->head; qualifier__n != ((void*)0) ; qualifier__n = qualifier__n->next) for (string qualifier = (string)qualifier__n->data; qualifier != ((void*)0) ; qualifier = ((void*)0) )
+        fprintf(out, " %s", qualifier);
+    if (!((node->type_qualifiers) == ((void*)0) || (node->type_qualifiers)->head == ((void*)0) ))
+        fputc(' ', out);
+    if (node->pointer != ((void*)0) )
+        print_pointer(out, node->pointer);
+}
+static void print_array_qualifiers(FILE* out, List_string qualifiers, _Bool * need_space) {
+    for (List* qualifier__l = (qualifiers); qualifier__l != ((void*)0) && qualifier__l->head != ((void*)0) ; qualifier__l = ((void*)0) ) for (ListNode* qualifier__n = qualifier__l->head; qualifier__n != ((void*)0) ; qualifier__n = qualifier__n->next) for (string qualifier = (string)qualifier__n->data; qualifier != ((void*)0) ; qualifier = ((void*)0) ) {
+        if (*need_space) fputc(' ', out);
+        fputs(qualifier, out);
+        *need_space = 1 ;
+    }
+}
+static void print_direct_declarator(FILE* out, DirectDeclarator* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "DirectDeclarator" ": NULL\n", out); return; } } while (0) ;
+    _Bool need_space = 0 ;
+    switch (node->decl_type) {
+        case DECLARATOR_ID: fputs(node->decl.identifier->value, out); break;
+        case DECLARATOR_DECL:
+            fputc('(', out);
+            print_declarator(out, node->decl.declarator);
+            fputc(')', out);
+            break;
+        case DECLARATOR_ARRAY:
+            if (node->decl.array.direct_declarator != ((void*)0) )
+                print_direct_declarator(out, node->decl.array.direct_declarator);
+            fputc('[', out);
+            if (node->decl.array.is_static) {
+                fputs("static", out);
+                need_space = 1 ;
+            }
+            print_array_qualifiers(out, node->decl.array.type_qualifiers, &need_space);
+            if (node->decl.array.assignment_expression != ((void*)0) ) {
+                if (need_space) fputc(' ', out);
+                print_assignment_expression(out, node->decl.array.assignment_expression);
+            }
+            fputc(']', out);
+            break;
+        case DECLARATOR_FUNC:
+            if (node->decl.func.direct_declarator != ((void*)0) )
+                print_direct_declarator(out, node->decl.func.direct_declarator);
+            fputc('(', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->decl.func.param_decls)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (ParamDecl* item_ = (ParamDecl*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_param_decl(out, item_); first_ = 0 ; } } while (0) ;
+            if (node->decl.func.is_variadic)
+                fputs(((node->decl.func.param_decls) == ((void*)0) || (node->decl.func.param_decls)->head == ((void*)0) ) ? "..." : ", ...", out);
+            fputc(')', out);
+            break;
+        case DECLARATOR_INCOMPLETE_ARRAY:
+            if (node->decl.incomplete_array.direct_declarator != ((void*)0) )
+                print_direct_declarator(out, node->decl.incomplete_array.direct_declarator);
+            fputc('[', out);
+            print_array_qualifiers(out, node->decl.incomplete_array.type_qualifiers, &need_space);
+            if (node->decl.incomplete_array.has_star)
+                fputs(need_space ? " *" : "*", out);
+            fputc(']', out);
+            break;
+        default: fputs("// error DirectDeclarator: unknown type\n", out); break;
+    }
+}
+static void print_declarator(FILE* out, Declarator* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Declarator" ": NULL\n", out); return; } } while (0) ;
+    if (node->pointer != ((void*)0) )
+        print_pointer(out, node->pointer);
+    if (node->direct_declarator != ((void*)0) )
+        print_direct_declarator(out, node->direct_declarator);
+}
+static void print_designator(FILE* out, Designator* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Designator" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_constant_expr) {
+        fputc('[', out);
+        print_conditional_expression(out, node->designator.constant_expr);
+        fputc(']', out);
+    } else {
+        fprintf(out, ".%s", node->designator.identifier->value);
+    }
+}
+static void print_initializer_item(FILE* out, InitializerItem* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "InitializerItem" ": NULL\n", out); return; } } while (0) ;
+    if (!((node->designation) == ((void*)0) || (node->designation)->head == ((void*)0) )) {
+        do { _Bool first_ = 1 ; for (List* item___l = ((node->designation)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (Designator* item_ = (Designator*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs("", out); print_designator(out, item_); first_ = 0 ; } } while (0) ;
+        fputs(" = ", out);
+    }
+    print_initializer(out, node->initializer);
+}
+static void print_initializer(FILE* out, Initializer* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Initializer" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_assignment_expr) {
+        print_assignment_expression(out, node->init.assignment_expr);
+    } else if (((node->init.inits) == ((void*)0) || (node->init.inits)->head == ((void*)0) )) {
+        fputs("{}", out);
+    } else {
+        fputs("{ ", out);
+        do { _Bool first_ = 1 ; for (List* item___l = ((node->init.inits)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (InitializerItem* item_ = (InitializerItem*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_initializer_item(out, item_); first_ = 0 ; } } while (0) ;
+        fputs(" }", out);
+    }
+}
+static void print_decl_spec(FILE* out, DeclSpec* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "DeclSpec" ": NULL\n", out); return; } } while (0) ;
+    switch (node->specifier_type) {
+        case SPEC_KEYWORD: fputs(node->specifier.keyword, out); break;
+        case SPEC_ALIGNMENT:
+            fputs("_Alignas(", out);
+            if (node->specifier.alignment.is_type_name)
+                print_type_name(out, node->specifier.alignment.spec.type_name);
+            else
+                print_conditional_expression(out, node->specifier.alignment.spec.constant_expression);
+            fputc(')', out);
+            break;
+        case SPEC_TYPE_SPEC: print_type_spec(out, node->specifier.type, indent); break;
+        default: fputs("// error DeclSpec: unknown type\n", out); break;
+    }
+}
+static void print_static_assert_decl(FILE* out, StaticAssertDecl* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "StaticAssertDecl" ": NULL\n", out); return; } } while (0) ;
+    fputs("_Static_assert(", out);
+    print_conditional_expression(out, node->expr);
+    if (node->message != ((void*)0) )
+        fprintf(out, ", %s", node->message->value);
+    fputc(')', out);
+}
+static void print_init_decl(FILE* out, InitDecl* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "InitDecl" ": NULL\n", out); return; } } while (0) ;
+    print_declarator(out, node->declarator);
+    if (node->initializer != ((void*)0) ) {
+        fputs(" = ", out);
+        print_initializer(out, node->initializer);
+    }
+}
+static void print_var_decl(FILE* out, VarDecl* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "VarDecl" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_static_assert_decl) {
+        print_static_assert_decl(out, node->decl.static_assert_decl);
+    } else {
+        do { _Bool first_ = 1 ; for (List* item___l = ((node->decl.general_decl.decl_specs)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (DeclSpec* item_ = (DeclSpec*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(" ", out); print_decl_spec(out, item_, (indent)); first_ = 0 ; } } while (0) ;
+        if (!((node->decl.general_decl.init_decls) == ((void*)0) || (node->decl.general_decl.init_decls)->head == ((void*)0) )) {
+            fputc(' ', out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->decl.general_decl.init_decls)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (InitDecl* item_ = (InitDecl*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_init_decl(out, item_); first_ = 0 ; } } while (0) ;
+        }
+    }
+    fputc(';', out);
+}
+static void print_statement_line(FILE* out, Statement* node, size_t indent) {
+    if (node != ((void*)0) && node->stmt_type == STMT_LABELED && indent > 0)
+        for (size_t i_ = 0; i_ < (indent - 1); ++i_) fputs("    ", out) ;
+    else
+        for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ;
+    print_statement(out, node, indent);
+}
+static void print_decl_stmt(FILE* out, DeclStmt* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "DeclStmt" ": NULL\n", out); return; } } while (0) ;
+    if (node->is_var_decl) {
+        for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ;
+        print_var_decl(out, node->item.var_decl, indent);
+    } else {
+        print_statement_line(out, node->item.statement, indent);
+    }
+}
+static void print_body(FILE* out, Statement* node, size_t indent) {
+    if (node != ((void*)0) && node->stmt_type == STMT_COMPOUND) {
+        fputc(' ', out);
+        print_statement(out, node, indent);
+    } else {
+        fputc('\n', out);
+        print_statement_line(out, node, indent + 1);
+    }
+}
+static void print_statement(FILE* out, Statement* node, size_t indent) {
+    do { if (node == ((void*)0) ) { fputs("// error " "Statement" ": NULL\n", out); return; } } while (0) ;
+    switch (node->stmt_type) {
+        case STMT_LABELED: {
+            LabeledStatement* label = node->stmt.label;
+            if (label->label_type == LABEL_IDENTIFIER) {
+                fprintf(out, "%s:", label->label.identifier->value);
+            } else if (label->label_type == LABEL_CASE) {
+                fputs("case ", out);
+                print_conditional_expression(out, label->label.case_stmt);
+                fputc(':', out);
+            } else {
+                fputs("default:", out);
+            }
+            fputc('\n', out);
+            print_statement_line(out, label->stmt, indent);
+            break;
+        }
+        case STMT_COMPOUND:
+            fputs("{\n", out);
+            for (List* item__l = (node->stmt.compound); item__l != ((void*)0) && item__l->head != ((void*)0) ; item__l = ((void*)0) ) for (ListNode* item__n = item__l->head; item__n != ((void*)0) ; item__n = item__n->next) for (DeclStmt* item = (DeclStmt*)item__n->data; item != ((void*)0) ; item = ((void*)0) ) {
+                print_decl_stmt(out, item, indent + 1);
+                fputc('\n', out);
+            }
+            do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("}", out); } while (0) ;
+            break;
+        case STMT_EXPRESSION:
+            do { _Bool first_ = 1 ; for (List* item___l = ((node->stmt.expression)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(';', out);
+            break;
+        case STMT_SELECTION: {
+            SelectionStatement* sel = node->stmt.selection;
+            if (sel->is_switch) {
+                fputs("switch (", out);
+                do { _Bool first_ = 1 ; for (List* item___l = ((sel->selection.switch_stmt.cond_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                fputc(')', out);
+                print_body(out, sel->selection.switch_stmt.stmt, indent);
+                break;
+            }
+            Statement* then_stmt = sel->selection.if_stmt.then_stmt;
+            Statement* else_stmt = sel->selection.if_stmt.else_stmt;
+            fputs("if (", out);
+            do { _Bool first_ = 1 ; for (List* item___l = ((sel->selection.if_stmt.cond_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+            fputc(')', out);
+            print_body(out, then_stmt, indent);
+            if (else_stmt != ((void*)0) ) {
+                if (then_stmt != ((void*)0) && then_stmt->stmt_type == STMT_COMPOUND) {
+                    fputs(" else", out);
+                } else {
+                    fputc('\n', out);
+                    do { for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ; fputs("else", out); } while (0) ;
+                }
+                if (else_stmt->stmt_type == STMT_SELECTION && !else_stmt->stmt.selection->is_switch) {
+                    fputc(' ', out);
+                    print_statement(out, else_stmt, indent);
+                } else {
+                    print_body(out, else_stmt, indent);
+                }
+            }
+            break;
+        }
+        case STMT_ITERATION: {
+            IterationStatement* loop = node->stmt.iteration;
+            if (loop->loop_type == LOOP_WHILE) {
+                fputs("while (", out);
+                do { _Bool first_ = 1 ; for (List* item___l = ((loop->loop.while_stmt.expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                fputc(')', out);
+                print_body(out, loop->loop.while_stmt.stmt, indent);
+            } else if (loop->loop_type == LOOP_DO_WHILE) {
+                Statement* body = loop->loop.while_stmt.stmt;
+                fputs("do", out);
+                print_body(out, body, indent);
+                if (body != ((void*)0) && body->stmt_type == STMT_COMPOUND) {
+                    fputc(' ', out);
+                } else {
+                    fputc('\n', out);
+                    for (size_t i_ = 0; i_ < (indent); ++i_) fputs("    ", out) ;
+                }
+                fputs("while (", out);
+                do { _Bool first_ = 1 ; for (List* item___l = ((loop->loop.while_stmt.expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                fputs(");", out);
+            } else {
+                fputs("for (", out);
+                if (loop->loop.for_stmt.is_init_decl) {
+                    print_var_decl(out, loop->loop.for_stmt.init.init_decl, indent);
+                } else {
+                    do { _Bool first_ = 1 ; for (List* item___l = ((loop->loop.for_stmt.init.init_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                    fputc(';', out);
+                }
+                if (!((loop->loop.for_stmt.cond_expr) == ((void*)0) || (loop->loop.for_stmt.cond_expr)->head == ((void*)0) )) {
+                    fputc(' ', out);
+                    do { _Bool first_ = 1 ; for (List* item___l = ((loop->loop.for_stmt.cond_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                }
+                fputc(';', out);
+                if (!((loop->loop.for_stmt.loop_expr) == ((void*)0) || (loop->loop.for_stmt.loop_expr)->head == ((void*)0) )) {
+                    fputc(' ', out);
+                    do { _Bool first_ = 1 ; for (List* item___l = ((loop->loop.for_stmt.loop_expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                }
+                fputc(')', out);
+                print_body(out, loop->loop.for_stmt.stmt, indent);
+            }
+            break;
+        }
+        case STMT_JUMP: {
+            JumpStatement* jump = node->stmt.jump;
+            switch (jump->jump_type) {
+                case JUMP_GOTO: fprintf(out, "goto %s;", jump->jump.identifier->value); break;
+                case JUMP_CONTINUE: fputs("continue;", out); break;
+                case JUMP_BREAK: fputs("break;", out); break;
+                case JUMP_RETURN:
+                    fputs("return", out);
+                    if (!((jump->jump.expr) == ((void*)0) || (jump->jump.expr)->head == ((void*)0) )) {
+                        fputc(' ', out);
+                        do { _Bool first_ = 1 ; for (List* item___l = ((jump->jump.expr)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (AssignmentExpression* item_ = (AssignmentExpression*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(", ", out); print_assignment_expression(out, item_); first_ = 0 ; } } while (0) ;
+                    }
+                    fputc(';', out);
+                    break;
+                default: fputs("// error JumpStatement: unknown type\n", out); break;
+            }
+            break;
+        }
+        default: fputs("// error Statement: unknown type\n", out); break;
+    }
+}
+static void print_func_decl(FILE* out, FuncDecl* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "FuncDecl" ": NULL\n", out); return; } } while (0) ;
+    do { _Bool first_ = 1 ; for (List* item___l = ((node->decl_specs)); item___l != ((void*)0) && item___l->head != ((void*)0) ; item___l = ((void*)0) ) for (ListNode* item___n = item___l->head; item___n != ((void*)0) ; item___n = item___n->next) for (DeclSpec* item_ = (DeclSpec*)item___n->data; item_ != ((void*)0) ; item_ = ((void*)0) ) { if (!first_) fputs(" ", out); print_decl_spec(out, item_, (0)); first_ = 0 ; } } while (0) ;
+    fputc(' ', out);
+    print_declarator(out, node->declarator);
+    fputs(" {\n", out);
+    for (List* stmt__l = (node->body); stmt__l != ((void*)0) && stmt__l->head != ((void*)0) ; stmt__l = ((void*)0) ) for (ListNode* stmt__n = stmt__l->head; stmt__n != ((void*)0) ; stmt__n = stmt__n->next) for (DeclStmt* stmt = (DeclStmt*)stmt__n->data; stmt != ((void*)0) ; stmt = ((void*)0) ) {
+        print_decl_stmt(out, stmt, 1);
+        fputc('\n', out);
+    }
+    fputc('}', out);
+}
+static void print_tu(FILE* out, TU* node) {
+    do { if (node == ((void*)0) ) { fputs("// error " "TU" ": NULL\n", out); return; } } while (0) ;
+    for (List* decl__l = (node->extern_decls); decl__l != ((void*)0) && decl__l->head != ((void*)0) ; decl__l = ((void*)0) ) for (ListNode* decl__n = decl__l->head; decl__n != ((void*)0) ; decl__n = decl__n->next) for (ExternDecl* decl = (ExternDecl*)decl__n->data; decl != ((void*)0) ; decl = ((void*)0) ) {
+        if (decl == ((void*)0) )
+            fputs("// error ExternDecl: NULL\n", out);
+        else if (decl->is_func_decl)
+            print_func_decl(out, decl->decl.func_decl);
+        else
+            print_var_decl(out, decl->decl.var_decl, 0);
+        fputc('\n', out);
+    }
+}
 void print_ast(string filename, TU* tu) {
     FILE* out = open_file(filename);
     if (out == ((void*)0) ) return;
-    fputs("not complete implemented yet\n", out);
+    print_tu(out, tu);
     fclose(out);
 }

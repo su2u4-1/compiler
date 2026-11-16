@@ -22425,27 +22425,31 @@ TU: {
                                             },
                                         },
                                         StructDecl: {
-                                            token: (identifier, 454, 5, `string`),
+                                            token: (identifier, 454, 5, `Token`),
                                             is_static_assert_decl: false,
                                             general_struct_decl: {
                                                 spec_qual_list: [
                                                     SpecifierQualifier: {
-                                                        token: (identifier, 454, 5, `string`),
+                                                        token: (identifier, 454, 5, `Token`),
                                                         is_type_spec: true,
                                                         TypeSpec: {
-                                                            token: (identifier, 454, 5, `string`),
+                                                            token: (identifier, 454, 5, `Token`),
                                                             spec_type: TYPE_SPEC_TYPEDEF_NAME,
-                                                            typedef_name: (identifier, 454, 5, `string`),
+                                                            typedef_name: (identifier, 454, 5, `Token`),
                                                         },
                                                     },
                                                 ],
                                                 struct_declarators: [
                                                     StructDeclarator: {
-                                                        token: (identifier, 454, 12, `message`),
+                                                        token: (symbol, 454, 10, `*`),
                                                         Declarator: {
-                                                            token: (identifier, 454, 12, `message`),
+                                                            token: (symbol, 454, 10, `*`),
                                                             Pointer: {
-                                                                (null)
+                                                                token: (symbol, 454, 10, `*`),
+                                                                type_qualifiers: [],
+                                                                Pointer: {
+                                                                    (null)
+                                                                },
                                                             },
                                                             DirectDeclarator: {
                                                                 token: (identifier, 454, 12, `message`),
@@ -150430,36 +150434,12 @@ TU: {
                                                                             token: (identifier, 798, 25, `str`),
                                                                             expr_type: UNARY_POSTFIX,
                                                                             PostfixExpression: {
-                                                                                token: (symbol, 798, 41, `.`),
-                                                                                expr_type: POSTFIX_OP,
-                                                                                postfix_op: {
-                                                                                    op_type: POSTFIX_MEMBER_ACCESS,
-                                                                                    identifier: (identifier, 798, 42, `data`),
-                                                                                    PostfixExpression: {
-                                                                                        token: (symbol, 798, 37, `.`),
-                                                                                        expr_type: POSTFIX_OP,
-                                                                                        postfix_op: {
-                                                                                            op_type: POSTFIX_MEMBER_ACCESS,
-                                                                                            identifier: (identifier, 798, 38, `str`),
-                                                                                            PostfixExpression: {
-                                                                                                token: (symbol, 798, 28, `->`),
-                                                                                                expr_type: POSTFIX_OP,
-                                                                                                postfix_op: {
-                                                                                                    op_type: POSTFIX_MEMBER_ACCESS_PTR,
-                                                                                                    identifier: (identifier, 798, 30, `literal`),
-                                                                                                    PostfixExpression: {
-                                                                                                        token: (identifier, 798, 25, `str`),
-                                                                                                        expr_type: POSTFIX_PRIMARY,
-                                                                                                        PrimaryExpression: {
-                                                                                                            token: (identifier, 798, 25, `str`),
-                                                                                                            primary_type: PRIMARY_IDENTIFIER,
-                                                                                                            identifier: (identifier, 798, 25, `str`),
-                                                                                                        },
-                                                                                                    },
-                                                                                                },
-                                                                                            },
-                                                                                        },
-                                                                                    },
+                                                                                token: (identifier, 798, 25, `str`),
+                                                                                expr_type: POSTFIX_PRIMARY,
+                                                                                PrimaryExpression: {
+                                                                                    token: (identifier, 798, 25, `str`),
+                                                                                    primary_type: PRIMARY_IDENTIFIER,
+                                                                                    identifier: (identifier, 798, 25, `str`),
                                                                                 },
                                                                             },
                                                                         },

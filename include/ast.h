@@ -451,7 +451,7 @@ struct InitDecl {
 struct StaticAssertDecl {
     Token* token;
     ConditionalExpression* expr;
-    string message;
+    Token* message;
 };
 
 struct VarDecl {

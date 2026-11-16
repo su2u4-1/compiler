@@ -795,7 +795,7 @@ static StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
     else
         str = expect(parser, TOKEN_STRING, NULL, "Expected string literal as '_Static_assert' message");
     if (str != NULL)
-        decl->message = str->literal.str.data;
+        decl->message = str;
     expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after '_Static_assert' message");
     expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after '_Static_assert'");
     return decl;

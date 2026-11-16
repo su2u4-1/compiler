@@ -670,7 +670,7 @@ struct InitDecl {
 struct StaticAssertDecl {
     Token* token;
     ConditionalExpression* expr;
-    string message;
+    Token* message;
 };
 struct VarDecl {
     Token* token;
@@ -1523,7 +1523,7 @@ static StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
     else
         str = expect(parser, TOKEN_STRING, ((void*)0) , "Expected string literal as '_Static_assert' message");
     if (str != ((void*)0) )
-        decl->message = str->literal.str.data;
+        decl->message = str;
     expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after '_Static_assert' message");
     expect(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON, "Expected ';' after '_Static_assert'");
     return decl;
