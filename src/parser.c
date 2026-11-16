@@ -13,10 +13,17 @@ static void report_error(Parser* parser, Token* t, string msg) {
     if (parser->panic_mode) return;
     parser->panic_mode = true;
     parser->error_count++;
-    if (t == NULL)
+    if (t == NULL) {
         fprintf(stderr, "[Parse Error] at unknown location: %s\n", msg);
-    else
-        fprintf(stderr, "[Parse Error] at %s:%zu:%zu: %s\n", t->filename, t->line, t->column, msg);
+        return;
+    }
+    fprintf(stderr, "[Parse Error] at %s:%zu:%zu: %s\n", t->filename, t->line, t->column, msg);
+    char* note = NULL;
+    if (t->type == TOKEN_SYNTAX_ERROR_NUMBER) note = "invalid number literal";
+    else if (t->type == TOKEN_SYNTAX_ERROR_CHAR) note = "invalid character literal";
+    else if (t->type == TOKEN_SYNTAX_ERROR_STRING) note = "invalid string literal";
+    if (note != NULL)
+        fprintf(stderr, "    lexer report: '%s' is an %s\n", t->value, note);
 }
 
 static void report_warning(Parser* parser, Token* t, string msg) {
@@ -184,25 +191,7 @@ static bool is_type_qualifier_start(Parser* parser, bool not_check_atomic) {
 
 static bool is_type_start(Parser* parser, Token* t) {
     if (t->type == TOKEN_KEYWORD)
-        return t->value == KEYWORD_ATOMIC ||
-               t->value == KEYWORD_VOID ||
-               t->value == KEYWORD_CHAR ||
-               t->value == KEYWORD_SHORT ||
-               t->value == KEYWORD_INT ||
-               t->value == KEYWORD_LONG ||
-               t->value == KEYWORD_FLOAT ||
-               t->value == KEYWORD_DOUBLE ||
-               t->value == KEYWORD_SIGNED ||
-               t->value == KEYWORD_UNSIGNED ||
-               t->value == KEYWORD_BOOL ||
-               t->value == KEYWORD_IMAGINARY ||
-               t->value == KEYWORD_COMPLEX ||
-               t->value == KEYWORD_STRUCT ||
-               t->value == KEYWORD_UNION ||
-               t->value == KEYWORD_ENUM ||
-               t->value == KEYWORD_CONST ||
-               t->value == KEYWORD_RESTRICT ||
-               t->value == KEYWORD_VOLATILE;
+        return t->value == KEYWORD_ATOMIC || t->value == KEYWORD_VOID || t->value == KEYWORD_CHAR || t->value == KEYWORD_SHORT || t->value == KEYWORD_INT || t->value == KEYWORD_LONG || t->value == KEYWORD_FLOAT || t->value == KEYWORD_DOUBLE || t->value == KEYWORD_SIGNED || t->value == KEYWORD_UNSIGNED || t->value == KEYWORD_BOOL || t->value == KEYWORD_IMAGINARY || t->value == KEYWORD_COMPLEX || t->value == KEYWORD_STRUCT || t->value == KEYWORD_UNION || t->value == KEYWORD_ENUM || t->value == KEYWORD_CONST || t->value == KEYWORD_RESTRICT || t->value == KEYWORD_VOLATILE;
     if (t->type == TOKEN_IDENTIFIER)
         return is_typedef_name(parser, t->value);
     return false;
@@ -799,7 +788,11 @@ static StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
     expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Static_assert'");
     decl->expr = parse_conditional_expression(parser);
     expect(parser, TOKEN_SYMBOL, SYMBOL_COMMA, "Expected ',' after '_Static_assert' condition");
-    Token* str = expect(parser, TOKEN_STRING, NULL, "Expected string literal as '_Static_assert' message");
+    Token* str = NULL;
+    if (peek(parser)->type == TOKEN_SYNTAX_ERROR_STRING)
+        parser_error("Invalid string literal", peek(parser));
+    else
+        str = expect(parser, TOKEN_STRING, NULL, "Expected string literal as '_Static_assert' message");
     if (str != NULL)
         decl->message = str->literal.str.data;
     expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after '_Static_assert' message");
