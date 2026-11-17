@@ -34,19 +34,15 @@ static void report_warning(Parser* parser, Token* t, string msg) {
         fprintf(stderr, "[Parse Warning] at %s:%zu:%zu: %s\n", t->filename, t->line, t->column, msg);
 }
 
-static Scope* create_scope(ScopeKind kind, Scope* parent) {
-    Scope* scope = create_struct(Scope);
-    scope->kind = kind;
+static AST_Scope* create_scope(AST_Scope* parent) {
+    AST_Scope* scope = create_struct(AST_Scope);
     scope->parent = parent;
-    scope->names = create_list(Symbol*);
-    scope->tags = create_list(Symbol*);
+    scope->names = create_list(AST_Symbol*);
     return scope;
 }
 
-static void push_new_scope(Parser* parser, ScopeKind kind) {
-    Scope* scope = create_scope(kind, parser->current_scope);
-    parser->current_scope = scope;
-    append(parser->scopes, scope);
+static void push_new_scope(Parser* parser) {
+    parser->current_scope = create_scope(parser->current_scope);
 }
 
 Parser* create_parser(list(Token*) tokens) {
@@ -57,10 +53,9 @@ Parser* create_parser(list(Token*) tokens) {
     parser->brace_depth = 0;
     parser->paren_depth = 0;
     parser->current_scope = NULL;
-    parser->scopes = create_list(Scope*);
     parser->error_count = 0;
     parser->panic_mode = false;
-    push_new_scope(parser, SCOPE_FILE);
+    push_new_scope(parser);
     return parser;
 }
 
@@ -147,15 +142,15 @@ static void synchronize_paren(Parser* parser, size_t start_depth) {
     parser->panic_mode = false;
     for (Token* t = peek(parser); !is_eof(t) && parser->paren_depth > start_depth; t = peek(parser)) {
         if (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_L_BRACE || t->value == SYMBOL_R_BRACE))
-            break;  // missing ')'
+            break;
         get(parser);
     }
 }
 
 static bool is_typedef_name(Parser* parser, string name) {
-    for (Scope* s = parser->current_scope; s != NULL; s = s->parent) {
-        foreach (Symbol*, sym, s->names) {
-            if (sym->name == name) return sym->kind == SYMBOL_KIND_TYPEDEF;
+    for (AST_Scope* s = parser->current_scope; s != NULL; s = s->parent) {
+        foreach (AST_Symbol*, sym, s->names) {
+            if (sym->name == name) return sym->is_typedef;
         }
     }
     return false;
@@ -197,9 +192,9 @@ static bool is_type_start(Parser* parser, Token* t) {
     return false;
 }
 
-static DirectDeclarator* get_function_declarator(Declarator* decl, DirectDeclarator* outer) {
-    DirectDeclarator* inner = decl->direct_declarator;
-    DirectDeclarator* last = NULL;
+static AST_DirectDeclarator* get_function_declarator(AST_Declarator* decl, AST_DirectDeclarator* outer) {
+    AST_DirectDeclarator* inner = decl->direct_declarator;
+    AST_DirectDeclarator* last = NULL;
     while (inner != NULL && inner->decl_type != DECLARATOR_ID && inner->decl_type != DECLARATOR_DECL) {
         last = inner;
         switch (inner->decl_type) {
@@ -218,7 +213,7 @@ static DirectDeclarator* get_function_declarator(Declarator* decl, DirectDeclara
                 break;
         }
     }
-    DirectDeclarator* nearest = outer;
+    AST_DirectDeclarator* nearest = outer;
     if (last != NULL)
         nearest = last->decl_type == DECLARATOR_FUNC ? last : NULL;
     else if (decl->pointer != NULL)
@@ -228,20 +223,15 @@ static DirectDeclarator* get_function_declarator(Declarator* decl, DirectDeclara
     return nearest;
 }
 
-static void add_name(Parser* parser, Token* id, SymbolKind kind) {
-    foreach (Symbol*, symbol, parser->current_scope->names) {
-        if (symbol->name == id->value) {
-            if ((kind == SYMBOL_KIND_TYPEDEF) != (symbol->kind == SYMBOL_KIND_TYPEDEF))
-                parser_error("Redeclared as different kind of symbol", id);
-            return;
-        }
-    }
-    Symbol* symbol = create_struct(Symbol);
-    *symbol = (Symbol){.name = id->value, .token = id, .kind = kind};
+static void add_name(Parser* parser, Token* id, bool is_typedef) {
+    foreach (AST_Symbol*, symbol, parser->current_scope->names)
+        if (symbol->name == id->value) return;
+    AST_Symbol* symbol = create_struct(AST_Symbol);
+    *symbol = (AST_Symbol){.name = id->value, .is_typedef = is_typedef};
     append(parser->current_scope->names, symbol);
 }
 
-static Token* get_declarator_identifier(DirectDeclarator* decl) {
+static Token* get_declarator_identifier(AST_DirectDeclarator* decl) {
     if (decl == NULL) return NULL;
     switch (decl->decl_type) {
         case DECLARATOR_ID:
@@ -259,8 +249,8 @@ static Token* get_declarator_identifier(DirectDeclarator* decl) {
     }
 }
 
-static bool has_typedef(list(DeclSpec*) decl_specs) {
-    foreach (DeclSpec*, spec, decl_specs)
+static bool has_typedef(list(AST_DeclSpec*) decl_specs) {
+    foreach (AST_DeclSpec*, spec, decl_specs)
         if (spec->specifier_type == SPEC_KEYWORD && spec->specifier.keyword == KEYWORD_TYPEDEF)
             return true;
     return false;
@@ -290,10 +280,10 @@ static int binary_operator_precedence(Token* t) {
     else return -1;
 }
 
-static AssignmentExpression* parse_assignment_expression(Parser* parser);
-static TypeName* parse_type_name(Parser* parser);
-static GenericAssociation* parse_generic_association(Parser* parser) {
-    GenericAssociation* assoc = create_struct(GenericAssociation);
+static AST_AssignmentExpression* parse_assignment_expression(Parser* parser);
+static AST_TypeName* parse_type_name(Parser* parser);
+static AST_GenericAssociation* parse_generic_association(Parser* parser) {
+    AST_GenericAssociation* assoc = create_struct(AST_GenericAssociation);
     assoc->token = peek(parser);
     assoc->type_name = NULL;
     if (!match(parser, TOKEN_KEYWORD, KEYWORD_DEFAULT))
@@ -303,10 +293,10 @@ static GenericAssociation* parse_generic_association(Parser* parser) {
     return assoc;
 }
 
-static list(AssignmentExpression*) parse_expression(Parser* parser);
-static PrimaryExpression* parse_primary_expression(Parser* parser) {
+static list(AST_AssignmentExpression*) parse_expression(Parser* parser);
+static AST_PrimaryExpression* parse_primary_expression(Parser* parser) {
     Token* t = peek(parser);
-    PrimaryExpression* primary_expr = create_struct(PrimaryExpression);
+    AST_PrimaryExpression* primary_expr = create_struct(AST_PrimaryExpression);
     primary_expr->token = t;
     if (t->type == TOKEN_SYNTAX_ERROR_NUMBER)
         parser_error("Invalid number literal", t);
@@ -338,7 +328,7 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Generic'");
         primary_expr->primary.generic_selection.expr = parse_assignment_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_COMMA, "Expected ',' after assignment expression in '_Generic'");
-        primary_expr->primary.generic_selection.generic_assoc_list = create_list(GenericAssociation*);
+        primary_expr->primary.generic_selection.generic_assoc_list = create_list(AST_GenericAssociation*);
         do {
             append(primary_expr->primary.generic_selection.generic_assoc_list, parse_generic_association(parser));
         } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
@@ -350,10 +340,10 @@ static PrimaryExpression* parse_primary_expression(Parser* parser) {
     return primary_expr;
 }
 
-static PostfixExpression* parse_postfix_suffix(Parser* parser, PostfixExpression* outer) {
+static AST_PostfixExpression* parse_postfix_suffix(Parser* parser, AST_PostfixExpression* outer) {
     Token* t = peek(parser);
     while (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_L_BRACKET || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_DOT || t->value == SYMBOL_ARROW || t->value == SYMBOL_INCREMENT || t->value == SYMBOL_DECREMENT)) {
-        PostfixExpression* postfix_expr = create_struct(PostfixExpression);
+        AST_PostfixExpression* postfix_expr = create_struct(AST_PostfixExpression);
         postfix_expr->token = t;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
             postfix_expr->expr_type = POSTFIX_ARRAY_ACCESS;
@@ -363,7 +353,7 @@ static PostfixExpression* parse_postfix_suffix(Parser* parser, PostfixExpression
         } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
             postfix_expr->expr_type = POSTFIX_FUNC_CALL;
             postfix_expr->expr.func_call.postfix_expr = outer;
-            postfix_expr->expr.func_call.args = create_list(AssignmentExpression*);
+            postfix_expr->expr.func_call.args = create_list(AST_AssignmentExpression*);
             if (!check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS)) {
                 do {
                     append(postfix_expr->expr.func_call.args, parse_assignment_expression(parser));
@@ -393,11 +383,11 @@ static PostfixExpression* parse_postfix_suffix(Parser* parser, PostfixExpression
     return outer;
 }
 
-static InitializerItem* parse_initializer_item(Parser* parser);
-static PostfixExpression* parse_compound_literal(Parser* parser, TypeName* type_name) {
+static AST_InitializerItem* parse_initializer_item(Parser* parser);
+static AST_PostfixExpression* parse_compound_literal(Parser* parser, AST_TypeName* type_name) {
     Token* t = get(parser);  // consume '{'
-    PostfixExpression* compound_literal = create_struct(PostfixExpression);
-    *compound_literal = (PostfixExpression){.token = t, .expr_type = POSTFIX_COMPOUND_LITERAL, .expr.compound_literal = {.type_name = type_name, .initializer_list = create_list(InitializerItem*)}};
+    AST_PostfixExpression* compound_literal = create_struct(AST_PostfixExpression);
+    *compound_literal = (AST_PostfixExpression){.token = t, .expr_type = POSTFIX_COMPOUND_LITERAL, .expr.compound_literal = {.type_name = type_name, .initializer_list = create_list(AST_InitializerItem*)}};
     do {
         if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE))
             break;
@@ -409,10 +399,10 @@ static PostfixExpression* parse_compound_literal(Parser* parser, TypeName* type_
     return parse_postfix_suffix(parser, compound_literal);
 }
 
-static PostfixExpression* parse_postfix_expression(Parser* parser) {
+static AST_PostfixExpression* parse_postfix_expression(Parser* parser) {
     if (check(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS) && is_type_start(parser, peek2(parser))) {
         get(parser);  // consume '('
-        TypeName* type_name = parse_type_name(parser);
+        AST_TypeName* type_name = parse_type_name(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
         if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
             return parse_compound_literal(parser, type_name);
@@ -421,7 +411,7 @@ static PostfixExpression* parse_postfix_expression(Parser* parser) {
             return NULL;
         }
     } else {
-        PostfixExpression* postfix_expr = create_struct(PostfixExpression);
+        AST_PostfixExpression* postfix_expr = create_struct(AST_PostfixExpression);
         postfix_expr->token = peek(parser);
         postfix_expr->expr_type = POSTFIX_PRIMARY;
         postfix_expr->expr.primary_expr = parse_primary_expression(parser);
@@ -429,10 +419,10 @@ static PostfixExpression* parse_postfix_expression(Parser* parser) {
     }
 }
 
-static CastExpression* parse_cast_expression(Parser* parser);
-static UnaryExpression* parse_unary_expression(Parser* parser) {
+static AST_CastExpression* parse_cast_expression(Parser* parser);
+static AST_UnaryExpression* parse_unary_expression(Parser* parser) {
     Token* t = peek(parser);
-    UnaryExpression* unary_expr = create_struct(UnaryExpression);
+    AST_UnaryExpression* unary_expr = create_struct(AST_UnaryExpression);
     unary_expr->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_INCREMENT) || match(parser, TOKEN_SYMBOL, SYMBOL_DECREMENT)) {
         unary_expr->expr_type = UNARY_PREFIX;
@@ -456,11 +446,11 @@ static UnaryExpression* parse_unary_expression(Parser* parser) {
             unary_expr->expr.function_like.type_name = parse_type_name(parser);
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
             if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-                TypeName* type_name = unary_expr->expr.function_like.type_name;
+                AST_TypeName* type_name = unary_expr->expr.function_like.type_name;
                 unary_expr->expr_type = UNARY_PREFIX;
                 unary_expr->expr.prefix.op = KEYWORD_SIZEOF;
-                unary_expr->expr.prefix.unary_expr = create_struct(UnaryExpression);
-                *unary_expr->expr.prefix.unary_expr = (UnaryExpression){.token = tt, .expr_type = UNARY_POSTFIX, .expr.postfix = parse_compound_literal(parser, type_name)};
+                unary_expr->expr.prefix.unary_expr = create_struct(AST_UnaryExpression);
+                *unary_expr->expr.prefix.unary_expr = (AST_UnaryExpression){.token = tt, .expr_type = UNARY_POSTFIX, .expr.postfix = parse_compound_literal(parser, type_name)};
             }
         } else {
             unary_expr->expr_type = UNARY_PREFIX;
@@ -474,18 +464,18 @@ static UnaryExpression* parse_unary_expression(Parser* parser) {
     return unary_expr;
 }
 
-static CastExpression* parse_cast_expression(Parser* parser) {
+static AST_CastExpression* parse_cast_expression(Parser* parser) {
     Token* t = peek(parser);
-    CastExpression* cast_expr = create_struct(CastExpression);
+    AST_CastExpression* cast_expr = create_struct(AST_CastExpression);
     cast_expr->token = t;
     if (check(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS) && is_type_start(parser, peek2(parser))) {
         t = get(parser);  // consume '('
-        TypeName* type_name = parse_type_name(parser);
+        AST_TypeName* type_name = parse_type_name(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' after type name");
         if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-            PostfixExpression* postfix_expr = parse_compound_literal(parser, type_name);
-            UnaryExpression* unary_expr = create_struct(UnaryExpression);
-            *unary_expr = (UnaryExpression){.token = t, .expr.postfix = postfix_expr, .expr_type = UNARY_POSTFIX};
+            AST_PostfixExpression* postfix_expr = parse_compound_literal(parser, type_name);
+            AST_UnaryExpression* unary_expr = create_struct(AST_UnaryExpression);
+            *unary_expr = (AST_UnaryExpression){.token = t, .expr.postfix = postfix_expr, .expr_type = UNARY_POSTFIX};
             cast_expr->is_cast = false;
             cast_expr->expr.unary_expr = unary_expr;
         } else {
@@ -500,24 +490,24 @@ static CastExpression* parse_cast_expression(Parser* parser) {
     return cast_expr;
 }
 
-static BinaryExpression* parse_binary_expression(Parser* parser, int min_precedence) {
-    BinaryExpression* left = create_struct(BinaryExpression);
-    *left = (BinaryExpression){.token = peek(parser), .is_cast = true, .expr.cast = parse_cast_expression(parser)};
+static AST_BinaryExpression* parse_binary_expression(Parser* parser, int min_precedence) {
+    AST_BinaryExpression* left = create_struct(AST_BinaryExpression);
+    *left = (AST_BinaryExpression){.token = peek(parser), .is_cast = true, .expr.cast = parse_cast_expression(parser)};
     while (true) {
         Token* op = peek(parser);
         int precedence = binary_operator_precedence(op);
         if (precedence <= min_precedence) break;
         get(parser);  // consume operator
-        BinaryExpression* right = parse_binary_expression(parser, precedence);
-        BinaryExpression* node = create_struct(BinaryExpression);
-        *node = (BinaryExpression){.token = op, .is_cast = false, .expr.binary = {.op = op->value, .left = left, .right = right}};
+        AST_BinaryExpression* right = parse_binary_expression(parser, precedence);
+        AST_BinaryExpression* node = create_struct(AST_BinaryExpression);
+        *node = (AST_BinaryExpression){.token = op, .is_cast = false, .expr.binary = {.op = op->value, .left = left, .right = right}};
         left = node;
     }
     return left;
 }
 
-static ConditionalExpression* parse_conditional_expression(Parser* parser) {
-    ConditionalExpression* cond_expr = create_struct(ConditionalExpression);
+static AST_ConditionalExpression* parse_conditional_expression(Parser* parser) {
+    AST_ConditionalExpression* cond_expr = create_struct(AST_ConditionalExpression);
     cond_expr->token = peek(parser);
     cond_expr->true_expr = NULL;
     cond_expr->false_expr = NULL;
@@ -530,9 +520,9 @@ static ConditionalExpression* parse_conditional_expression(Parser* parser) {
     return cond_expr;
 }
 
-static AssignmentExpression* parse_assignment_expression(Parser* parser) {
-    ConditionalExpression* cond_expr = parse_conditional_expression(parser);
-    AssignmentExpression* assign_expr = create_struct(AssignmentExpression);
+static AST_AssignmentExpression* parse_assignment_expression(Parser* parser) {
+    AST_ConditionalExpression* cond_expr = parse_conditional_expression(parser);
+    AST_AssignmentExpression* assign_expr = create_struct(AST_AssignmentExpression);
     Token* t = peek(parser);
     if (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_ASSIGN || t->value == SYMBOL_MUL_ASSIGN || t->value == SYMBOL_DIV_ASSIGN || t->value == SYMBOL_MOD_ASSIGN || t->value == SYMBOL_ADD_ASSIGN || t->value == SYMBOL_SUB_ASSIGN || t->value == SYMBOL_L_SHIFT_ASSIGN || t->value == SYMBOL_R_SHIFT_ASSIGN || t->value == SYMBOL_AND_ASSIGN || t->value == SYMBOL_XOR_ASSIGN || t->value == SYMBOL_OR_ASSIGN)) {
         t = get(parser);  // consume assignment operator
@@ -540,39 +530,39 @@ static AssignmentExpression* parse_assignment_expression(Parser* parser) {
             parser_error("Not an assignable expression", cond_expr->token);
             return NULL;
         }
-        BinaryExpression* binary_expr = cond_expr->binary_expr;
+        AST_BinaryExpression* binary_expr = cond_expr->binary_expr;
         if (!binary_expr->is_cast) {
             parser_error("Not an assignable expression", binary_expr->token);
             return NULL;
         }
-        CastExpression* cast_expr = binary_expr->expr.cast;
+        AST_CastExpression* cast_expr = binary_expr->expr.cast;
         if (cast_expr->is_cast) {
             parser_error("Not an assignable expression", cast_expr->token);
             return NULL;
         }
-        UnaryExpression* unary_expr = cast_expr->expr.unary_expr;
-        *assign_expr = (AssignmentExpression){.token = t, .is_conditional = false, .expr.binary = {.left = unary_expr, .right = parse_assignment_expression(parser), .op = t->value}};
+        AST_UnaryExpression* unary_expr = cast_expr->expr.unary_expr;
+        *assign_expr = (AST_AssignmentExpression){.token = t, .is_conditional = false, .expr.binary = {.left = unary_expr, .right = parse_assignment_expression(parser), .op = t->value}};
     } else
-        *assign_expr = (AssignmentExpression){.token = cond_expr->token, .is_conditional = true, .expr.cond_expr = cond_expr};
+        *assign_expr = (AST_AssignmentExpression){.token = cond_expr->token, .is_conditional = true, .expr.cond_expr = cond_expr};
     return assign_expr;
 }
 
-static list(AssignmentExpression*) parse_expression(Parser* parser) {
-    list(AssignmentExpression*) expr_list = create_list(AssignmentExpression*);
+static list(AST_AssignmentExpression*) parse_expression(Parser* parser) {
+    list(AST_AssignmentExpression*) expr_list = create_list(AST_AssignmentExpression*);
     do {
         append(expr_list, parse_assignment_expression(parser));
     } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
     return expr_list;
 }
 
-static VarDecl* parse_declaration(Parser* parser, FuncDecl** func_def);
-static Statement* parse_statement(Parser* parser);
-static list(DeclStmt*) parse_compound_stmt(Parser* parser) {
-    list(DeclStmt*) decl_stmts = create_list(DeclStmt*);
+static AST_VarDecl* parse_declaration(Parser* parser, AST_FuncDecl** func_def);
+static AST_Statement* parse_statement(Parser* parser);
+static list(AST_DeclStmt*) parse_compound_stmt(Parser* parser) {
+    list(AST_DeclStmt*) decl_stmts = create_list(AST_DeclStmt*);
     Token* t = peek(parser);
     while (!is_eof(t) && !check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE)) {
         size_t start_depth = parser->brace_depth;
-        DeclStmt* decl_stmt = create_struct(DeclStmt);
+        AST_DeclStmt* decl_stmt = create_struct(AST_DeclStmt);
         decl_stmt->token = t;
         Token* p = peek2(parser);
         bool is_label = t->type == TOKEN_IDENTIFIER && p->type == TOKEN_SYMBOL && p->value == SYMBOL_COLON;
@@ -590,12 +580,12 @@ static list(DeclStmt*) parse_compound_stmt(Parser* parser) {
     return decl_stmts;
 }
 
-static SelectionStatement* parse_selection_stmt(Parser* parser) {
+static AST_SelectionStatement* parse_selection_stmt(Parser* parser) {
     Token* t = peek(parser);
-    SelectionStatement* selection = create_struct(SelectionStatement);
+    AST_SelectionStatement* selection = create_struct(AST_SelectionStatement);
     selection->token = t;
     size_t paren_depth = parser->paren_depth;
-    push_new_scope(parser, SCOPE_BLOCK);
+    push_new_scope(parser);
     if (match(parser, TOKEN_KEYWORD, KEYWORD_IF)) {
         selection->is_switch = false;
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'if'");
@@ -619,12 +609,12 @@ static SelectionStatement* parse_selection_stmt(Parser* parser) {
     return selection;
 }
 
-static IterationStatement* parse_iteration_stmt(Parser* parser) {
+static AST_IterationStatement* parse_iteration_stmt(Parser* parser) {
     Token* t = peek(parser);
-    IterationStatement* iteration = create_struct(IterationStatement);
+    AST_IterationStatement* iteration = create_struct(AST_IterationStatement);
     iteration->token = t;
     size_t paren_depth = parser->paren_depth;
-    push_new_scope(parser, SCOPE_BLOCK);
+    push_new_scope(parser);
     if (match(parser, TOKEN_KEYWORD, KEYWORD_WHILE)) {
         iteration->loop_type = LOOP_WHILE;
         expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after 'while'");
@@ -669,9 +659,9 @@ static IterationStatement* parse_iteration_stmt(Parser* parser) {
     return iteration;
 }
 
-static JumpStatement* parse_jump_stmt(Parser* parser) {
+static AST_JumpStatement* parse_jump_stmt(Parser* parser) {
     Token* t = peek(parser);
-    JumpStatement* jump = create_struct(JumpStatement);
+    AST_JumpStatement* jump = create_struct(AST_JumpStatement);
     jump->token = t;
     if (match(parser, TOKEN_KEYWORD, KEYWORD_GOTO)) {
         jump->jump_type = JUMP_GOTO;
@@ -692,14 +682,14 @@ static JumpStatement* parse_jump_stmt(Parser* parser) {
     return jump;
 }
 
-static Statement* parse_statement(Parser* parser) {
+static AST_Statement* parse_statement(Parser* parser) {
     Token* t = peek(parser);
     Token* p = peek2(parser);
-    Statement* stmt = create_struct(Statement);
+    AST_Statement* stmt = create_struct(AST_Statement);
     stmt->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
         // compound
-        push_new_scope(parser, SCOPE_BLOCK);
+        push_new_scope(parser);
         stmt->stmt_type = STMT_COMPOUND;
         stmt->stmt.compound = parse_compound_stmt(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' to close compound statement");
@@ -708,12 +698,12 @@ static Statement* parse_statement(Parser* parser) {
         // case label or default label
         stmt->stmt_type = STMT_LABELED;
         t = get(parser);  // consume 'case' or 'default'
-        stmt->stmt.label = create_struct(LabeledStatement);
+        stmt->stmt.label = create_struct(AST_LabeledStatement);
         if (t->value == KEYWORD_CASE) {
-            *(stmt->stmt.label) = (LabeledStatement){.token = t, .label_type = LABEL_CASE, .label.case_stmt = parse_conditional_expression(parser), .stmt = NULL};
+            *(stmt->stmt.label) = (AST_LabeledStatement){.token = t, .label_type = LABEL_CASE, .label.case_stmt = parse_conditional_expression(parser), .stmt = NULL};
             expect(parser, TOKEN_SYMBOL, SYMBOL_COLON, "Expected ':' after case");
         } else {
-            *(stmt->stmt.label) = (LabeledStatement){.token = t, .label_type = LABEL_DEFAULT, .label.none = NULL, .stmt = NULL};
+            *(stmt->stmt.label) = (AST_LabeledStatement){.token = t, .label_type = LABEL_DEFAULT, .label.none = NULL, .stmt = NULL};
             expect(parser, TOKEN_SYMBOL, SYMBOL_COLON, "Expected ':' after default");
         }
         if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE))
@@ -725,8 +715,8 @@ static Statement* parse_statement(Parser* parser) {
         stmt->stmt_type = STMT_LABELED;
         t = get(parser);  // consume identifier
         get(parser);      // consume ':'
-        stmt->stmt.label = create_struct(LabeledStatement);
-        *(stmt->stmt.label) = (LabeledStatement){.token = t, .label_type = LABEL_IDENTIFIER, .label.identifier = t, .stmt = NULL};
+        stmt->stmt.label = create_struct(AST_LabeledStatement);
+        *(stmt->stmt.label) = (AST_LabeledStatement){.token = t, .label_type = LABEL_IDENTIFIER, .label.identifier = t, .stmt = NULL};
         if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE))
             parser_warn("Label at end of compound statement", peek(parser));
         else
@@ -754,14 +744,14 @@ static Statement* parse_statement(Parser* parser) {
     return stmt;
 }
 
-static TypeSpec* parse_type_specifier(Parser* parser);
-static list(SpecifierQualifier*) parse_spec_qual_list(Parser* parser) {
+static AST_TypeSpec* parse_type_specifier(Parser* parser);
+static list(AST_SpecifierQualifier*) parse_spec_qual_list(Parser* parser) {
     Token* t = peek(parser);
-    list(SpecifierQualifier*) spec_qual_list = create_list(SpecifierQualifier*);
+    list(AST_SpecifierQualifier*) spec_qual_list = create_list(AST_SpecifierQualifier*);
     bool seen_type = false;
     while (true) {
         t = peek(parser);
-        SpecifierQualifier* spec_qual = create_struct(SpecifierQualifier);
+        AST_SpecifierQualifier* spec_qual = create_struct(AST_SpecifierQualifier);
         spec_qual->token = t;
         if (is_type_qualifier_start(parser, false)) {
             spec_qual->is_type_spec = false;
@@ -782,9 +772,9 @@ static list(SpecifierQualifier*) parse_spec_qual_list(Parser* parser) {
     return spec_qual_list;
 }
 
-static StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
-    StaticAssertDecl* decl = create_struct(StaticAssertDecl);
-    *decl = (StaticAssertDecl){.token = t, .expr = NULL, .message = NULL};
+static AST_StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
+    AST_StaticAssertDecl* decl = create_struct(AST_StaticAssertDecl);
+    *decl = (AST_StaticAssertDecl){.token = t, .expr = NULL, .message = NULL};
 
     expect(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS, "Expected '(' after '_Static_assert'");
     decl->expr = parse_conditional_expression(parser);
@@ -801,24 +791,24 @@ static StaticAssertDecl* parse_static_assert(Parser* parser, Token* t) {
     return decl;
 }
 
-static Declarator* parse_declarator(Parser* parser, bool* is_abs);
-static StructDecl* parse_struct_decl(Parser* parser) {
+static AST_Declarator* parse_declarator(Parser* parser, bool* is_abs);
+static AST_StructDecl* parse_struct_decl(Parser* parser) {
     Token* t = peek(parser);
-    StructDecl* struct_decl = create_struct(StructDecl);
+    AST_StructDecl* struct_decl = create_struct(AST_StructDecl);
     struct_decl->token = t;
     struct_decl->is_static_assert_decl = false;
     if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC_ASSERT)) {
         struct_decl->is_static_assert_decl = true;
         struct_decl->decl.static_assert_decl = parse_static_assert(parser, t);
     } else {
-        list(SpecifierQualifier*) spec_qual_list = parse_spec_qual_list(parser);
-        list(StructDeclarator*) struct_declarators = NULL;
+        list(AST_SpecifierQualifier*) spec_qual_list = parse_spec_qual_list(parser);
+        list(AST_StructDeclarator*) struct_declarators = NULL;
         if (!check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON)) {
-            struct_declarators = create_list(StructDeclarator*);
+            struct_declarators = create_list(AST_StructDeclarator*);
             do {
                 t = peek(parser);
-                StructDeclarator* struct_declarator = create_struct(StructDeclarator);
-                *struct_declarator = (StructDeclarator){.token = t, .declarator = NULL, .constant_expr = NULL};
+                AST_StructDeclarator* struct_declarator = create_struct(AST_StructDeclarator);
+                *struct_declarator = (AST_StructDeclarator){.token = t, .declarator = NULL, .constant_expr = NULL};
                 if (!check(parser, TOKEN_SYMBOL, SYMBOL_COLON)) {
                     bool is_abs = false;
                     struct_declarator->declarator = parse_declarator(parser, &is_abs);
@@ -837,7 +827,7 @@ static StructDecl* parse_struct_decl(Parser* parser) {
             } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
         } else {
             bool has_struct_or_union = false;
-            foreach (SpecifierQualifier*, spec_qual, spec_qual_list) {
+            foreach (AST_SpecifierQualifier*, spec_qual, spec_qual_list) {
                 if (spec_qual->is_type_spec && spec_qual->spec.type_spec->spec_type == TYPE_SPEC_STRUCT_UNION) {
                     has_struct_or_union = true;
                     goto skip_foreach_in_parse_struct_decl;
@@ -854,9 +844,9 @@ static StructDecl* parse_struct_decl(Parser* parser) {
     return struct_decl;
 }
 
-static TypeName* parse_type_name(Parser* parser) {
+static AST_TypeName* parse_type_name(Parser* parser) {
     Token* t = peek(parser);
-    TypeName* type_name = create_struct(TypeName);
+    AST_TypeName* type_name = create_struct(AST_TypeName);
     type_name->token = t;
     type_name->spec_qual_list = parse_spec_qual_list(parser);
     t = peek(parser);
@@ -871,11 +861,11 @@ static TypeName* parse_type_name(Parser* parser) {
     return type_name;
 }
 
-static list(DeclSpec*) parse_declaration_specifiers(Parser* parser);
-static list(ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_variadic) {
+static list(AST_DeclSpec*) parse_declaration_specifiers(Parser* parser);
+static list(AST_ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_variadic) {
     Token* t = peek(parser);
     *is_variadic = false;
-    list(ParamDecl*) param_decls = create_list(ParamDecl*);
+    list(AST_ParamDecl*) param_decls = create_list(AST_ParamDecl*);
     if (match(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS))
         return param_decls;
     do {
@@ -885,15 +875,15 @@ static list(ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_va
             *is_variadic = true;
             break;
         }
-        ParamDecl* param_decl = create_struct(ParamDecl);
+        AST_ParamDecl* param_decl = create_struct(AST_ParamDecl);
         t = peek(parser);
-        *param_decl = (ParamDecl){.token = t, .decl_specs = parse_declaration_specifiers(parser), .decl = NULL, .is_abs = true};
+        *param_decl = (AST_ParamDecl){.token = t, .decl_specs = parse_declaration_specifiers(parser), .decl = NULL, .is_abs = true};
         t = peek(parser);
         if (t->type == TOKEN_IDENTIFIER || (t->type == TOKEN_SYMBOL && (t->value == SYMBOL_MUL || t->value == SYMBOL_L_PARENTHESIS || t->value == SYMBOL_L_BRACKET))) {
             param_decl->is_abs = true;  // allow abstract
             param_decl->decl = parse_declarator(parser, &param_decl->is_abs);
             if (!param_decl->is_abs)
-                add_name(parser, get_declarator_identifier(param_decl->decl->direct_declarator), SYMBOL_KIND_VAR);
+                add_name(parser, get_declarator_identifier(param_decl->decl->direct_declarator), false);
         }
         append(param_decls, param_decl);
     } while (match(parser, TOKEN_SYMBOL, SYMBOL_COMMA));
@@ -901,12 +891,12 @@ static list(ParamDecl*) parse_parameter_declarations(Parser* parser, bool* is_va
     return param_decls;
 }
 
-static Pointer* parse_pointer(Parser* parser) {
+static AST_Pointer* parse_pointer(Parser* parser) {
     Token* t = peek(parser);
-    Pointer* pointer = create_struct(Pointer);
+    AST_Pointer* pointer = create_struct(AST_Pointer);
     // always true, consume '*'
     expect(parser, TOKEN_SYMBOL, SYMBOL_MUL, "Expected '*' in pointer declarator");
-    *pointer = (Pointer){.token = t, .type_qualifiers = NULL, .pointer = NULL};
+    *pointer = (AST_Pointer){.token = t, .type_qualifiers = NULL, .pointer = NULL};
     if (is_type_qualifier_start(parser, true)) {
         pointer->type_qualifiers = create_list(string);
         while (is_type_qualifier_start(parser, true)) {
@@ -919,9 +909,9 @@ static Pointer* parse_pointer(Parser* parser) {
     return pointer;
 }
 
-static Designator* parse_designator(Parser* parser) {
+static AST_Designator* parse_designator(Parser* parser) {
     Token* t = peek(parser);
-    Designator* designator = create_struct(Designator);
+    AST_Designator* designator = create_struct(AST_Designator);
     designator->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_DOT)) {
         Token* id = expect(parser, TOKEN_IDENTIFIER, NULL, "Expected member name after '.' in designator");
@@ -936,14 +926,14 @@ static Designator* parse_designator(Parser* parser) {
     return designator;
 }
 
-static Initializer* parse_initializer(Parser* parser);
-static InitializerItem* parse_initializer_item(Parser* parser) {
+static AST_Initializer* parse_initializer(Parser* parser);
+static AST_InitializerItem* parse_initializer_item(Parser* parser) {
     Token* t = peek(parser);
-    InitializerItem* item = create_struct(InitializerItem);
+    AST_InitializerItem* item = create_struct(AST_InitializerItem);
     item->token = t;
     item->designation = NULL;
     if (check(parser, TOKEN_SYMBOL, SYMBOL_DOT) || check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
-        item->designation = create_list(Designator*);
+        item->designation = create_list(AST_Designator*);
         while (check(parser, TOKEN_SYMBOL, SYMBOL_DOT) || check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET))
             append(item->designation, parse_designator(parser));
         expect(parser, TOKEN_SYMBOL, SYMBOL_ASSIGN, "Expected '=' after designator");
@@ -952,13 +942,13 @@ static InitializerItem* parse_initializer_item(Parser* parser) {
     return item;
 }
 
-static Initializer* parse_initializer(Parser* parser) {
+static AST_Initializer* parse_initializer(Parser* parser) {
     Token* t = peek(parser);
-    Initializer* init = create_struct(Initializer);
+    AST_Initializer* init = create_struct(AST_Initializer);
     init->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
         init->is_assignment_expr = false;
-        init->init.inits = create_list(InitializerItem*);
+        init->init.inits = create_list(AST_InitializerItem*);
         do {
             if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE))
                 break;
@@ -974,9 +964,9 @@ static Initializer* parse_initializer(Parser* parser) {
     return init;
 }
 
-static TypeSpec* parse_type_specifier(Parser* parser) {
+static AST_TypeSpec* parse_type_specifier(Parser* parser) {
     Token* t = peek(parser);
-    TypeSpec* type = create_struct(TypeSpec);
+    AST_TypeSpec* type = create_struct(AST_TypeSpec);
     type->token = t;
     if (t->type == TOKEN_KEYWORD) {
         if (t->value == KEYWORD_ATOMIC) {
@@ -998,14 +988,14 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
                 type->spec.struct_union_spec.identifier = t;
             else
                 type->spec.struct_union_spec.identifier = NULL;
-            list(StructDecl*) members = NULL;
+            list(AST_StructDecl*) members = NULL;
             if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-                members = create_list(StructDecl*);
+                members = create_list(AST_StructDecl*);
                 while (true) {
                     t = peek(parser);
                     size_t start_depth = parser->brace_depth;
                     if (is_type_start(parser, t) || (t->type == TOKEN_KEYWORD && t->value == KEYWORD_STATIC_ASSERT)) {
-                        StructDecl* decl = parse_struct_decl(parser);
+                        AST_StructDecl* decl = parse_struct_decl(parser);
                         append(members, decl);
                         synchronize(parser, t, start_depth, false);
                     } else if (check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE) || is_eof(t))
@@ -1040,18 +1030,18 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
                 type->spec.enum_spec.identifier = t;
             else
                 type->spec.enum_spec.identifier = NULL;
-            list(Enumerator*) enumerators = NULL;
+            list(AST_Enumerator*) enumerators = NULL;
             if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-                enumerators = create_list(Enumerator*);
+                enumerators = create_list(AST_Enumerator*);
                 while (true) {
                     t = peek(parser);
                     if (t->type == TOKEN_IDENTIFIER) {
                         t = get(parser);  // consume identifier
-                        Enumerator* enumerator = create_struct(Enumerator);
-                        *enumerator = (Enumerator){.token = t, .identifier = t, .constant_expr = NULL};
+                        AST_Enumerator* enumerator = create_struct(AST_Enumerator);
+                        *enumerator = (AST_Enumerator){.token = t, .identifier = t, .constant_expr = NULL};
                         if (match(parser, TOKEN_SYMBOL, SYMBOL_ASSIGN))
                             enumerator->constant_expr = parse_conditional_expression(parser);
-                        add_name(parser, t, SYMBOL_KIND_ENUM_CONST);
+                        add_name(parser, t, false);
                         append(enumerators, enumerator);
                     } else
                         break;
@@ -1075,27 +1065,26 @@ static TypeSpec* parse_type_specifier(Parser* parser) {
     return type;
 }
 
-static DirectDeclarator* parse_function_suffix(Parser* parser, DirectDeclarator* inner, Token* t) {
+static AST_DirectDeclarator* parse_function_suffix(Parser* parser, AST_DirectDeclarator* inner, Token* t) {
     bool is_variadic = false;
-    Scope* scope = create_scope(SCOPE_FUNC_PROTO, parser->current_scope);
+    AST_Scope* scope = create_scope(parser->current_scope);
     parser->current_scope = scope;
-    append(parser->scopes, scope);
-    list(ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
+    list(AST_ParamDecl*) params = parse_parameter_declarations(parser, &is_variadic);
     parser->current_scope = scope->parent;
-    DirectDeclarator* new = create_struct(DirectDeclarator);
-    *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = inner, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic, .func_proto_scope = scope};
+    AST_DirectDeclarator* new = create_struct(AST_DirectDeclarator);
+    *new = (AST_DirectDeclarator){.token = t, .decl_type = DECLARATOR_FUNC, .decl.func.direct_declarator = inner, .decl.func.param_decls = params, .decl.func.is_variadic = is_variadic, .func_proto_scope = scope};
     return new;
 }
 
 // is_abs: in = allow abs, out = result is abs
-static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
+static AST_DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
     Token* t = peek(parser);
-    DirectDeclarator* direct_decl = NULL;
+    AST_DirectDeclarator* direct_decl = NULL;
     bool allow_abs = *is_abs;
     *is_abs = true;
     if (match(parser, TOKEN_IDENTIFIER, NULL)) {
-        direct_decl = create_struct(DirectDeclarator);
-        *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_ID, .decl.identifier = t};
+        direct_decl = create_struct(AST_DirectDeclarator);
+        *direct_decl = (AST_DirectDeclarator){.token = t, .decl_type = DECLARATOR_ID, .decl.identifier = t};
         *is_abs = false;
     } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_PARENTHESIS)) {
         if (allow_abs && (check(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS) || is_declaration_start(parser))) {
@@ -1104,8 +1093,8 @@ static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
         } else {
             // parenthesized declarator, e.g. int (*fp)(int)
             bool is_inner_abs = allow_abs;
-            direct_decl = create_struct(DirectDeclarator);
-            *direct_decl = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_DECL, .decl.declarator = parse_declarator(parser, &is_inner_abs)};
+            direct_decl = create_struct(AST_DirectDeclarator);
+            *direct_decl = (AST_DirectDeclarator){.token = t, .decl_type = DECLARATOR_DECL, .decl.declarator = parse_declarator(parser, &is_inner_abs)};
             if (!is_inner_abs) *is_abs = false;
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_PARENTHESIS, "Expected ')' to close parenthesized declarator");
         }
@@ -1143,15 +1132,15 @@ static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
                     }
                 }
             }
-            AssignmentExpression* expr = NULL;
+            AST_AssignmentExpression* expr = NULL;
             if (has_static || (!has_star && !check(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET)))
                 expr = parse_assignment_expression(parser);
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' to close array declarator");
-            DirectDeclarator* new = create_struct(DirectDeclarator);
+            AST_DirectDeclarator* new = create_struct(AST_DirectDeclarator);
             if (has_static || expr != NULL)
-                *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_ARRAY, .decl.array.direct_declarator = direct_decl, .decl.array.assignment_expression = expr, .decl.array.is_static = has_static, .decl.array.type_qualifiers = type_qualifiers};
+                *new = (AST_DirectDeclarator){.token = t, .decl_type = DECLARATOR_ARRAY, .decl.array.direct_declarator = direct_decl, .decl.array.assignment_expression = expr, .decl.array.is_static = has_static, .decl.array.type_qualifiers = type_qualifiers};
             else
-                *new = (DirectDeclarator){.token = t, .decl_type = DECLARATOR_INCOMPLETE_ARRAY, .decl.incomplete_array.direct_declarator = direct_decl, .decl.incomplete_array.has_star = has_star, .decl.incomplete_array.type_qualifiers = type_qualifiers};
+                *new = (AST_DirectDeclarator){.token = t, .decl_type = DECLARATOR_INCOMPLETE_ARRAY, .decl.incomplete_array.direct_declarator = direct_decl, .decl.incomplete_array.has_star = has_star, .decl.incomplete_array.type_qualifiers = type_qualifiers};
             direct_decl = new;
         } else
             break;
@@ -1160,20 +1149,20 @@ static DirectDeclarator* parse_direct_declarator(Parser* parser, bool* is_abs) {
 }
 
 // is_abs: in = allow abs, out = result is abs
-static Declarator* parse_declarator(Parser* parser, bool* is_abs) {
-    Declarator* decl = create_struct(Declarator);
-    *decl = (Declarator){.token = peek(parser), .pointer = NULL, .direct_declarator = NULL};
+static AST_Declarator* parse_declarator(Parser* parser, bool* is_abs) {
+    AST_Declarator* decl = create_struct(AST_Declarator);
+    *decl = (AST_Declarator){.token = peek(parser), .pointer = NULL, .direct_declarator = NULL};
     if (check(parser, TOKEN_SYMBOL, SYMBOL_MUL))
         decl->pointer = parse_pointer(parser);
     decl->direct_declarator = parse_direct_declarator(parser, is_abs);
     return decl;
 }
 
-static list(DeclSpec*) parse_declaration_specifiers(Parser* parser) {
-    list(DeclSpec*) decl_specs = create_list(DeclSpec*);
+static list(AST_DeclSpec*) parse_declaration_specifiers(Parser* parser) {
+    list(AST_DeclSpec*) decl_specs = create_list(AST_DeclSpec*);
     bool seen_type = false;
     for (Token* t = peek(parser); !is_eof(t); t = peek(parser)) {
-        DeclSpec* decl_spec = create_struct(DeclSpec);
+        AST_DeclSpec* decl_spec = create_struct(AST_DeclSpec);
         decl_spec->token = t;
         if (is_type_specifier_start(parser, seen_type)) {
             // type_specifier
@@ -1217,18 +1206,18 @@ static list(DeclSpec*) parse_declaration_specifiers(Parser* parser) {
     return decl_specs;
 }
 
-static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Declarator* first, Token* t) {
-    VarDecl* var_decl = create_struct(VarDecl);
-    *var_decl = (VarDecl){.token = t, .is_static_assert_decl = false, .decl.general_decl.decl_specs = decl_specs, .decl.general_decl.init_decls = create_list(InitDecl*)};
+static AST_VarDecl* parse_var_decl(Parser* parser, list(AST_DeclSpec*) decl_specs, AST_Declarator* first, Token* t) {
+    AST_VarDecl* var_decl = create_struct(AST_VarDecl);
+    *var_decl = (AST_VarDecl){.token = t, .is_static_assert_decl = false, .decl.general_decl.decl_specs = decl_specs, .decl.general_decl.init_decls = create_list(AST_InitDecl*)};
     if (first == NULL && match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON)) {
         if (decl_specs != NULL) {
-            TypeSpec* tag = NULL;
-            DeclSpec* redundant = NULL;
+            AST_TypeSpec* tag = NULL;
+            AST_DeclSpec* redundant = NULL;
             Token* tt = NULL;
-            foreach (DeclSpec*, spec, decl_specs) {
+            foreach (AST_DeclSpec*, spec, decl_specs) {
                 if (tt == NULL) tt = spec->token;
                 if (spec->specifier_type == SPEC_TYPE_SPEC) {
-                    TypeSpec* type = spec->specifier.type;
+                    AST_TypeSpec* type = spec->specifier.type;
                     if (type->spec_type == TYPE_SPEC_STRUCT_UNION || type->spec_type == TYPE_SPEC_ENUM)
                         tag = type;
                 } else if (redundant == NULL)
@@ -1243,19 +1232,19 @@ static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Decla
         }
         return var_decl;
     }
-    Declarator* decl = first;
+    AST_Declarator* decl = first;
     while (true) {
         Token* decl_t = peek(parser);
         if (decl != NULL) {
             decl_t = decl->token;
-            SymbolKind kind = has_typedef(decl_specs) ? SYMBOL_KIND_TYPEDEF : (get_function_declarator(decl, NULL) != NULL ? SYMBOL_KIND_FUNC : SYMBOL_KIND_VAR);
-            add_name(parser, get_declarator_identifier(decl->direct_declarator), kind);
+            bool is_typedef = has_typedef(decl_specs);
+            add_name(parser, get_declarator_identifier(decl->direct_declarator), is_typedef);
         }
-        Initializer* init = NULL;
+        AST_Initializer* init = NULL;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_ASSIGN))
             init = parse_initializer(parser);
-        InitDecl* init_decl = create_struct(InitDecl);
-        *init_decl = (InitDecl){.token = decl_t, .declarator = decl, .initializer = init};
+        AST_InitDecl* init_decl = create_struct(AST_InitDecl);
+        *init_decl = (AST_InitDecl){.token = decl_t, .declarator = decl, .initializer = init};
         append(var_decl->decl.general_decl.init_decls, init_decl);
         if (!match(parser, TOKEN_SYMBOL, SYMBOL_COMMA)) break;
         bool is_abs = false;
@@ -1269,40 +1258,39 @@ static VarDecl* parse_var_decl(Parser* parser, list(DeclSpec*) decl_specs, Decla
     return var_decl;
 }
 
-static VarDecl* parse_declaration(Parser* parser, FuncDecl** func_def) {
+static AST_VarDecl* parse_declaration(Parser* parser, AST_FuncDecl** func_def) {
     Token* t = peek(parser);
     if (match(parser, TOKEN_KEYWORD, KEYWORD_STATIC_ASSERT)) {
-        VarDecl* var_decl = create_struct(VarDecl);
-        *var_decl = (VarDecl){.token = t, .is_static_assert_decl = true, .decl.static_assert_decl = parse_static_assert(parser, t)};
+        AST_VarDecl* var_decl = create_struct(AST_VarDecl);
+        *var_decl = (AST_VarDecl){.token = t, .is_static_assert_decl = true, .decl.static_assert_decl = parse_static_assert(parser, t)};
         return var_decl;
     }
-    list(DeclSpec*) decl_specs = parse_declaration_specifiers(parser);
+    list(AST_DeclSpec*) decl_specs = parse_declaration_specifiers(parser);
     if (check(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
         return parse_var_decl(parser, decl_specs, NULL, t);
 
     bool is_abs = false;
-    Declarator* decl = parse_declarator(parser, &is_abs);
+    AST_Declarator* decl = parse_declarator(parser, &is_abs);
     if (is_abs) {
         parser_error("Expected identifier in declarator", decl->token);
         return NULL;
     }
     if (check(parser, TOKEN_SYMBOL, SYMBOL_L_BRACE)) {
-        DirectDeclarator* func_declarator = get_function_declarator(decl, NULL);
+        AST_DirectDeclarator* func_declarator = get_function_declarator(decl, NULL);
         if (func_declarator == NULL)
             parser_error("Expected ';' after declaration (only a function declarator can have a body)", peek(parser));
         else if (func_def == NULL)
             parser_error("Function definition is not allowed here", peek(parser));
         else {
             get(parser);  // consume '{'
-            add_name(parser, get_declarator_identifier(decl->direct_declarator), SYMBOL_KIND_FUNC);
-            Scope* body = func_declarator->func_proto_scope;
-            body->kind = SCOPE_FUNC_BODY;
+            add_name(parser, get_declarator_identifier(decl->direct_declarator), false);
+            AST_Scope* body = func_declarator->func_proto_scope;
             parser->current_scope = body;
-            list(DeclStmt*) compound = parse_compound_stmt(parser);
+            list(AST_DeclStmt*) compound = parse_compound_stmt(parser);
             expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACE, "Expected '}' at end of function body");
             parser->current_scope = body->parent;
-            FuncDecl* func_decl = create_struct(FuncDecl);
-            *func_decl = (FuncDecl){.token = t, .decl_specs = decl_specs, .declarator = decl, .body = compound};
+            AST_FuncDecl* func_decl = create_struct(AST_FuncDecl);
+            *func_decl = (AST_FuncDecl){.token = t, .decl_specs = decl_specs, .declarator = decl, .body = compound};
             *func_def = func_decl;
         }
         return NULL;
@@ -1310,25 +1298,25 @@ static VarDecl* parse_declaration(Parser* parser, FuncDecl** func_def) {
     return parse_var_decl(parser, decl_specs, decl, t);
 }
 
-TU* parse_parser(Parser* parser) {
+AST_TU* parse_parser(Parser* parser) {
     Token* t = peek(parser);
-    TU* tu = create_struct(TU);
+    AST_TU* tu = create_struct(AST_TU);
     tu->token = t;
     tu->filename = t->filename;
-    tu->extern_decls = create_list(ExternDecl*);
+    tu->extern_decls = create_list(AST_ExternDecl*);
     while (!is_eof(t)) {
         size_t start_depth = parser->brace_depth;
         if (match(parser, TOKEN_SYMBOL, SYMBOL_SEMICOLON))
             parser_warn("Extra ';' outside of a function", t);
         else {
-            FuncDecl* func_decl = NULL;
-            VarDecl* var_decl = parse_declaration(parser, &func_decl);
-            ExternDecl* extern_decl = NULL;
-            extern_decl = create_struct(ExternDecl);
+            AST_FuncDecl* func_decl = NULL;
+            AST_VarDecl* var_decl = parse_declaration(parser, &func_decl);
+            AST_ExternDecl* extern_decl = NULL;
+            extern_decl = create_struct(AST_ExternDecl);
             if (func_decl != NULL)
-                *extern_decl = (ExternDecl){.token = t, .decl.func_decl = func_decl, .is_func_decl = true};
+                *extern_decl = (AST_ExternDecl){.token = t, .decl.func_decl = func_decl, .is_func_decl = true};
             else if (var_decl != NULL)
-                *extern_decl = (ExternDecl){.token = t, .decl.var_decl = var_decl, .is_func_decl = false};
+                *extern_decl = (AST_ExternDecl){.token = t, .decl.var_decl = var_decl, .is_func_decl = false};
             if (func_decl != NULL || var_decl != NULL)
                 append(tu->extern_decls, extern_decl);
         }

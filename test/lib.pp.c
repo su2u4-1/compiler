@@ -83,71 +83,69 @@ void* list_pop_back(List* self, int type_id);
 void* list_peek_front(List* self, int type_id);
 void* list_peek_back(List* self, int type_id);
 enum {
-    TYPE_string,
-    TYPE_ppToken,
-    TYPE_ppMacro,
-    TYPE_ppCondFrame,
-    TYPE_List_ppToken,
-    TYPE_Token,
-    TYPE_ExternDecl,
-    TYPE_DeclSpec,
-    TYPE_InitDecl,
-    TYPE_ParamDecl,
-    TYPE_StructDecl,
-    TYPE_Enumerator,
-    TYPE_InitializerItem,
-    TYPE_Designator,
-    TYPE_SpecifierQualifier,
-    TYPE_StructDeclarator,
-    TYPE_DeclStmt,
-    TYPE_AssignmentExpression,
-    TYPE_GenericAssociation,
-    TYPE_TypeName,
-    TYPE_Scope,
-    TYPE_Symbol,
+    LIST_TYPE_string,
+    LIST_TYPE_ppToken,
+    LIST_TYPE_ppMacro,
+    LIST_TYPE_ppCondFrame,
+    LIST_TYPE_List_ppToken,
+    LIST_TYPE_Token,
+    LIST_TYPE_AST_ExternDecl,
+    LIST_TYPE_AST_DeclSpec,
+    LIST_TYPE_AST_InitDecl,
+    LIST_TYPE_AST_ParamDecl,
+    LIST_TYPE_AST_StructDecl,
+    LIST_TYPE_AST_Enumerator,
+    LIST_TYPE_AST_InitializerItem,
+    LIST_TYPE_AST_Designator,
+    LIST_TYPE_AST_SpecifierQualifier,
+    LIST_TYPE_AST_StructDeclarator,
+    LIST_TYPE_AST_DeclStmt,
+    LIST_TYPE_AST_AssignmentExpression,
+    LIST_TYPE_AST_GenericAssociation,
+    LIST_TYPE_AST_TypeName,
+    LIST_TYPE_AST_Symbol,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
 typedef struct ppMacro ppMacro;
 typedef struct ppCondFrame ppCondFrame;
-typedef struct ExternDecl ExternDecl;
-typedef struct DeclSpec DeclSpec;
-typedef struct InitDecl InitDecl;
-typedef struct ParamDecl ParamDecl;
-typedef struct StructDecl StructDecl;
-typedef struct Enumerator Enumerator;
-typedef struct InitializerItem InitializerItem;
-typedef struct Designator Designator;
-typedef struct SpecifierQualifier SpecifierQualifier;
-typedef struct StructDeclarator StructDeclarator;
-typedef struct DeclStmt DeclStmt;
-typedef struct AssignmentExpression AssignmentExpression;
-typedef struct GenericAssociation GenericAssociation;
-typedef struct TypeName TypeName;
-typedef struct Scope Scope;
-typedef struct Symbol Symbol;
+typedef struct AST_ExternDecl AST_ExternDecl;
+typedef struct AST_DeclSpec AST_DeclSpec;
+typedef struct AST_InitDecl AST_InitDecl;
+typedef struct AST_ParamDecl AST_ParamDecl;
+typedef struct AST_StructDecl AST_StructDecl;
+typedef struct AST_Enumerator AST_Enumerator;
+typedef struct AST_InitializerItem AST_InitializerItem;
+typedef struct AST_Designator AST_Designator;
+typedef struct AST_SpecifierQualifier AST_SpecifierQualifier;
+typedef struct AST_StructDeclarator AST_StructDeclarator;
+typedef struct AST_DeclStmt AST_DeclStmt;
+typedef struct AST_AssignmentExpression AST_AssignmentExpression;
+typedef struct AST_GenericAssociation AST_GenericAssociation;
+typedef struct AST_TypeName AST_TypeName;
+typedef struct AST_Scope AST_Scope;
+typedef struct AST_Symbol AST_Symbol;
 typedef List* List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
 typedef List List_List_ppToken;
 typedef List List_Token;
-typedef List List_ExternDecl;
-typedef List List_DeclSpec;
-typedef List List_InitDecl;
-typedef List List_ParamDecl;
-typedef List List_StructDecl;
-typedef List List_Enumerator;
-typedef List List_InitializerItem;
-typedef List List_Designator;
-typedef List List_SpecifierQualifier;
-typedef List List_StructDeclarator;
-typedef List List_DeclStmt;
-typedef List List_AssignmentExpression;
-typedef List List_GenericAssociation;
-typedef List List_TypeName;
-typedef List List_Scope;
-typedef List List_Symbol;
+typedef List List_AST_ExternDecl;
+typedef List List_AST_DeclSpec;
+typedef List List_AST_InitDecl;
+typedef List List_AST_ParamDecl;
+typedef List List_AST_StructDecl;
+typedef List List_AST_Enumerator;
+typedef List List_AST_InitializerItem;
+typedef List List_AST_Designator;
+typedef List List_AST_SpecifierQualifier;
+typedef List List_AST_StructDeclarator;
+typedef List List_AST_DeclStmt;
+typedef List List_AST_AssignmentExpression;
+typedef List List_AST_GenericAssociation;
+typedef List List_AST_TypeName;
+typedef List List_AST_Symbol;
 typedef enum EscapeResult {
     ESC_OK,
     ESC_UNKNOWN,

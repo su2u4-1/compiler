@@ -3,106 +3,106 @@
 
 #include "lib.h"
 
-typedef struct StaticAssertDecl StaticAssertDecl;
-typedef struct Declarator Declarator;
-typedef struct DirectDeclarator DirectDeclarator;
-typedef struct TypeSpec TypeSpec;
-typedef struct Pointer Pointer;
-typedef struct Initializer Initializer;
-typedef struct InitializerItem InitializerItem;
-typedef struct Statement Statement;
-typedef struct Enumerator Enumerator;
-typedef struct StructDeclarator StructDeclarator;
-typedef struct StructDecl StructDecl;
-typedef struct SpecifierQualifier SpecifierQualifier;
-typedef struct TypeName TypeName;
-typedef struct ParamDecl ParamDecl;
-typedef struct Designator Designator;
-typedef struct DeclSpec DeclSpec;
-typedef struct FuncDecl FuncDecl;
-typedef struct InitDecl InitDecl;
-typedef struct VarDecl VarDecl;
-typedef struct ExternDecl ExternDecl;
-typedef struct TU TU;
+typedef struct AST_StaticAssertDecl AST_StaticAssertDecl;
+typedef struct AST_Declarator AST_Declarator;
+typedef struct AST_DirectDeclarator AST_DirectDeclarator;
+typedef struct AST_TypeSpec AST_TypeSpec;
+typedef struct AST_Pointer AST_Pointer;
+typedef struct AST_Initializer AST_Initializer;
+typedef struct AST_InitializerItem AST_InitializerItem;
+typedef struct AST_Statement AST_Statement;
+typedef struct AST_Enumerator AST_Enumerator;
+typedef struct AST_StructDeclarator AST_StructDeclarator;
+typedef struct AST_StructDecl AST_StructDecl;
+typedef struct AST_SpecifierQualifier AST_SpecifierQualifier;
+typedef struct AST_TypeName AST_TypeName;
+typedef struct AST_ParamDecl AST_ParamDecl;
+typedef struct AST_Designator AST_Designator;
+typedef struct AST_DeclSpec AST_DeclSpec;
+typedef struct AST_FuncDecl AST_FuncDecl;
+typedef struct AST_InitDecl AST_InitDecl;
+typedef struct AST_VarDecl AST_VarDecl;
+typedef struct AST_ExternDecl AST_ExternDecl;
+typedef struct AST_TU AST_TU;
 
-typedef struct Declarator AbsDeclarator;  // not use identifier
+typedef struct AST_Declarator AST_AbsDeclarator;  // not use identifier
 
-typedef struct LabeledStatement LabeledStatement;
-typedef struct SelectionStatement SelectionStatement;
-typedef struct IterationStatement IterationStatement;
-typedef struct JumpStatement JumpStatement;
-typedef struct DeclStmt DeclStmt;
+typedef struct AST_LabeledStatement AST_LabeledStatement;
+typedef struct AST_SelectionStatement AST_SelectionStatement;
+typedef struct AST_IterationStatement AST_IterationStatement;
+typedef struct AST_JumpStatement AST_JumpStatement;
+typedef struct AST_DeclStmt AST_DeclStmt;
 
-typedef struct AssignmentExpression AssignmentExpression;
-typedef struct ConditionalExpression ConditionalExpression;
-typedef struct BinaryExpression BinaryExpression;
-typedef struct CastExpression CastExpression;
-typedef struct UnaryExpression UnaryExpression;
-typedef struct PostfixExpression PostfixExpression;
-typedef struct PrimaryExpression PrimaryExpression;
-typedef struct GenericAssociation GenericAssociation;
+typedef struct AST_AssignmentExpression AST_AssignmentExpression;
+typedef struct AST_ConditionalExpression AST_ConditionalExpression;
+typedef struct AST_BinaryExpression AST_BinaryExpression;
+typedef struct AST_CastExpression AST_CastExpression;
+typedef struct AST_UnaryExpression AST_UnaryExpression;
+typedef struct AST_PostfixExpression AST_PostfixExpression;
+typedef struct AST_PrimaryExpression AST_PrimaryExpression;
+typedef struct AST_GenericAssociation AST_GenericAssociation;
 
-struct AssignmentExpression {
+struct AST_AssignmentExpression {
     Token* token;
     union {
-        ConditionalExpression* cond_expr;
+        AST_ConditionalExpression* cond_expr;
         struct {
-            UnaryExpression* left;  // not allow cast expression
-            AssignmentExpression* right;
+            AST_UnaryExpression* left;  // not allow cast expression
+            AST_AssignmentExpression* right;
             string op;  // = | *= | /= | %= | += | -= | <<= | >>= | &= | ^= | |=
         } binary;
     } expr;
     bool is_conditional;
 };
 
-struct ConditionalExpression {
+struct AST_ConditionalExpression {
     Token* token;
-    BinaryExpression* binary_expr;
-    list(AssignmentExpression*) true_expr;
-    ConditionalExpression* false_expr;
+    AST_BinaryExpression* binary_expr;
+    list(AST_AssignmentExpression*) true_expr;
+    AST_ConditionalExpression* false_expr;
 };
 
-struct BinaryExpression {
+struct AST_BinaryExpression {
     Token* token;
     union {
         struct {
             string op;  // || | && | | | ^ | & | == | != | < | > | <= | >= | << | >> | + | - | * | / | %
-            BinaryExpression* left;
-            BinaryExpression* right;
+            AST_BinaryExpression* left;
+            AST_BinaryExpression* right;
         } binary;
-        CastExpression* cast;
+        AST_CastExpression* cast;
     } expr;
     bool is_cast;
 };
 
-struct CastExpression {
+struct AST_CastExpression {
     Token* token;
     union {
         struct {
-            TypeName* type_name;
-            CastExpression* cast_expr;
+            AST_TypeName* type_name;
+            AST_CastExpression* cast_expr;
         } cast;
-        UnaryExpression* unary_expr;
+        AST_UnaryExpression* unary_expr;
     } expr;
     bool is_cast;
 };
 
-struct UnaryExpression {
+struct AST_UnaryExpression {
     Token* token;
     union {
         struct {
             string op;  // ++ | -- | sizeof
-            UnaryExpression* unary_expr;
+            AST_UnaryExpression* unary_expr;
         } prefix;
         struct {
             string op;  // * | & | + | - | ~ | !
-            CastExpression* cast_expr;
+            AST_CastExpression* cast_expr;
         } unary_op;
         struct {
-            TypeName* type_name;
+            AST_TypeName* type_name;
             bool is_sizeof;
         } function_like;  // sizeof(typename) | _Alignof(typename)
-        PostfixExpression* postfix;
+        AST_PostfixExpression* postfix;
     } expr;
     enum {
         UNARY_PREFIX,
@@ -112,24 +112,24 @@ struct UnaryExpression {
     } expr_type;
 };
 
-struct PostfixExpression {
+struct AST_PostfixExpression {
     Token* token;
     union {
-        PrimaryExpression* primary_expr;
+        AST_PrimaryExpression* primary_expr;
         struct {
-            TypeName* type_name;
-            list(InitializerItem*) initializer_list;
+            AST_TypeName* type_name;
+            list(AST_InitializerItem*) initializer_list;
         } compound_literal;
         struct {
-            PostfixExpression* postfix_expr;
-            list(AssignmentExpression*) index_expr;
+            AST_PostfixExpression* postfix_expr;
+            list(AST_AssignmentExpression*) index_expr;
         } array_access;
         struct {
-            PostfixExpression* postfix_expr;
-            list(AssignmentExpression*) args;
+            AST_PostfixExpression* postfix_expr;
+            list(AST_AssignmentExpression*) args;
         } func_call;
         struct {
-            PostfixExpression* postfix_expr;
+            AST_PostfixExpression* postfix_expr;
             Token* identifier;
             enum {  // . | -> | ++ | --
                 POSTFIX_MEMBER_ACCESS,
@@ -148,7 +148,7 @@ struct PostfixExpression {
     } expr_type;
 };
 
-struct PrimaryExpression {
+struct AST_PrimaryExpression {
     Token* token;
     union {
         Token* identifier;
@@ -156,10 +156,10 @@ struct PrimaryExpression {
         Token* character_constant;
         Token* floating_constant;
         Token* string_literal;
-        list(AssignmentExpression*) expr;
+        list(AST_AssignmentExpression*) expr;
         struct {
-            AssignmentExpression* expr;
-            list(GenericAssociation*) generic_assoc_list;
+            AST_AssignmentExpression* expr;
+            list(AST_GenericAssociation*) generic_assoc_list;
         } generic_selection;
     } primary;
     enum {
@@ -172,26 +172,26 @@ struct PrimaryExpression {
         PRIMARY_GENERIC_SELECTION,
     } primary_type;
 };
-struct GenericAssociation {
+struct AST_GenericAssociation {
     Token* token;
-    TypeName* type_name;  // if type_name == NULL, type_name = "default"
-    AssignmentExpression* assignment_expr;
+    AST_TypeName* type_name;  // if type_name == NULL, type_name = "default"
+    AST_AssignmentExpression* assignment_expr;
 };
 
-struct DeclStmt {
+struct AST_DeclStmt {
     Token* token;
     union {
-        VarDecl* var_decl;
-        Statement* statement;
+        AST_VarDecl* var_decl;
+        AST_Statement* statement;
     } item;
     bool is_var_decl;
 };
 
-struct LabeledStatement {
+struct AST_LabeledStatement {
     Token* token;
     union {
         Token* identifier;                 // identifier
-        ConditionalExpression* case_stmt;  // case constant_expression
+        AST_ConditionalExpression* case_stmt;  // case constant_expression
         void* none;                        // default
     } label;
     enum {
@@ -199,41 +199,41 @@ struct LabeledStatement {
         LABEL_CASE,
         LABEL_DEFAULT,
     } label_type;
-    Statement* stmt;
+    AST_Statement* stmt;
 };
 
-struct SelectionStatement {
+struct AST_SelectionStatement {
     Token* token;
     union {
         struct {
-            list(AssignmentExpression*) cond_expr;
-            Statement* then_stmt;
-            Statement* else_stmt;
+            list(AST_AssignmentExpression*) cond_expr;
+            AST_Statement* then_stmt;
+            AST_Statement* else_stmt;
         } if_stmt;
         struct {
-            list(AssignmentExpression*) cond_expr;
-            Statement* stmt;
+            list(AST_AssignmentExpression*) cond_expr;
+            AST_Statement* stmt;
         } switch_stmt;
     } selection;
     bool is_switch;
 };
 
-struct IterationStatement {
+struct AST_IterationStatement {
     Token* token;
     union {
         struct {
-            list(AssignmentExpression*) expr;
-            Statement* stmt;
+            list(AST_AssignmentExpression*) expr;
+            AST_Statement* stmt;
         } while_stmt;  // while and do-while
         struct {
             union {
-                list(AssignmentExpression*) init_expr;
-                VarDecl* init_decl;
+                list(AST_AssignmentExpression*) init_expr;
+                AST_VarDecl* init_decl;
             } init;
             bool is_init_decl;
-            list(AssignmentExpression*) cond_expr;
-            list(AssignmentExpression*) loop_expr;
-            Statement* stmt;
+            list(AST_AssignmentExpression*) cond_expr;
+            list(AST_AssignmentExpression*) loop_expr;
+            AST_Statement* stmt;
         } for_stmt;  // for
     } loop;
     enum {
@@ -243,11 +243,11 @@ struct IterationStatement {
     } loop_type;
 };
 
-struct JumpStatement {
+struct AST_JumpStatement {
     Token* token;
     union {
         Token* identifier;                 // goto identifier
-        list(AssignmentExpression*) expr;  // return [ expression ]
+        list(AST_AssignmentExpression*) expr;  // return [ expression ]
         void* none;                        // continue | break
     } jump;
     enum {
@@ -258,15 +258,15 @@ struct JumpStatement {
     } jump_type;
 };
 
-struct Statement {
+struct AST_Statement {
     Token* token;
     union {
-        LabeledStatement* label;
-        list(DeclStmt*) compound;
-        list(AssignmentExpression*) expression;
-        SelectionStatement* selection;
-        IterationStatement* iteration;
-        JumpStatement* jump;
+        AST_LabeledStatement* label;
+        list(AST_DeclStmt*) compound;
+        list(AST_AssignmentExpression*) expression;
+        AST_SelectionStatement* selection;
+        AST_IterationStatement* iteration;
+        AST_JumpStatement* jump;
     } stmt;
     enum {
         STMT_LABELED,
@@ -278,94 +278,94 @@ struct Statement {
     } stmt_type;
 };
 
-struct Enumerator {
+struct AST_Enumerator {
     Token* token;
     Token* identifier;
-    ConditionalExpression* constant_expr;
+    AST_ConditionalExpression* constant_expr;
 };
 
-struct StructDeclarator {
+struct AST_StructDeclarator {
     Token* token;
-    Declarator* declarator;
-    ConditionalExpression* constant_expr;
+    AST_Declarator* declarator;
+    AST_ConditionalExpression* constant_expr;
 };
 
-struct StructDecl {
+struct AST_StructDecl {
     Token* token;
     union {
         struct {
-            list(SpecifierQualifier*) spec_qual_list;
-            list(StructDeclarator*) struct_declarators;
+            list(AST_SpecifierQualifier*) spec_qual_list;
+            list(AST_StructDeclarator*) struct_declarators;
         } general_struct_decl;
-        StaticAssertDecl* static_assert_decl;
+        AST_StaticAssertDecl* static_assert_decl;
     } decl;
     bool is_static_assert_decl;
 };
 
-struct SpecifierQualifier {
+struct AST_SpecifierQualifier {
     Token* token;
     union {
-        TypeSpec* type_spec;
+        AST_TypeSpec* type_spec;
         string type_qualifier;
     } spec;
     bool is_type_spec;
 };
 
-struct TypeName {
+struct AST_TypeName {
     Token* token;
-    list(SpecifierQualifier*) spec_qual_list;
-    AbsDeclarator* abs_declarator;
+    list(AST_SpecifierQualifier*) spec_qual_list;
+    AST_AbsDeclarator* abs_declarator;
 };
 
-struct ParamDecl {
+struct AST_ParamDecl {
     Token* token;
-    list(DeclSpec*) decl_specs;
-    Declarator* decl;
+    list(AST_DeclSpec*) decl_specs;
+    AST_Declarator* decl;
     bool is_abs;
 };
 
-struct Pointer {
+struct AST_Pointer {
     Token* token;
     list(string) type_qualifiers;
-    Pointer* pointer;
+    AST_Pointer* pointer;
 };
 
-struct Designator {
+struct AST_Designator {
     Token* token;
     union {
-        ConditionalExpression* constant_expr;
+        AST_ConditionalExpression* constant_expr;
         Token* identifier;
     } designator;
     bool is_constant_expr;
 };
 
-struct InitializerItem {
+struct AST_InitializerItem {
     Token* token;
-    list(Designator*) designation;
-    Initializer* initializer;
+    list(AST_Designator*) designation;
+    AST_Initializer* initializer;
 };
-struct Initializer {
+struct AST_Initializer {
     Token* token;
     union {
-        AssignmentExpression* assignment_expr;
-        list(InitializerItem*) inits;
+        AST_AssignmentExpression* assignment_expr;
+        list(AST_InitializerItem*) inits;
     } init;
     bool is_assignment_expr;
 };
 
-struct TypeSpec {
+struct AST_TypeSpec {
     Token* token;
     union {
         string keyword_spec;    // "void" | "char" | "short" | "int" | "long" | "float" | "double" | "signed" | "unsigned" | "_Bool" | "_Imaginary" | "_Complex"
-        TypeName* atomic_spec;  // atomic_type_specifier
+        AST_TypeName* atomic_spec;  // atomic_type_specifier
         struct {
             bool is_struct;
             Token* identifier;
-            list(StructDecl*) members;
+            list(AST_StructDecl*) members;
         } struct_union_spec;  // struct_or_union_specifier
         struct {
             Token* identifier;
-            list(Enumerator*) enumerators;
+            list(AST_Enumerator*) enumerators;
         } enum_spec;          // enum_specifier
         Token* typedef_name;  // typedef_name
     } spec;
@@ -378,24 +378,24 @@ struct TypeSpec {
     } spec_type;
 };
 
-struct DirectDeclarator {
+struct AST_DirectDeclarator {
     Token* token;
     union {
         Token* identifier;
-        Declarator* declarator;
+        AST_Declarator* declarator;
         struct {
-            DirectDeclarator* direct_declarator;
-            AssignmentExpression* assignment_expression;
+            AST_DirectDeclarator* direct_declarator;
+            AST_AssignmentExpression* assignment_expression;
             list(string) type_qualifiers;
             bool is_static;
         } array;
         struct {
-            DirectDeclarator* direct_declarator;
-            list(ParamDecl*) param_decls;
+            AST_DirectDeclarator* direct_declarator;
+            list(AST_ParamDecl*) param_decls;
             bool is_variadic;
         } func;
         struct {
-            DirectDeclarator* direct_declarator;
+            AST_DirectDeclarator* direct_declarator;
             list(string) type_qualifiers;
             bool has_star;
         } incomplete_array;
@@ -407,26 +407,26 @@ struct DirectDeclarator {
         DECLARATOR_FUNC,
         DECLARATOR_INCOMPLETE_ARRAY,
     } decl_type;
-    Scope* func_proto_scope;
+    AST_Scope* func_proto_scope;
 };
-struct Declarator {
+struct AST_Declarator {
     Token* token;
-    Pointer* pointer;
-    DirectDeclarator* direct_declarator;
+    AST_Pointer* pointer;
+    AST_DirectDeclarator* direct_declarator;
 };
 
-struct DeclSpec {
+struct AST_DeclSpec {
     Token* token;
     union {
         string keyword;  // storage_class_specifier | type_qualifier | function_specifier
         struct {
             union {
-                TypeName* type_name;
-                ConditionalExpression* constant_expression;
+                AST_TypeName* type_name;
+                AST_ConditionalExpression* constant_expression;
             } spec;
             bool is_type_name;
         } alignment;     // alignment_specifier
-        TypeSpec* type;  // type_specifier
+        AST_TypeSpec* type;  // type_specifier
     } specifier;
     enum {
         SPEC_KEYWORD,
@@ -435,50 +435,50 @@ struct DeclSpec {
     } specifier_type;
 };
 
-struct FuncDecl {
+struct AST_FuncDecl {
     Token* token;
-    list(DeclSpec*) decl_specs;
-    Declarator* declarator;
-    list(DeclStmt*) body;
+    list(AST_DeclSpec*) decl_specs;
+    AST_Declarator* declarator;
+    list(AST_DeclStmt*) body;
 };
 
-struct InitDecl {
+struct AST_InitDecl {
     Token* token;
-    Declarator* declarator;
-    Initializer* initializer;
+    AST_Declarator* declarator;
+    AST_Initializer* initializer;
 };
 
-struct StaticAssertDecl {
+struct AST_StaticAssertDecl {
     Token* token;
-    ConditionalExpression* expr;
+    AST_ConditionalExpression* expr;
     Token* message;
 };
 
-struct VarDecl {
+struct AST_VarDecl {
     Token* token;
     union {
         struct {
-            list(DeclSpec*) decl_specs;
-            list(InitDecl*) init_decls;
+            list(AST_DeclSpec*) decl_specs;
+            list(AST_InitDecl*) init_decls;
         } general_decl;
-        StaticAssertDecl* static_assert_decl;
+        AST_StaticAssertDecl* static_assert_decl;
     } decl;
     bool is_static_assert_decl;
 };
 
-struct ExternDecl {
+struct AST_ExternDecl {
     Token* token;
     union {
-        FuncDecl* func_decl;
-        VarDecl* var_decl;
+        AST_FuncDecl* func_decl;
+        AST_VarDecl* var_decl;
     } decl;
     bool is_func_decl;
 };
 
-struct TU {
+struct AST_TU {
     Token* token;
     string filename;
-    list(ExternDecl*) extern_decls;
+    list(AST_ExternDecl*) extern_decls;
 };
 
 #endif  // AST_H

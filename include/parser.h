@@ -4,38 +4,15 @@
 #include "ast.h"
 #include "lib.h"
 
-typedef enum SymbolKind {
-    SYMBOL_KIND_VAR,
-    SYMBOL_KIND_FUNC,
-    SYMBOL_KIND_TYPEDEF,
-    SYMBOL_KIND_ENUM_CONST,
-    SYMBOL_KIND_STRUCT,
-    SYMBOL_KIND_UNION,
-    SYMBOL_KIND_ENUM,
-} SymbolKind;
-
-typedef enum ScopeKind {
-    SCOPE_FILE,
-    SCOPE_BLOCK,
-    SCOPE_FUNC_PROTO,
-    SCOPE_FUNC_BODY,
-} ScopeKind;
-
-typedef struct Symbol {
+struct AST_Symbol {
     string name;
-    Token* token;
-    SymbolKind kind;
-    bool is_defined;
-} Symbol;
+    bool is_typedef;
+};
 
-typedef struct Scope {
-    ScopeKind kind;
-    struct Scope* parent;
-    // var, func, typedef, enum constant
-    list(Symbol*) names;
-    // struct name, union name, enum name
-    list(Symbol*) tags;
-} Scope;
+struct AST_Scope {
+    AST_Scope* parent;
+    list(AST_Symbol*) names;
+};
 
 typedef struct Parser {
     list(Token*) tokens;
@@ -43,13 +20,12 @@ typedef struct Parser {
     Token* current;
     size_t brace_depth;
     size_t paren_depth;
-    Scope* current_scope;
-    list(Scope*) scopes;  // for debug and reporting
+    AST_Scope* current_scope;
     int error_count;
     bool panic_mode;
 } Parser;
 
 Parser* create_parser(list(Token*) tokens);
-TU* parse_parser(Parser* parser);
+AST_TU* parse_parser(Parser* parser);
 
 #endif  // PARSER_H

@@ -83,71 +83,69 @@ void* list_pop_back(List* self, int type_id);
 void* list_peek_front(List* self, int type_id);
 void* list_peek_back(List* self, int type_id);
 enum {
-    TYPE_string,
-    TYPE_ppToken,
-    TYPE_ppMacro,
-    TYPE_ppCondFrame,
-    TYPE_List_ppToken,
-    TYPE_Token,
-    TYPE_ExternDecl,
-    TYPE_DeclSpec,
-    TYPE_InitDecl,
-    TYPE_ParamDecl,
-    TYPE_StructDecl,
-    TYPE_Enumerator,
-    TYPE_InitializerItem,
-    TYPE_Designator,
-    TYPE_SpecifierQualifier,
-    TYPE_StructDeclarator,
-    TYPE_DeclStmt,
-    TYPE_AssignmentExpression,
-    TYPE_GenericAssociation,
-    TYPE_TypeName,
-    TYPE_Scope,
-    TYPE_Symbol,
+    LIST_TYPE_string,
+    LIST_TYPE_ppToken,
+    LIST_TYPE_ppMacro,
+    LIST_TYPE_ppCondFrame,
+    LIST_TYPE_List_ppToken,
+    LIST_TYPE_Token,
+    LIST_TYPE_AST_ExternDecl,
+    LIST_TYPE_AST_DeclSpec,
+    LIST_TYPE_AST_InitDecl,
+    LIST_TYPE_AST_ParamDecl,
+    LIST_TYPE_AST_StructDecl,
+    LIST_TYPE_AST_Enumerator,
+    LIST_TYPE_AST_InitializerItem,
+    LIST_TYPE_AST_Designator,
+    LIST_TYPE_AST_SpecifierQualifier,
+    LIST_TYPE_AST_StructDeclarator,
+    LIST_TYPE_AST_DeclStmt,
+    LIST_TYPE_AST_AssignmentExpression,
+    LIST_TYPE_AST_GenericAssociation,
+    LIST_TYPE_AST_TypeName,
+    LIST_TYPE_AST_Symbol,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
 typedef struct ppMacro ppMacro;
 typedef struct ppCondFrame ppCondFrame;
-typedef struct ExternDecl ExternDecl;
-typedef struct DeclSpec DeclSpec;
-typedef struct InitDecl InitDecl;
-typedef struct ParamDecl ParamDecl;
-typedef struct StructDecl StructDecl;
-typedef struct Enumerator Enumerator;
-typedef struct InitializerItem InitializerItem;
-typedef struct Designator Designator;
-typedef struct SpecifierQualifier SpecifierQualifier;
-typedef struct StructDeclarator StructDeclarator;
-typedef struct DeclStmt DeclStmt;
-typedef struct AssignmentExpression AssignmentExpression;
-typedef struct GenericAssociation GenericAssociation;
-typedef struct TypeName TypeName;
-typedef struct Scope Scope;
-typedef struct Symbol Symbol;
+typedef struct AST_ExternDecl AST_ExternDecl;
+typedef struct AST_DeclSpec AST_DeclSpec;
+typedef struct AST_InitDecl AST_InitDecl;
+typedef struct AST_ParamDecl AST_ParamDecl;
+typedef struct AST_StructDecl AST_StructDecl;
+typedef struct AST_Enumerator AST_Enumerator;
+typedef struct AST_InitializerItem AST_InitializerItem;
+typedef struct AST_Designator AST_Designator;
+typedef struct AST_SpecifierQualifier AST_SpecifierQualifier;
+typedef struct AST_StructDeclarator AST_StructDeclarator;
+typedef struct AST_DeclStmt AST_DeclStmt;
+typedef struct AST_AssignmentExpression AST_AssignmentExpression;
+typedef struct AST_GenericAssociation AST_GenericAssociation;
+typedef struct AST_TypeName AST_TypeName;
+typedef struct AST_Scope AST_Scope;
+typedef struct AST_Symbol AST_Symbol;
 typedef List* List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
 typedef List List_List_ppToken;
 typedef List List_Token;
-typedef List List_ExternDecl;
-typedef List List_DeclSpec;
-typedef List List_InitDecl;
-typedef List List_ParamDecl;
-typedef List List_StructDecl;
-typedef List List_Enumerator;
-typedef List List_InitializerItem;
-typedef List List_Designator;
-typedef List List_SpecifierQualifier;
-typedef List List_StructDeclarator;
-typedef List List_DeclStmt;
-typedef List List_AssignmentExpression;
-typedef List List_GenericAssociation;
-typedef List List_TypeName;
-typedef List List_Scope;
-typedef List List_Symbol;
+typedef List List_AST_ExternDecl;
+typedef List List_AST_DeclSpec;
+typedef List List_AST_InitDecl;
+typedef List List_AST_ParamDecl;
+typedef List List_AST_StructDecl;
+typedef List List_AST_Enumerator;
+typedef List List_AST_InitializerItem;
+typedef List List_AST_Designator;
+typedef List List_AST_SpecifierQualifier;
+typedef List List_AST_StructDeclarator;
+typedef List List_AST_DeclStmt;
+typedef List List_AST_AssignmentExpression;
+typedef List List_AST_GenericAssociation;
+typedef List List_AST_TypeName;
+typedef List List_AST_Symbol;
 typedef enum EscapeResult {
     ESC_OK,
     ESC_UNKNOWN,
@@ -698,11 +696,11 @@ static Token* string_token(ppToken* t) {
     return token;
 }
 static List_Token* splice_adjacent_string(List_Token* tokens) {
-    List_Token* result = list_create(_Generic((Token*)0, string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+    List_Token* result = list_create(_Generic((Token*)0, string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
     ListNode* n = tokens->head;
     while (n != ((void*)0) ) {
         Token* first = (Token*)n->data;
-        list_append((result), (void*)(first), _Generic((first), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+        list_append((result), (void*)(first), _Generic((first), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
         ListNode* end = n;
         size_t value_len = 0;
         size_t data_len = 0;
@@ -739,26 +737,26 @@ static List_Token* splice_adjacent_string(List_Token* tokens) {
     return result;
 }
 List_Token* pp_to_tokens(List_ppToken* pp_tokens) {
-    List_Token* tokens = list_create(_Generic((Token*)0, string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+    List_Token* tokens = list_create(_Generic((Token*)0, string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
     for (List* t__l = (pp_tokens); t__l != ((void*)0) && t__l->head != ((void*)0) ; t__l = ((void*)0) ) for (ListNode* t__n = t__l->head; t__n != ((void*)0) ; t__n = t__n->next) for (ppToken* t = (ppToken*)t__n->data; t != ((void*)0) ; t = ((void*)0) ) {
         switch (t->type) {
             case PP_IDENTIFIER:
-                list_append((tokens), (void*)(create_token(TOKEN_IDENTIFIER, t)), _Generic((create_token(TOKEN_IDENTIFIER, t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(create_token(TOKEN_IDENTIFIER, t)), _Generic((create_token(TOKEN_IDENTIFIER, t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 break;
             case PP_NUMBER:
-                list_append((tokens), (void*)(number_token(t)), _Generic((number_token(t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(number_token(t)), _Generic((number_token(t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 break;
             case PP_CHAR:
-                list_append((tokens), (void*)(char_token(t)), _Generic((char_token(t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(char_token(t)), _Generic((char_token(t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 break;
             case PP_STRING:
-                list_append((tokens), (void*)(string_token(t)), _Generic((string_token(t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(string_token(t)), _Generic((string_token(t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 break;
             case PP_SYMBOL:
-                list_append((tokens), (void*)(create_token(TOKEN_SYMBOL, t)), _Generic((create_token(TOKEN_SYMBOL, t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(create_token(TOKEN_SYMBOL, t)), _Generic((create_token(TOKEN_SYMBOL, t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 break;
             case PP_EOF:
-                list_append((tokens), (void*)(create_token(TOKEN_EOF, t)), _Generic((create_token(TOKEN_EOF, t)), string: TYPE_string, ppToken*: TYPE_ppToken, ppMacro*: TYPE_ppMacro, ppCondFrame*: TYPE_ppCondFrame, List_ppToken*: TYPE_List_ppToken, Token*: TYPE_Token, ExternDecl*: TYPE_ExternDecl, DeclSpec*: TYPE_DeclSpec, InitDecl*: TYPE_InitDecl, ParamDecl*: TYPE_ParamDecl, StructDecl*: TYPE_StructDecl, Enumerator*: TYPE_Enumerator, InitializerItem*: TYPE_InitializerItem, Designator*: TYPE_Designator, SpecifierQualifier*: TYPE_SpecifierQualifier, StructDeclarator*: TYPE_StructDeclarator, DeclStmt*: TYPE_DeclStmt, AssignmentExpression*: TYPE_AssignmentExpression, GenericAssociation*: TYPE_GenericAssociation, TypeName*: TYPE_TypeName, Scope*: TYPE_Scope, Symbol*: TYPE_Symbol )) ;
+                list_append((tokens), (void*)(create_token(TOKEN_EOF, t)), _Generic((create_token(TOKEN_EOF, t)), string: LIST_TYPE_string, ppToken*: LIST_TYPE_ppToken, ppMacro*: LIST_TYPE_ppMacro, ppCondFrame*: LIST_TYPE_ppCondFrame, List_ppToken*: LIST_TYPE_List_ppToken, Token*: LIST_TYPE_Token, AST_ExternDecl*: LIST_TYPE_AST_ExternDecl, AST_DeclSpec*: LIST_TYPE_AST_DeclSpec, AST_InitDecl*: LIST_TYPE_AST_InitDecl, AST_ParamDecl*: LIST_TYPE_AST_ParamDecl, AST_StructDecl*: LIST_TYPE_AST_StructDecl, AST_Enumerator*: LIST_TYPE_AST_Enumerator, AST_InitializerItem*: LIST_TYPE_AST_InitializerItem, AST_Designator*: LIST_TYPE_AST_Designator, AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt*: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation, AST_TypeName*: LIST_TYPE_AST_TypeName, AST_Symbol*: LIST_TYPE_AST_Symbol )) ;
                 return splice_adjacent_string(tokens);
             case PP_OTHER:
             case PP_PLACE_MARKER:

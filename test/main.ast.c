@@ -83,71 +83,69 @@ void *list_pop_back(List *self, int type_id);
 void *list_peek_front(List *self, int type_id);
 void *list_peek_back(List *self, int type_id);
 enum {
-    TYPE_string,
-    TYPE_ppToken,
-    TYPE_ppMacro,
-    TYPE_ppCondFrame,
-    TYPE_List_ppToken,
-    TYPE_Token,
-    TYPE_ExternDecl,
-    TYPE_DeclSpec,
-    TYPE_InitDecl,
-    TYPE_ParamDecl,
-    TYPE_StructDecl,
-    TYPE_Enumerator,
-    TYPE_InitializerItem,
-    TYPE_Designator,
-    TYPE_SpecifierQualifier,
-    TYPE_StructDeclarator,
-    TYPE_DeclStmt,
-    TYPE_AssignmentExpression,
-    TYPE_GenericAssociation,
-    TYPE_TypeName,
-    TYPE_Scope,
-    TYPE_Symbol,
+    LIST_TYPE_string,
+    LIST_TYPE_ppToken,
+    LIST_TYPE_ppMacro,
+    LIST_TYPE_ppCondFrame,
+    LIST_TYPE_List_ppToken,
+    LIST_TYPE_Token,
+    LIST_TYPE_AST_ExternDecl,
+    LIST_TYPE_AST_DeclSpec,
+    LIST_TYPE_AST_InitDecl,
+    LIST_TYPE_AST_ParamDecl,
+    LIST_TYPE_AST_StructDecl,
+    LIST_TYPE_AST_Enumerator,
+    LIST_TYPE_AST_InitializerItem,
+    LIST_TYPE_AST_Designator,
+    LIST_TYPE_AST_SpecifierQualifier,
+    LIST_TYPE_AST_StructDeclarator,
+    LIST_TYPE_AST_DeclStmt,
+    LIST_TYPE_AST_AssignmentExpression,
+    LIST_TYPE_AST_GenericAssociation,
+    LIST_TYPE_AST_TypeName,
+    LIST_TYPE_AST_Symbol,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
 typedef struct ppMacro ppMacro;
 typedef struct ppCondFrame ppCondFrame;
-typedef struct ExternDecl ExternDecl;
-typedef struct DeclSpec DeclSpec;
-typedef struct InitDecl InitDecl;
-typedef struct ParamDecl ParamDecl;
-typedef struct StructDecl StructDecl;
-typedef struct Enumerator Enumerator;
-typedef struct InitializerItem InitializerItem;
-typedef struct Designator Designator;
-typedef struct SpecifierQualifier SpecifierQualifier;
-typedef struct StructDeclarator StructDeclarator;
-typedef struct DeclStmt DeclStmt;
-typedef struct AssignmentExpression AssignmentExpression;
-typedef struct GenericAssociation GenericAssociation;
-typedef struct TypeName TypeName;
-typedef struct Scope Scope;
-typedef struct Symbol Symbol;
+typedef struct AST_ExternDecl AST_ExternDecl;
+typedef struct AST_DeclSpec AST_DeclSpec;
+typedef struct AST_InitDecl AST_InitDecl;
+typedef struct AST_ParamDecl AST_ParamDecl;
+typedef struct AST_StructDecl AST_StructDecl;
+typedef struct AST_Enumerator AST_Enumerator;
+typedef struct AST_InitializerItem AST_InitializerItem;
+typedef struct AST_Designator AST_Designator;
+typedef struct AST_SpecifierQualifier AST_SpecifierQualifier;
+typedef struct AST_StructDeclarator AST_StructDeclarator;
+typedef struct AST_DeclStmt AST_DeclStmt;
+typedef struct AST_AssignmentExpression AST_AssignmentExpression;
+typedef struct AST_GenericAssociation AST_GenericAssociation;
+typedef struct AST_TypeName AST_TypeName;
+typedef struct AST_Scope AST_Scope;
+typedef struct AST_Symbol AST_Symbol;
 typedef List *List_string;
 typedef List List_ppToken;
 typedef List List_ppMacro;
 typedef List List_ppCondFrame;
 typedef List List_List_ppToken;
 typedef List List_Token;
-typedef List List_ExternDecl;
-typedef List List_DeclSpec;
-typedef List List_InitDecl;
-typedef List List_ParamDecl;
-typedef List List_StructDecl;
-typedef List List_Enumerator;
-typedef List List_InitializerItem;
-typedef List List_Designator;
-typedef List List_SpecifierQualifier;
-typedef List List_StructDeclarator;
-typedef List List_DeclStmt;
-typedef List List_AssignmentExpression;
-typedef List List_GenericAssociation;
-typedef List List_TypeName;
-typedef List List_Scope;
-typedef List List_Symbol;
+typedef List List_AST_ExternDecl;
+typedef List List_AST_DeclSpec;
+typedef List List_AST_InitDecl;
+typedef List List_AST_ParamDecl;
+typedef List List_AST_StructDecl;
+typedef List List_AST_Enumerator;
+typedef List List_AST_InitializerItem;
+typedef List List_AST_Designator;
+typedef List List_AST_SpecifierQualifier;
+typedef List List_AST_StructDeclarator;
+typedef List List_AST_DeclStmt;
+typedef List List_AST_AssignmentExpression;
+typedef List List_AST_GenericAssociation;
+typedef List List_AST_TypeName;
+typedef List List_AST_Symbol;
 typedef enum EscapeResult {
     ESC_OK,
     ESC_UNKNOWN,
@@ -357,98 +355,98 @@ typedef struct Token {
     _Bool at_line_start;
 } Token;
 List_Token *pp_to_tokens(List_ppToken *pp_tokens);
-typedef struct StaticAssertDecl StaticAssertDecl;
-typedef struct Declarator Declarator;
-typedef struct DirectDeclarator DirectDeclarator;
-typedef struct TypeSpec TypeSpec;
-typedef struct Pointer Pointer;
-typedef struct Initializer Initializer;
-typedef struct InitializerItem InitializerItem;
-typedef struct Statement Statement;
-typedef struct Enumerator Enumerator;
-typedef struct StructDeclarator StructDeclarator;
-typedef struct StructDecl StructDecl;
-typedef struct SpecifierQualifier SpecifierQualifier;
-typedef struct TypeName TypeName;
-typedef struct ParamDecl ParamDecl;
-typedef struct Designator Designator;
-typedef struct DeclSpec DeclSpec;
-typedef struct FuncDecl FuncDecl;
-typedef struct InitDecl InitDecl;
-typedef struct VarDecl VarDecl;
-typedef struct ExternDecl ExternDecl;
-typedef struct TU TU;
-typedef struct Declarator AbsDeclarator;
-typedef struct LabeledStatement LabeledStatement;
-typedef struct SelectionStatement SelectionStatement;
-typedef struct IterationStatement IterationStatement;
-typedef struct JumpStatement JumpStatement;
-typedef struct DeclStmt DeclStmt;
-typedef struct AssignmentExpression AssignmentExpression;
-typedef struct ConditionalExpression ConditionalExpression;
-typedef struct BinaryExpression BinaryExpression;
-typedef struct CastExpression CastExpression;
-typedef struct UnaryExpression UnaryExpression;
-typedef struct PostfixExpression PostfixExpression;
-typedef struct PrimaryExpression PrimaryExpression;
-typedef struct GenericAssociation GenericAssociation;
-struct AssignmentExpression {
+typedef struct AST_StaticAssertDecl AST_StaticAssertDecl;
+typedef struct AST_Declarator AST_Declarator;
+typedef struct AST_DirectDeclarator AST_DirectDeclarator;
+typedef struct AST_TypeSpec AST_TypeSpec;
+typedef struct AST_Pointer AST_Pointer;
+typedef struct AST_Initializer AST_Initializer;
+typedef struct AST_InitializerItem AST_InitializerItem;
+typedef struct AST_Statement AST_Statement;
+typedef struct AST_Enumerator AST_Enumerator;
+typedef struct AST_StructDeclarator AST_StructDeclarator;
+typedef struct AST_StructDecl AST_StructDecl;
+typedef struct AST_SpecifierQualifier AST_SpecifierQualifier;
+typedef struct AST_TypeName AST_TypeName;
+typedef struct AST_ParamDecl AST_ParamDecl;
+typedef struct AST_Designator AST_Designator;
+typedef struct AST_DeclSpec AST_DeclSpec;
+typedef struct AST_FuncDecl AST_FuncDecl;
+typedef struct AST_InitDecl AST_InitDecl;
+typedef struct AST_VarDecl AST_VarDecl;
+typedef struct AST_ExternDecl AST_ExternDecl;
+typedef struct AST_TU AST_TU;
+typedef struct AST_Declarator AST_AbsDeclarator;
+typedef struct AST_LabeledStatement AST_LabeledStatement;
+typedef struct AST_SelectionStatement AST_SelectionStatement;
+typedef struct AST_IterationStatement AST_IterationStatement;
+typedef struct AST_JumpStatement AST_JumpStatement;
+typedef struct AST_DeclStmt AST_DeclStmt;
+typedef struct AST_AssignmentExpression AST_AssignmentExpression;
+typedef struct AST_ConditionalExpression AST_ConditionalExpression;
+typedef struct AST_BinaryExpression AST_BinaryExpression;
+typedef struct AST_CastExpression AST_CastExpression;
+typedef struct AST_UnaryExpression AST_UnaryExpression;
+typedef struct AST_PostfixExpression AST_PostfixExpression;
+typedef struct AST_PrimaryExpression AST_PrimaryExpression;
+typedef struct AST_GenericAssociation AST_GenericAssociation;
+struct AST_AssignmentExpression {
     Token *token;
     union {
-        ConditionalExpression *cond_expr;
+        AST_ConditionalExpression *cond_expr;
         struct {
-            UnaryExpression *left;
-            AssignmentExpression *right;
+            AST_UnaryExpression *left;
+            AST_AssignmentExpression *right;
             string op;
         } binary;
     } expr;
     _Bool is_conditional;
 };
-struct ConditionalExpression {
+struct AST_ConditionalExpression {
     Token *token;
-    BinaryExpression *binary_expr;
-    List_AssignmentExpression *true_expr;
-    ConditionalExpression *false_expr;
+    AST_BinaryExpression *binary_expr;
+    List_AST_AssignmentExpression *true_expr;
+    AST_ConditionalExpression *false_expr;
 };
-struct BinaryExpression {
+struct AST_BinaryExpression {
     Token *token;
     union {
         struct {
             string op;
-            BinaryExpression *left;
-            BinaryExpression *right;
+            AST_BinaryExpression *left;
+            AST_BinaryExpression *right;
         } binary;
-        CastExpression *cast;
+        AST_CastExpression *cast;
     } expr;
     _Bool is_cast;
 };
-struct CastExpression {
+struct AST_CastExpression {
     Token *token;
     union {
         struct {
-            TypeName *type_name;
-            CastExpression *cast_expr;
+            AST_TypeName *type_name;
+            AST_CastExpression *cast_expr;
         } cast;
-        UnaryExpression *unary_expr;
+        AST_UnaryExpression *unary_expr;
     } expr;
     _Bool is_cast;
 };
-struct UnaryExpression {
+struct AST_UnaryExpression {
     Token *token;
     union {
         struct {
             string op;
-            UnaryExpression *unary_expr;
+            AST_UnaryExpression *unary_expr;
         } prefix;
         struct {
             string op;
-            CastExpression *cast_expr;
+            AST_CastExpression *cast_expr;
         } unary_op;
         struct {
-            TypeName *type_name;
+            AST_TypeName *type_name;
             _Bool is_sizeof;
         } function_like;
-        PostfixExpression *postfix;
+        AST_PostfixExpression *postfix;
     } expr;
     enum {
         UNARY_PREFIX,
@@ -457,24 +455,24 @@ struct UnaryExpression {
         UNARY_POSTFIX,
     } expr_type;
 };
-struct PostfixExpression {
+struct AST_PostfixExpression {
     Token *token;
     union {
-        PrimaryExpression *primary_expr;
+        AST_PrimaryExpression *primary_expr;
         struct {
-            TypeName *type_name;
-            List_InitializerItem *initializer_list;
+            AST_TypeName *type_name;
+            List_AST_InitializerItem *initializer_list;
         } compound_literal;
         struct {
-            PostfixExpression *postfix_expr;
-            List_AssignmentExpression *index_expr;
+            AST_PostfixExpression *postfix_expr;
+            List_AST_AssignmentExpression *index_expr;
         } array_access;
         struct {
-            PostfixExpression *postfix_expr;
-            List_AssignmentExpression *args;
+            AST_PostfixExpression *postfix_expr;
+            List_AST_AssignmentExpression *args;
         } func_call;
         struct {
-            PostfixExpression *postfix_expr;
+            AST_PostfixExpression *postfix_expr;
             Token *identifier;
             enum {
                 POSTFIX_MEMBER_ACCESS,
@@ -492,7 +490,7 @@ struct PostfixExpression {
         POSTFIX_OP,
     } expr_type;
 };
-struct PrimaryExpression {
+struct AST_PrimaryExpression {
     Token *token;
     union {
         Token *identifier;
@@ -500,10 +498,10 @@ struct PrimaryExpression {
         Token *character_constant;
         Token *floating_constant;
         Token *string_literal;
-        List_AssignmentExpression *expr;
+        List_AST_AssignmentExpression *expr;
         struct {
-            AssignmentExpression *expr;
-            List_GenericAssociation *generic_assoc_list;
+            AST_AssignmentExpression *expr;
+            List_AST_GenericAssociation *generic_assoc_list;
         } generic_selection;
     } primary;
     enum {
@@ -516,24 +514,24 @@ struct PrimaryExpression {
         PRIMARY_GENERIC_SELECTION,
     } primary_type;
 };
-struct GenericAssociation {
+struct AST_GenericAssociation {
     Token *token;
-    TypeName *type_name;
-    AssignmentExpression *assignment_expr;
+    AST_TypeName *type_name;
+    AST_AssignmentExpression *assignment_expr;
 };
-struct DeclStmt {
+struct AST_DeclStmt {
     Token *token;
     union {
-        VarDecl *var_decl;
-        Statement *statement;
+        AST_VarDecl *var_decl;
+        AST_Statement *statement;
     } item;
     _Bool is_var_decl;
 };
-struct LabeledStatement {
+struct AST_LabeledStatement {
     Token *token;
     union {
         Token *identifier;
-        ConditionalExpression *case_stmt;
+        AST_ConditionalExpression *case_stmt;
         void *none;
     } label;
     enum {
@@ -541,39 +539,39 @@ struct LabeledStatement {
         LABEL_CASE,
         LABEL_DEFAULT,
     } label_type;
-    Statement *stmt;
+    AST_Statement *stmt;
 };
-struct SelectionStatement {
+struct AST_SelectionStatement {
     Token *token;
     union {
         struct {
-            List_AssignmentExpression *cond_expr;
-            Statement *then_stmt;
-            Statement *else_stmt;
+            List_AST_AssignmentExpression *cond_expr;
+            AST_Statement *then_stmt;
+            AST_Statement *else_stmt;
         } if_stmt;
         struct {
-            List_AssignmentExpression *cond_expr;
-            Statement *stmt;
+            List_AST_AssignmentExpression *cond_expr;
+            AST_Statement *stmt;
         } switch_stmt;
     } selection;
     _Bool is_switch;
 };
-struct IterationStatement {
+struct AST_IterationStatement {
     Token *token;
     union {
         struct {
-            List_AssignmentExpression *expr;
-            Statement *stmt;
+            List_AST_AssignmentExpression *expr;
+            AST_Statement *stmt;
         } while_stmt;
         struct {
             union {
-                List_AssignmentExpression *init_expr;
-                VarDecl *init_decl;
+                List_AST_AssignmentExpression *init_expr;
+                AST_VarDecl *init_decl;
             } init;
             _Bool is_init_decl;
-            List_AssignmentExpression *cond_expr;
-            List_AssignmentExpression *loop_expr;
-            Statement *stmt;
+            List_AST_AssignmentExpression *cond_expr;
+            List_AST_AssignmentExpression *loop_expr;
+            AST_Statement *stmt;
         } for_stmt;
     } loop;
     enum {
@@ -582,11 +580,11 @@ struct IterationStatement {
         LOOP_FOR,
     } loop_type;
 };
-struct JumpStatement {
+struct AST_JumpStatement {
     Token *token;
     union {
         Token *identifier;
-        List_AssignmentExpression *expr;
+        List_AST_AssignmentExpression *expr;
         void *none;
     } jump;
     enum {
@@ -596,15 +594,15 @@ struct JumpStatement {
         JUMP_RETURN,
     } jump_type;
 };
-struct Statement {
+struct AST_Statement {
     Token *token;
     union {
-        LabeledStatement *label;
-        List_DeclStmt *compound;
-        List_AssignmentExpression *expression;
-        SelectionStatement *selection;
-        IterationStatement *iteration;
-        JumpStatement *jump;
+        AST_LabeledStatement *label;
+        List_AST_DeclStmt *compound;
+        List_AST_AssignmentExpression *expression;
+        AST_SelectionStatement *selection;
+        AST_IterationStatement *iteration;
+        AST_JumpStatement *jump;
     } stmt;
     enum {
         STMT_LABELED,
@@ -615,85 +613,85 @@ struct Statement {
         STMT_JUMP,
     } stmt_type;
 };
-struct Enumerator {
+struct AST_Enumerator {
     Token *token;
     Token *identifier;
-    ConditionalExpression *constant_expr;
+    AST_ConditionalExpression *constant_expr;
 };
-struct StructDeclarator {
+struct AST_StructDeclarator {
     Token *token;
-    Declarator *declarator;
-    ConditionalExpression *constant_expr;
+    AST_Declarator *declarator;
+    AST_ConditionalExpression *constant_expr;
 };
-struct StructDecl {
+struct AST_StructDecl {
     Token *token;
     union {
         struct {
-            List_SpecifierQualifier *spec_qual_list;
-            List_StructDeclarator *struct_declarators;
+            List_AST_SpecifierQualifier *spec_qual_list;
+            List_AST_StructDeclarator *struct_declarators;
         } general_struct_decl;
-        StaticAssertDecl *static_assert_decl;
+        AST_StaticAssertDecl *static_assert_decl;
     } decl;
     _Bool is_static_assert_decl;
 };
-struct SpecifierQualifier {
+struct AST_SpecifierQualifier {
     Token *token;
     union {
-        TypeSpec *type_spec;
+        AST_TypeSpec *type_spec;
         string type_qualifier;
     } spec;
     _Bool is_type_spec;
 };
-struct TypeName {
+struct AST_TypeName {
     Token *token;
-    List_SpecifierQualifier *spec_qual_list;
-    AbsDeclarator *abs_declarator;
+    List_AST_SpecifierQualifier *spec_qual_list;
+    AST_AbsDeclarator *abs_declarator;
 };
-struct ParamDecl {
+struct AST_ParamDecl {
     Token *token;
-    List_DeclSpec *decl_specs;
-    Declarator *decl;
+    List_AST_DeclSpec *decl_specs;
+    AST_Declarator *decl;
     _Bool is_abs;
 };
-struct Pointer {
+struct AST_Pointer {
     Token *token;
     List_string type_qualifiers;
-    Pointer *pointer;
+    AST_Pointer *pointer;
 };
-struct Designator {
+struct AST_Designator {
     Token *token;
     union {
-        ConditionalExpression *constant_expr;
+        AST_ConditionalExpression *constant_expr;
         Token *identifier;
     } designator;
     _Bool is_constant_expr;
 };
-struct InitializerItem {
+struct AST_InitializerItem {
     Token *token;
-    List_Designator *designation;
-    Initializer *initializer;
+    List_AST_Designator *designation;
+    AST_Initializer *initializer;
 };
-struct Initializer {
+struct AST_Initializer {
     Token *token;
     union {
-        AssignmentExpression *assignment_expr;
-        List_InitializerItem *inits;
+        AST_AssignmentExpression *assignment_expr;
+        List_AST_InitializerItem *inits;
     } init;
     _Bool is_assignment_expr;
 };
-struct TypeSpec {
+struct AST_TypeSpec {
     Token *token;
     union {
         string keyword_spec;
-        TypeName *atomic_spec;
+        AST_TypeName *atomic_spec;
         struct {
             _Bool is_struct;
             Token *identifier;
-            List_StructDecl *members;
+            List_AST_StructDecl *members;
         } struct_union_spec;
         struct {
             Token *identifier;
-            List_Enumerator *enumerators;
+            List_AST_Enumerator *enumerators;
         } enum_spec;
         Token *typedef_name;
     } spec;
@@ -705,24 +703,24 @@ struct TypeSpec {
         TYPE_SPEC_TYPEDEF_NAME,
     } spec_type;
 };
-struct DirectDeclarator {
+struct AST_DirectDeclarator {
     Token *token;
     union {
         Token *identifier;
-        Declarator *declarator;
+        AST_Declarator *declarator;
         struct {
-            DirectDeclarator *direct_declarator;
-            AssignmentExpression *assignment_expression;
+            AST_DirectDeclarator *direct_declarator;
+            AST_AssignmentExpression *assignment_expression;
             List_string type_qualifiers;
             _Bool is_static;
         } array;
         struct {
-            DirectDeclarator *direct_declarator;
-            List_ParamDecl *param_decls;
+            AST_DirectDeclarator *direct_declarator;
+            List_AST_ParamDecl *param_decls;
             _Bool is_variadic;
         } func;
         struct {
-            DirectDeclarator *direct_declarator;
+            AST_DirectDeclarator *direct_declarator;
             List_string type_qualifiers;
             _Bool has_star;
         } incomplete_array;
@@ -734,25 +732,25 @@ struct DirectDeclarator {
         DECLARATOR_FUNC,
         DECLARATOR_INCOMPLETE_ARRAY,
     } decl_type;
-    Scope *func_proto_scope;
+    AST_Scope *func_proto_scope;
 };
-struct Declarator {
+struct AST_Declarator {
     Token *token;
-    Pointer *pointer;
-    DirectDeclarator *direct_declarator;
+    AST_Pointer *pointer;
+    AST_DirectDeclarator *direct_declarator;
 };
-struct DeclSpec {
+struct AST_DeclSpec {
     Token *token;
     union {
         string keyword;
         struct {
             union {
-                TypeName *type_name;
-                ConditionalExpression *constant_expression;
+                AST_TypeName *type_name;
+                AST_ConditionalExpression *constant_expression;
             } spec;
             _Bool is_type_name;
         } alignment;
-        TypeSpec *type;
+        AST_TypeSpec *type;
     } specifier;
     enum {
         SPEC_KEYWORD,
@@ -760,92 +758,72 @@ struct DeclSpec {
         SPEC_TYPE_SPEC,
     } specifier_type;
 };
-struct FuncDecl {
+struct AST_FuncDecl {
     Token *token;
-    List_DeclSpec *decl_specs;
-    Declarator *declarator;
-    List_DeclStmt *body;
+    List_AST_DeclSpec *decl_specs;
+    AST_Declarator *declarator;
+    List_AST_DeclStmt *body;
 };
-struct InitDecl {
+struct AST_InitDecl {
     Token *token;
-    Declarator *declarator;
-    Initializer *initializer;
+    AST_Declarator *declarator;
+    AST_Initializer *initializer;
 };
-struct StaticAssertDecl {
+struct AST_StaticAssertDecl {
     Token *token;
-    ConditionalExpression *expr;
+    AST_ConditionalExpression *expr;
     Token *message;
 };
-struct VarDecl {
+struct AST_VarDecl {
     Token *token;
     union {
         struct {
-            List_DeclSpec *decl_specs;
-            List_InitDecl *init_decls;
+            List_AST_DeclSpec *decl_specs;
+            List_AST_InitDecl *init_decls;
         } general_decl;
-        StaticAssertDecl *static_assert_decl;
+        AST_StaticAssertDecl *static_assert_decl;
     } decl;
     _Bool is_static_assert_decl;
 };
-struct ExternDecl {
+struct AST_ExternDecl {
     Token *token;
     union {
-        FuncDecl *func_decl;
-        VarDecl *var_decl;
+        AST_FuncDecl *func_decl;
+        AST_VarDecl *var_decl;
     } decl;
     _Bool is_func_decl;
 };
-struct TU {
+struct AST_TU {
     Token *token;
     string filename;
-    List_ExternDecl *extern_decls;
+    List_AST_ExternDecl *extern_decls;
 };
 void output_pp_tokens(string filename, List_ppToken *tokens);
 void print_pp_tokens(string filename, List_ppToken *tokens);
 void output_tokens(string filename, List_Token *tokens);
 void print_tokens(string filename, List_Token *tokens);
-void output_ast(string filename, TU *tu);
-void print_ast(string filename, TU *tu);
-typedef enum SymbolKind {
-    SYMBOL_KIND_VAR,
-    SYMBOL_KIND_FUNC,
-    SYMBOL_KIND_TYPEDEF,
-    SYMBOL_KIND_ENUM_CONST,
-    SYMBOL_KIND_STRUCT,
-    SYMBOL_KIND_UNION,
-    SYMBOL_KIND_ENUM,
-} SymbolKind;
-typedef enum ScopeKind {
-    SCOPE_FILE,
-    SCOPE_BLOCK,
-    SCOPE_FUNC_PROTO,
-    SCOPE_FUNC_BODY,
-} ScopeKind;
-typedef struct Symbol {
+void output_ast(string filename, AST_TU *tu);
+void print_ast(string filename, AST_TU *tu);
+struct AST_Symbol {
     string name;
-    Token *token;
-    SymbolKind kind;
-    _Bool is_defined;
-} Symbol;
-typedef struct Scope {
-    ScopeKind kind;
-    struct Scope *parent;
-    List_Symbol *names;
-    List_Symbol *tags;
-} Scope;
+    _Bool is_typedef;
+};
+struct AST_Scope {
+    AST_Scope *parent;
+    List_AST_Symbol *names;
+};
 typedef struct Parser {
     List_Token *tokens;
     ListNode *next;
     Token *current;
     size_t brace_depth;
     size_t paren_depth;
-    Scope *current_scope;
-    List_Scope *scopes;
+    AST_Scope *current_scope;
     int error_count;
     _Bool panic_mode;
 } Parser;
 Parser *create_parser(List_Token *tokens);
-TU *parse_parser(Parser *parser);
+AST_TU *parse_parser(Parser *parser);
 typedef enum ppTokenType {
     PP_IDENTIFIER,
     PP_NUMBER,
@@ -966,7 +944,7 @@ static _Bool parse_args(int argc, char *argv[], Options *opt) {
                 return 0;
             }
         } else {
-            list_append((opt->source_path), (void *)(create_string(arg, strlen(arg))), _Generic((create_string(arg, strlen(arg))), string: TYPE_string, ppToken *: TYPE_ppToken, ppMacro *: TYPE_ppMacro, ppCondFrame *: TYPE_ppCondFrame, List_ppToken *: TYPE_List_ppToken, Token *: TYPE_Token, ExternDecl *: TYPE_ExternDecl, DeclSpec *: TYPE_DeclSpec, InitDecl *: TYPE_InitDecl, ParamDecl *: TYPE_ParamDecl, StructDecl *: TYPE_StructDecl, Enumerator *: TYPE_Enumerator, InitializerItem *: TYPE_InitializerItem, Designator *: TYPE_Designator, SpecifierQualifier *: TYPE_SpecifierQualifier, StructDeclarator *: TYPE_StructDeclarator, DeclStmt *: TYPE_DeclStmt, AssignmentExpression *: TYPE_AssignmentExpression, GenericAssociation *: TYPE_GenericAssociation, TypeName *: TYPE_TypeName, Scope *: TYPE_Scope, Symbol *: TYPE_Symbol));
+            list_append((opt->source_path), (void *)(create_string(arg, strlen(arg))), _Generic((create_string(arg, strlen(arg))), string: LIST_TYPE_string, ppToken *: LIST_TYPE_ppToken, ppMacro *: LIST_TYPE_ppMacro, ppCondFrame *: LIST_TYPE_ppCondFrame, List_ppToken *: LIST_TYPE_List_ppToken, Token *: LIST_TYPE_Token, AST_ExternDecl *: LIST_TYPE_AST_ExternDecl, AST_DeclSpec *: LIST_TYPE_AST_DeclSpec, AST_InitDecl *: LIST_TYPE_AST_InitDecl, AST_ParamDecl *: LIST_TYPE_AST_ParamDecl, AST_StructDecl *: LIST_TYPE_AST_StructDecl, AST_Enumerator *: LIST_TYPE_AST_Enumerator, AST_InitializerItem *: LIST_TYPE_AST_InitializerItem, AST_Designator *: LIST_TYPE_AST_Designator, AST_SpecifierQualifier *: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator *: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt *: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression *: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation *: LIST_TYPE_AST_GenericAssociation, AST_TypeName *: LIST_TYPE_AST_TypeName, AST_Symbol *: LIST_TYPE_AST_Symbol));
         }
     }
     if (((opt->source_path) == ((void *)0) || (opt->source_path)->head == ((void *)0))) {
@@ -1001,7 +979,7 @@ static _Bool compile(Options *opt, string source_path, _Bool multi) {
     if (opt->tc)
         print_tokens(path_str(path_change_ext(base, create_string(".tok.c", strlen(".tok.c")))), tokens);
     Parser *parser = create_parser(tokens);
-    TU *tu = parse_parser(parser);
+    AST_TU *tu = parse_parser(parser);
     if (parser->error_count > 0) {
         fprintf(stderr, "[Error] %s: Parsing failed with %d error(s).\n", source_path, parser->error_count);
         return 0;
@@ -1026,7 +1004,7 @@ static int run(Options *opt) {
 int main(int argc, char *argv[]) {
     init();
     Options *opt = (Options *)alloc_memory(sizeof(Options), 1);
-    *opt = (Options){.source_path = list_create(_Generic((string)0, string: TYPE_string, ppToken *: TYPE_ppToken, ppMacro *: TYPE_ppMacro, ppCondFrame *: TYPE_ppCondFrame, List_ppToken *: TYPE_List_ppToken, Token *: TYPE_Token, ExternDecl *: TYPE_ExternDecl, DeclSpec *: TYPE_DeclSpec, InitDecl *: TYPE_InitDecl, ParamDecl *: TYPE_ParamDecl, StructDecl *: TYPE_StructDecl, Enumerator *: TYPE_Enumerator, InitializerItem *: TYPE_InitializerItem, Designator *: TYPE_Designator, SpecifierQualifier *: TYPE_SpecifierQualifier, StructDeclarator *: TYPE_StructDeclarator, DeclStmt *: TYPE_DeclStmt, AssignmentExpression *: TYPE_AssignmentExpression, GenericAssociation *: TYPE_GenericAssociation, TypeName *: TYPE_TypeName, Scope *: TYPE_Scope, Symbol *: TYPE_Symbol)), .output = ((void *)0), .output_path = ((void *)0), .p = 0, .pc = 0, .t = 0, .tc = 0, .a = 0, .ac = 0};
+    *opt = (Options){.source_path = list_create(_Generic((string)0, string: LIST_TYPE_string, ppToken *: LIST_TYPE_ppToken, ppMacro *: LIST_TYPE_ppMacro, ppCondFrame *: LIST_TYPE_ppCondFrame, List_ppToken *: LIST_TYPE_List_ppToken, Token *: LIST_TYPE_Token, AST_ExternDecl *: LIST_TYPE_AST_ExternDecl, AST_DeclSpec *: LIST_TYPE_AST_DeclSpec, AST_InitDecl *: LIST_TYPE_AST_InitDecl, AST_ParamDecl *: LIST_TYPE_AST_ParamDecl, AST_StructDecl *: LIST_TYPE_AST_StructDecl, AST_Enumerator *: LIST_TYPE_AST_Enumerator, AST_InitializerItem *: LIST_TYPE_AST_InitializerItem, AST_Designator *: LIST_TYPE_AST_Designator, AST_SpecifierQualifier *: LIST_TYPE_AST_SpecifierQualifier, AST_StructDeclarator *: LIST_TYPE_AST_StructDeclarator, AST_DeclStmt *: LIST_TYPE_AST_DeclStmt, AST_AssignmentExpression *: LIST_TYPE_AST_AssignmentExpression, AST_GenericAssociation *: LIST_TYPE_AST_GenericAssociation, AST_TypeName *: LIST_TYPE_AST_TypeName, AST_Symbol *: LIST_TYPE_AST_Symbol)), .output = ((void *)0), .output_path = ((void *)0), .p = 0, .pc = 0, .t = 0, .tc = 0, .a = 0, .ac = 0};
     if (!parse_args(argc, argv, opt)) {
         fprintf(stderr, "Usage: %s <source_files> [-o <output_file>] [-I<dir>...] [-p|-pc|-t|-tc|-a|-ac]...\n", argv[0]);
         free_all_memory();
