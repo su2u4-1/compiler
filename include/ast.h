@@ -190,9 +190,9 @@ struct AST_DeclStmt {
 struct AST_LabeledStatement {
     Token* token;
     union {
-        Token* identifier;                 // identifier
+        Token* identifier;                     // identifier
         AST_ConditionalExpression* case_stmt;  // case constant_expression
-        void* none;                        // default
+        void* none;                            // default
     } label;
     enum {
         LABEL_IDENTIFIER,
@@ -246,9 +246,9 @@ struct AST_IterationStatement {
 struct AST_JumpStatement {
     Token* token;
     union {
-        Token* identifier;                 // goto identifier
+        Token* identifier;                     // goto identifier
         list(AST_AssignmentExpression*) expr;  // return [ expression ]
-        void* none;                        // continue | break
+        void* none;                            // continue | break
     } jump;
     enum {
         JUMP_GOTO,
@@ -356,7 +356,7 @@ struct AST_Initializer {
 struct AST_TypeSpec {
     Token* token;
     union {
-        string keyword_spec;    // "void" | "char" | "short" | "int" | "long" | "float" | "double" | "signed" | "unsigned" | "_Bool" | "_Imaginary" | "_Complex"
+        string keyword_spec;        // "void" | "char" | "short" | "int" | "long" | "float" | "double" | "signed" | "unsigned" | "_Bool" | "_Imaginary" | "_Complex"
         AST_TypeName* atomic_spec;  // atomic_type_specifier
         struct {
             bool is_struct;
@@ -425,7 +425,7 @@ struct AST_DeclSpec {
                 AST_ConditionalExpression* constant_expression;
             } spec;
             bool is_type_name;
-        } alignment;     // alignment_specifier
+        } alignment;         // alignment_specifier
         AST_TypeSpec* type;  // type_specifier
     } specifier;
     enum {
