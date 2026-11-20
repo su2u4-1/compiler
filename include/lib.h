@@ -110,6 +110,15 @@ enum {
     LIST_TYPE_AST_GenericAssociation,
     LIST_TYPE_AST_TypeName,
     LIST_TYPE_AST_Symbol,
+    LIST_IR_Symbol,
+    LIST_IR_Initializer,
+    LIST_IR_Statement,
+    LIST_IR_Param,
+    LIST_IR_ExternDecl,
+    LIST_IR_EnumItem,
+    LIST_IR_StructUnionDecl,
+    LIST_IR_Decl,
+    LIST_IR_Expression,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
@@ -131,28 +140,46 @@ typedef struct AST_GenericAssociation AST_GenericAssociation;
 typedef struct AST_TypeName AST_TypeName;
 typedef struct AST_Scope AST_Scope;
 typedef struct AST_Symbol AST_Symbol;
+typedef struct IR_Symbol IR_Symbol;
+typedef struct IR_Initializer IR_Initializer;
+typedef struct IR_Statement IR_Statement;
+typedef struct IR_Param IR_Param;
+typedef struct IR_ExternDecl IR_ExternDecl;
+typedef struct IR_EnumItem IR_EnumItem;
+typedef struct IR_StructUnionDecl IR_StructUnionDecl;
+typedef struct IR_Decl IR_Decl;
+typedef struct IR_Expression IR_Expression;
 // clang-format off
-#define TYPE_TABLE string: LIST_TYPE_string,                   \
-        ppToken*: LIST_TYPE_ppToken,                           \
-        ppMacro*: LIST_TYPE_ppMacro,                           \
-        ppCondFrame*: LIST_TYPE_ppCondFrame,                   \
-        List_ppToken*: LIST_TYPE_List_ppToken,                 \
-        Token*: LIST_TYPE_Token,                               \
-        AST_ExternDecl*: LIST_TYPE_AST_ExternDecl,                     \
-        AST_DeclSpec*: LIST_TYPE_AST_DeclSpec,                         \
-        AST_InitDecl*: LIST_TYPE_AST_InitDecl,                         \
-        AST_ParamDecl*: LIST_TYPE_AST_ParamDecl,                       \
-        AST_StructDecl*: LIST_TYPE_AST_StructDecl,                     \
-        AST_Enumerator*: LIST_TYPE_AST_Enumerator,                     \
-        AST_InitializerItem*: LIST_TYPE_AST_InitializerItem,           \
-        AST_Designator*: LIST_TYPE_AST_Designator,                     \
-        AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier,     \
-        AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator,         \
-        AST_DeclStmt*: LIST_TYPE_AST_DeclStmt,                         \
-        AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression, \
-        AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation,     \
-        AST_TypeName*: LIST_TYPE_AST_TypeName,                         \
-        AST_Symbol*: LIST_TYPE_AST_Symbol
+#define TYPE_TABLE string: LIST_TYPE_string,  \
+        ppToken*: LIST_TYPE_ppToken,  \
+        ppMacro*: LIST_TYPE_ppMacro,  \
+        ppCondFrame*: LIST_TYPE_ppCondFrame,  \
+        List_ppToken*: LIST_TYPE_List_ppToken,  \
+        Token*: LIST_TYPE_Token,  \
+        AST_ExternDecl*: LIST_TYPE_AST_ExternDecl,  \
+        AST_DeclSpec*: LIST_TYPE_AST_DeclSpec,  \
+        AST_InitDecl*: LIST_TYPE_AST_InitDecl,  \
+        AST_ParamDecl*: LIST_TYPE_AST_ParamDecl,  \
+        AST_StructDecl*: LIST_TYPE_AST_StructDecl,  \
+        AST_Enumerator*: LIST_TYPE_AST_Enumerator,  \
+        AST_InitializerItem*: LIST_TYPE_AST_InitializerItem,  \
+        AST_Designator*: LIST_TYPE_AST_Designator,  \
+        AST_SpecifierQualifier*: LIST_TYPE_AST_SpecifierQualifier,  \
+        AST_StructDeclarator*: LIST_TYPE_AST_StructDeclarator,  \
+        AST_DeclStmt*: LIST_TYPE_AST_DeclStmt,  \
+        AST_AssignmentExpression*: LIST_TYPE_AST_AssignmentExpression,  \
+        AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation,  \
+        AST_TypeName*: LIST_TYPE_AST_TypeName,  \
+        AST_Symbol*: LIST_TYPE_AST_Symbol,  \
+        IR_Symbol*: LIST_IR_Symbol,  \
+        IR_Initializer*: LIST_IR_Initializer,  \
+        IR_Statement*: LIST_IR_Statement,  \
+        IR_Param*: LIST_IR_Param,  \
+        IR_ExternDecl*: LIST_IR_ExternDecl,  \
+        IR_EnumItem*: LIST_IR_EnumItem,  \
+        IR_StructUnionDecl*: LIST_IR_StructUnionDecl,  \
+        IR_Decl*: LIST_IR_Decl,  \
+        IR_Expression*: LIST_IR_Expression
 // clang-format on
 typedef List* List_string;
 typedef List List_ppToken;
@@ -175,6 +202,15 @@ typedef List List_AST_AssignmentExpression;
 typedef List List_AST_GenericAssociation;
 typedef List List_AST_TypeName;
 typedef List List_AST_Symbol;
+typedef List List_IR_Symbol;
+typedef List List_IR_Initializer;
+typedef List List_IR_Statement;
+typedef List List_IR_Param;
+typedef List List_IR_ExternDecl;
+typedef List List_IR_EnumItem;
+typedef List List_IR_StructUnionDecl;
+typedef List List_IR_Decl;
+typedef List List_IR_Expression;
 
 #define list_concat(T) List_##T
 #define list(T) list_concat(T)

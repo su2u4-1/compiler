@@ -50,8 +50,6 @@ struct IR_Symbol {
     intmax_t enum_value;
 };
 
-typedef List List_IR_Symbol;
-
 typedef enum {
     SCOPE_FILE,
     SCOPE_BLOCK,
@@ -65,35 +63,116 @@ struct IR_Scope {
     list(IR_Symbol*) tags;
 };
 
-typedef List List_IR_Initializer;
-typedef List List_IR_Statement;
-typedef List List_IR_Param;
-typedef List List_IR_ExternDecl;
-typedef List List_IR_EnumItem;
-typedef List List_IR_StructUnionDecl;
-
 struct IR_Expression {
     Token* token;
-    // TODO
+    IR_Type* type;
+    union {
+        IR_Symbol* symbol;
+        struct {
+            char* str;
+            size_t length;
+        } string_literal;
+        uintmax_t int_value;  // int | enum constant | char
+        long double float_value;
+        struct {
+            IR_Expression* expr;
+            bool is_increment;  // true: ++, false: --
+        } postfix;
+        struct {
+            IR_Expression* expr;
+            string op;  // ++ | -- | & | * | - | ~ | !
+        } prefix;
+        struct {
+            IR_Expression* left;
+            IR_Expression* right;
+            string op;  // + - * / % << >> < > <= >= == != & ^ | && ||
+        } binary;
+        struct {
+            IR_Expression* left;
+            IR_Expression* right;
+            string op;  // = | *= | /= | %= | += | -= | <<= | >>= | &= | ^= | |=
+        } assign;
+        struct {
+            IR_Expression* cond_expr;
+            IR_Expression* true_expr;
+            IR_Expression* false_expr;
+        } conditional;
+        list(IR_Expression*) comma_exprs;
+        IR_Expression* cast;
+        struct {
+            IR_Expression* callee;
+            list(IR_Expression*) args;
+        } call;
+        struct {
+            IR_Expression* obj;
+            IR_StructUnionDecl* member;
+        } member;
+        struct {
+            IR_Type* type_name;
+            IR_Initializer* init_list;
+            IR_Symbol* memory;
+        } compound_literal;
+    } expr;
+    enum {
+        EXPR_VAR,               // var
+        EXPR_STRING,            // string
+        EXPR_CONSTANT_INT,      // constant int
+        EXPR_CONSTANT_FLOAT,    // constant float
+        EXPR_POSTFIX,           // postfix ++ --
+        EXPR_PREFIX,            // & * - ~ ! prefix ++ --
+        EXPR_BINARY,            // + - * / % << >> < > <= >= == != & ^ | && ||
+        EXPR_ASSIGN,            // = += -= *= /= %= <<= >>= &= ^= |=
+        EXPR_CONDITIONAL,       // ? :
+        EXPR_COMMA,             // ,
+        EXPR_CAST,              // (type)
+        EXPR_CALL,              // callee(args)
+        EXPR_MEMBER,            // obj.member
+        EXPR_COMPOUND_LITERAL,  // (type) { init_list }
+    } expr_type;
+    bool is_lvalue;
 };
 
 struct IR_Statement {
     Token* token;
     union {
-        // compound
-        // expression
-        // id label
-        // case label
-        // default label
-        // if
-        // switch
-        // while
-        // do while
-        // for
+        IR_CompoundStatement* compound_stmt;
+        IR_Expression* expr;
+        struct {
+            IR_Symbol* symbol;
+            IR_Statement* stmt;
+        } id_label;
+        struct {
+            intmax_t value;
+            IR_Statement* stmt;
+        } case_label;
+        IR_Statement* default_label;
+        struct {
+            IR_Expression* cond_expr;
+            IR_Statement* then_stmt;
+            IR_Statement* else_stmt;
+        } if_stmt;
+        struct {
+            IR_Expression* cond_expr;
+            IR_Statement* body;
+            list(IR_Statement*) cases;
+            IR_Statement* default_stmt;  // if NULL, then no default statement
+        } switch_stmt;
+        struct {
+            IR_Expression* cond_expr;
+            IR_Statement* body;
+        } while_stmt;
+        struct {
+            list(IR_Decl*) init_decls;  // if NULL, then no init_decl and use init_expr
+            IR_Expression* init_expr;
+            IR_Expression* cond_expr;
+            IR_Expression* incr_expr;
+            IR_Statement* body;
+        } for_stmt;
         IR_Symbol* goto_label;
         void* continue_;
         void* break_;
         IR_Expression* return_expr;
+        IR_Decl* decl;
     } stmt;
     enum {
         IR_STMT_COMPOUND,
@@ -110,6 +189,7 @@ struct IR_Statement {
         IR_STMT_CONTINUE,
         IR_STMT_BREAK,
         IR_STMT_RETURN,
+        IR_STMT_DECL,  // only in compound statement
     } stmt_type;
 };
 
@@ -132,6 +212,8 @@ struct IR_StructUnion {
     Token* token;
     string name;
     list(IR_StructUnionDecl*) members;
+    size_t size;
+    size_t align;
 };
 
 struct IR_EnumItem {
