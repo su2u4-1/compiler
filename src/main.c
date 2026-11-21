@@ -105,7 +105,7 @@ static bool compile(Options* opt, string source_path, bool multi) {
     if (opt->tc) print_tokens(out_name(".tok.c"), tokens);
 
     // parse
-    Parser* parser = create_parser(tokens);
+    Parser* parser = create_parser(tokens, source_path);
     AST_TU* tu = parse_parser(parser);
     if (parser->error_count > 0) {
         fprintf(stderr, "[Error] %s: Parsing failed with %d error(s).\n", source_path, parser->error_count);

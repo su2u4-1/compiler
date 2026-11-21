@@ -21,11 +21,12 @@ typedef struct Parser {
     size_t brace_depth;
     size_t paren_depth;
     AST_Scope* current_scope;
+    string filename;
     int error_count;
     bool panic_mode;
 } Parser;
 
-Parser* create_parser(list(Token*) tokens);
+Parser* create_parser(list(Token*) tokens, string filename);
 AST_TU* parse_parser(Parser* parser);
 
 #endif  // PARSER_H

@@ -45,7 +45,7 @@ static void push_new_scope(Parser* parser) {
     parser->current_scope = create_scope(parser->current_scope);
 }
 
-Parser* create_parser(list(Token*) tokens) {
+Parser* create_parser(list(Token*) tokens, string filename) {
     Parser* parser = create_struct(Parser);
     parser->tokens = tokens;
     parser->next = tokens->head;
@@ -53,6 +53,7 @@ Parser* create_parser(list(Token*) tokens) {
     parser->brace_depth = 0;
     parser->paren_depth = 0;
     parser->current_scope = NULL;
+    parser->filename = filename;
     parser->error_count = 0;
     parser->panic_mode = false;
     push_new_scope(parser);
@@ -1302,7 +1303,7 @@ AST_TU* parse_parser(Parser* parser) {
     Token* t = peek(parser);
     AST_TU* tu = create_struct(AST_TU);
     tu->token = t;
-    tu->filename = t->filename;
+    tu->filename = parser->filename;
     tu->extern_decls = create_list(AST_ExternDecl*);
     while (!is_eof(t)) {
         size_t start_depth = parser->brace_depth;
