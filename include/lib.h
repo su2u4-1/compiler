@@ -110,15 +110,15 @@ enum {
     LIST_TYPE_AST_GenericAssociation,
     LIST_TYPE_AST_TypeName,
     LIST_TYPE_AST_Symbol,
-    LIST_IR_Symbol,
-    LIST_IR_Initializer,
-    LIST_IR_Statement,
-    LIST_IR_Param,
-    LIST_IR_ExternDecl,
-    LIST_IR_EnumItem,
-    LIST_IR_StructUnionDecl,
-    LIST_IR_Decl,
-    LIST_IR_Expression,
+    LIST_TYPE_IR_Symbol,
+    LIST_TYPE_IR_Initializer,
+    LIST_TYPE_IR_Statement,
+    LIST_TYPE_IR_Param,
+    LIST_TYPE_IR_ExternDecl,
+    LIST_TYPE_IR_EnumItem,
+    LIST_TYPE_IR_StructUnionDecl,
+    LIST_TYPE_IR_Decl,
+    LIST_TYPE_IR_Expression,
 };
 typedef struct Token Token;
 typedef struct ppToken ppToken;
@@ -171,15 +171,15 @@ typedef struct IR_Expression IR_Expression;
         AST_GenericAssociation*: LIST_TYPE_AST_GenericAssociation,  \
         AST_TypeName*: LIST_TYPE_AST_TypeName,  \
         AST_Symbol*: LIST_TYPE_AST_Symbol,  \
-        IR_Symbol*: LIST_IR_Symbol,  \
-        IR_Initializer*: LIST_IR_Initializer,  \
-        IR_Statement*: LIST_IR_Statement,  \
-        IR_Param*: LIST_IR_Param,  \
-        IR_ExternDecl*: LIST_IR_ExternDecl,  \
-        IR_EnumItem*: LIST_IR_EnumItem,  \
-        IR_StructUnionDecl*: LIST_IR_StructUnionDecl,  \
-        IR_Decl*: LIST_IR_Decl,  \
-        IR_Expression*: LIST_IR_Expression
+        IR_Symbol*: LIST_TYPE_IR_Symbol,  \
+        IR_Initializer*: LIST_TYPE_IR_Initializer,  \
+        IR_Statement*: LIST_TYPE_IR_Statement,  \
+        IR_Param*: LIST_TYPE_IR_Param,  \
+        IR_ExternDecl*: LIST_TYPE_IR_ExternDecl,  \
+        IR_EnumItem*: LIST_TYPE_IR_EnumItem,  \
+        IR_StructUnionDecl*: LIST_TYPE_IR_StructUnionDecl,  \
+        IR_Decl*: LIST_TYPE_IR_Decl,  \
+        IR_Expression*: LIST_TYPE_IR_Expression
 // clang-format on
 typedef List* List_string;
 typedef List List_ppToken;

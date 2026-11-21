@@ -1,6 +1,7 @@
 #ifndef SEMANTIC_H
 #define SEMANTIC_H
 
+#include "ast.h"
 #include "lib.h"
 
 typedef struct IR_Symbol IR_Symbol;
@@ -311,7 +312,11 @@ struct IR_FuncProto {
 struct IR_Decl {
     Token* token;
     IR_Symbol* symbol;
-    IR_Initializer* initializer;
+    union {
+        IR_Initializer* initializer;
+        IR_FuncProto* func_proto;
+    } decl;
+    bool is_func_proto;
 };
 
 struct IR_ExternDecl {
@@ -330,6 +335,16 @@ struct IR_TU {
     list(IR_ExternDecl*) extern_decls;
     IR_Scope* global_scope;
     list(IR_Symbol*) static_vars;
+    string filename;
 };
+
+typedef struct Semantic {
+    IR_TU* tu;
+    IR_FuncDef* func;
+    IR_Scope* scope;
+    int error_count;
+} Semantic;
+
+IR_TU* semantic_analyze(AST_TU* ast);
 
 #endif  // SEMANTIC_H

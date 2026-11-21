@@ -29,15 +29,17 @@ typedef enum NumberSuffix {
     SUFFIX_LD,
 } NumberSuffix;
 
+typedef struct StringLiteral {
+    char* data;
+    size_t length;
+} StringLiteral;
+
 typedef struct Token {
     TokenType type;
     string value;
     union {
-        struct {
-            char* data;
-            size_t length;
-        } str;          // TOKEN_STRING
-        int character;  // TOKEN_CHAR
+        StringLiteral str;  // TOKEN_STRING
+        int character;      // TOKEN_CHAR
         struct {
             uintmax_t data;
             NumberSuffix suffix;
