@@ -647,10 +647,10 @@ static void output_initializer_item(FILE* out, AST_InitializerItem* node, size_t
     print(indent + 1, "designation: [\n");
     foreach (AST_Designator*, designator, node->designation) {
         if (open_node("Designator", designator, 2)) {
-            if (designator->is_constant_expr)
-                output_node(output_conditional_expression, designator->designator.constant_expr, 3);
+            if (designator->is_index)
+                output_node(output_conditional_expression, designator->designator.index_expr, 3);
             else
-                output_token("identifier", designator->designator.identifier, 3);
+                output_token("identifier", designator->designator.member, 3);
             close_node(2);
         }
         fputs(",\n", out);
@@ -1119,12 +1119,12 @@ static void print_initializer_item(FILE* out, AST_InitializerItem* node) {
     check_null("InitializerItem");
     if (!list_empty(node->designation)) {
         foreach (AST_Designator*, designator, node->designation) {
-            if (designator->is_constant_expr) {
+            if (designator->is_index) {
                 fputc('[', out);
-                print_conditional_expression(out, designator->designator.constant_expr);
+                print_conditional_expression(out, designator->designator.index_expr);
                 fputc(']', out);
             } else {
-                fprintf(out, ".%s", designator->designator.identifier->value);
+                fprintf(out, ".%s", designator->designator.member->value);
             }
         }
         fputs(" = ", out);

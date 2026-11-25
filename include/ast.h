@@ -333,10 +333,10 @@ struct AST_Pointer {
 struct AST_Designator {
     Token* token;
     union {
-        AST_ConditionalExpression* constant_expr;
-        Token* identifier;
+        AST_ConditionalExpression* index_expr;
+        Token* member;
     } designator;
-    bool is_constant_expr;
+    bool is_index;
 };
 
 struct AST_InitializerItem {

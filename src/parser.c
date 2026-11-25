@@ -916,11 +916,11 @@ static AST_Designator* parse_designator(Parser* parser) {
     designator->token = t;
     if (match(parser, TOKEN_SYMBOL, SYMBOL_DOT)) {
         Token* id = expect(parser, TOKEN_IDENTIFIER, NULL, "Expected member name after '.' in designator");
-        designator->is_constant_expr = false;
-        designator->designator.identifier = id;
+        designator->is_index = false;
+        designator->designator.member = id;
     } else if (match(parser, TOKEN_SYMBOL, SYMBOL_L_BRACKET)) {
-        designator->is_constant_expr = true;
-        designator->designator.constant_expr = parse_conditional_expression(parser);
+        designator->is_index = true;
+        designator->designator.index_expr = parse_conditional_expression(parser);
         expect(parser, TOKEN_SYMBOL, SYMBOL_R_BRACKET, "Expected ']' after array index in designator");
     } else
         assert(false);
