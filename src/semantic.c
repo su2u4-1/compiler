@@ -4,6 +4,8 @@
 
 #define semantic_error(token, msg) report_error(ctx, (token), (msg), false)
 #define semantic_warn(token, msg) report_error(ctx, (token), (msg), true)
+#define is_char_type(type_) ((type_)->type_kind == TYPE_CHAR || (type_)->type_kind == TYPE_S_CHAR || (type_)->type_kind == TYPE_U_CHAR)
+#define get_type_size(type_) (((type_)->type_kind == TYPE_STRUCT || (type_)->type_kind == TYPE_UNION) ? (type_)->type.struct_union_type->size : (type_)->size)
 
 typedef struct {
     IR_Type* type;
@@ -11,6 +13,12 @@ typedef struct {
     bool is_inline;
     bool is_noreturn;
 } DeclSpecInfo;
+
+typedef struct {
+    ListNode* node;
+    ListNode* designator;
+    IR_Expression* expr;
+} InitCursor;
 
 static void print_string_literal(FILE* out, StringLiteral str) {
     fputc('"', out);
@@ -72,11 +80,50 @@ static bool is_complete_type(IR_Type* type) {
         return true;
 }
 
+static IR_Type* compatible_type(IR_Type* a, IR_Type* b, bool a_is_lvalue) {
+    return NULL;  // placeholder
+}
+
+static IR_Expression* convert_for_assignment(Semantic* ctx, IR_Expression* expr, IR_Type* target_type, Token* token) {
+    return NULL;  // placeholder
+}
+
+static void update_cursor(InitCursor* cursor, ListNode* next_node) {
+    assert(cursor != NULL);
+    *cursor = (InitCursor){.node = next_node, .designator = NULL, .expr = NULL};
+    if (cursor->node == NULL || cursor->node->data == NULL)
+        return;
+    list(AST_Designator*) designation = ((AST_InitializerItem*)cursor->node->data)->designation;
+    if (!list_empty(designation))
+        cursor->designator = designation->head;
+}
+
+static ListNode* find_member(IR_Type* type, string name) {
+    assert(type != NULL);
+    assert(name != NULL);
+    assert(type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION);
+
+    foreach (IR_StructUnionDecl*, decl, type->type.struct_union_type->members) {
+        if (decl->name == name)
+            return decl__n;
+        if (decl->name == NULL && (decl->type->type_kind == TYPE_STRUCT || decl->type->type_kind == TYPE_UNION)) {
+            ListNode* node = find_member(decl->type, name);
+            if (node != NULL)
+                return decl__n;
+        }
+    }
+    return NULL;
+}
+
 static IR_Expression* analyze_conditional_expression(Semantic* ctx, AST_ConditionalExpression* node) {
     return NULL;  // placeholder
 }
 
 static IR_Expression* analyze_assignment_expression(Semantic* ctx, AST_AssignmentExpression* node) {
+    return NULL;  // placeholder
+}
+
+static IR_Statement* analyze_statement(Semantic* ctx, AST_Statement* node) {
     return NULL;  // placeholder
 }
 
@@ -87,6 +134,7 @@ static DeclSpecInfo analyze_decl_specs(Semantic* ctx, list(AST_DeclSpec*) decl_s
 static IR_Type* analyze_pointer(Semantic* ctx, AST_Pointer* node, IR_Type* base) {
     if (node == NULL) return base;
     assert(node->token != NULL);
+    if (base == NULL) return NULL;
 
     IR_Type* type = create_struct(IR_Type);
     type->token = node->token;
@@ -158,10 +206,7 @@ static IR_Type* analyze_array_suffix(Semantic* ctx, AST_DirectDeclarator* node, 
             return NULL;
         }
         type->type.array.length = (uintmax_t)length;
-        if (base->type_kind == TYPE_STRUCT || base->type_kind == TYPE_UNION)
-            type->size = (size_t)length * base->type.struct_union_type->size;
-        else
-            type->size = (size_t)length * base->size;
+        type->size = (size_t)length * get_type_size(base);
     } else
         type_qualifiers = node->decl.incomplete_array.type_qualifiers;
 
@@ -310,8 +355,295 @@ static Token* analyze_declarator(Semantic* ctx, AST_Declarator* node, IR_Type* b
     return analyze_direct_declarator(ctx, node->direct_declarator, type, out_type);
 }
 
-static IR_Initializer* analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type* type) {
-    return NULL;  // placeholder
+static void remove_initializers(list(IR_Initializer*) result, size_t offset, size_t size) {
+    ListNode* prev = NULL;
+    foreach (IR_Initializer*, init, result) {
+        if (offset <= init->offset && init->offset + init->size <= offset + size) {
+            if (prev == NULL) {
+                result->head = init__n->next;
+                if (result->head == NULL)
+                    result->tail = NULL;
+            } else {
+                prev->next = init__n->next;
+                if (prev->next == NULL)
+                    result->tail = prev;
+            }
+        } else
+            prev = init__n;
+    }
+}
+
+static IR_Initializer* analyze_initializer_scalar(Semantic* ctx, Token* token, IR_Expression* expr, IR_Type* type, size_t offset) {
+    assert(token != NULL);
+    assert(type != NULL);
+    assert(expr != NULL);
+
+    if (type->type_kind == TYPE_ARRAY) {
+        if (expr->expr_type != EXPR_STRING || !is_char_type(type->type.array.element_type)) {
+            semantic_error(token, "Array must be initialized with a brace-enclosed initializer or string literal");
+            return NULL;
+        }
+        size_t length = expr->expr.string_literal.length;
+        if (type->type.array.length == 0) {
+            type->type.array.length = length + 1;
+            type->size = (length + 1) * type->type.array.element_type->size;
+        } else if (length > type->type.array.length)
+            semantic_warn(token, "Initializer string for char array is too long");
+    } else {
+        expr = convert_for_assignment(ctx, expr, type, token);
+        if (expr == NULL) return NULL;
+    }
+
+    IR_Initializer* init = create_struct(IR_Initializer);
+    *init = (IR_Initializer){.token = token, .offset = offset, .expr = expr, .bitfield_size = 0, .bit_offset = 0, .size = get_type_size(type)};
+    return init;
+}
+
+static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** type, size_t offset, list(IR_Initializer*) result);
+static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offset, InitCursor* cursor, bool is_braced, list(IR_Initializer*) result) {
+    assert(cursor != NULL);
+    assert(cursor->node != NULL);
+    assert(cursor->node->data != NULL);
+    assert(type != NULL);
+    assert(type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION);
+    assert(result != NULL);
+
+    uintmax_t index = 0;
+    uintmax_t max_index = 0;
+    ListNode* member_node = NULL;
+    if (type->type_kind != TYPE_ARRAY && !list_empty(type->type.struct_union_type->members))
+        member_node = type->type.struct_union_type->members->head;
+    ListNode* start = cursor->node;
+    while (cursor->node != NULL) {
+        assert(cursor->node->data != NULL);
+
+        bool is_first = cursor->node == start;
+        if (cursor->designator != NULL && !is_braced && !is_first)
+            return;
+        AST_InitializerItem* item = cursor->node->data;
+        IR_Type* placement_type = NULL;
+        uintmax_t placement_offset = 0;
+
+        if (type->type_kind == TYPE_ARRAY) {
+            if (cursor->designator != NULL) {
+                AST_Designator* designator = cursor->designator->data;
+                if (!designator->is_index) {
+                    semantic_error(designator->token, "Member designator is not allowed for array type");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                IR_Expression* expr = analyze_conditional_expression(ctx, designator->designator.index_expr);
+                if (expr == NULL) {
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                intmax_t v = 0;
+                if (!eval_const_int(expr, &v)) {
+                    semantic_error(designator->token, "Array index is not a constant expression");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                if (v < 0) {
+                    semantic_error(designator->token, "Array index is negative");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                if (type->type.array.length > 0 && (uintmax_t)v >= type->type.array.length) {
+                    semantic_error(designator->token, "Array index is out of bounds");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                index = (uintmax_t)v;
+                cursor->designator = cursor->designator->next;
+            }
+            if (type->type.array.length > 0 && index >= type->type.array.length) {
+                if (!is_braced) return;
+                semantic_warn(item->token, "Excess elements in array initializer");
+                update_cursor(cursor, cursor->node->next);
+                continue;
+            }
+            placement_type = type->type.array.element_type;
+            placement_offset = offset + index * get_type_size(placement_type);
+        } else {
+            if (cursor->designator != NULL) {
+                AST_Designator* designator = cursor->designator->data;
+                if (designator->is_index) {
+                    semantic_error(designator->token, "Array index designator is not allowed for struct/union type");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                assert(designator->designator.member->type == TOKEN_IDENTIFIER);
+                ListNode* member = find_member(type, designator->designator.member->value);
+                if (member == NULL) {
+                    semantic_error(designator->token, "Member designator does not match any member of struct/union");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                IR_StructUnionDecl* decl = member->data;
+                if (decl->type->type_kind == TYPE_ARRAY && decl->type->type.array.length == 0) {
+                    semantic_error(designator->token, "Initialization of flexible array member is not supported");
+                    update_cursor(cursor, cursor->node->next);
+                    continue;
+                }
+                if (decl->name != NULL)
+                    cursor->designator = cursor->designator->next;
+                member_node = member;
+            }
+            IR_StructUnionDecl* decl = NULL;
+            for (; member_node != NULL; member_node = member_node->next) {
+                decl = member_node->data;
+                if (decl->type->type_kind == TYPE_ARRAY && decl->type->type.array.length == 0)
+                    continue;
+                if (decl->name != NULL || decl->type->type_kind == TYPE_STRUCT || decl->type->type_kind == TYPE_UNION)
+                    break;
+            }
+            if (member_node == NULL) {
+                if (!is_braced && !is_first) return;
+                semantic_warn(item->token, "Excess elements in struct/union initializer");
+                update_cursor(cursor, cursor->node->next);
+                continue;
+            }
+            assert(decl != NULL);
+            placement_type = decl->type;
+            placement_offset = offset + decl->offset;
+        }
+
+        ListNode* tail = result->tail;
+        bool is_bitfield = type->type_kind != TYPE_ARRAY && ((IR_StructUnionDecl*)member_node->data)->bitfield_size > 0;
+        if (cursor->designator != NULL) {
+            AST_Designator* designator = cursor->designator->data;
+            if (placement_type->type_kind == TYPE_ARRAY || placement_type->type_kind == TYPE_STRUCT || placement_type->type_kind == TYPE_UNION) {
+                analyze_initializer_items(ctx, placement_type, placement_offset, cursor, false, result);
+            } else {
+                semantic_error(designator->token, "Designator is not allowed for scalar type");
+                update_cursor(cursor, cursor->node->next);
+            }
+        } else if (!item->initializer->is_assignment_expr) {
+            if (!is_bitfield)
+                remove_initializers(result, placement_offset, get_type_size(placement_type));
+            analyze_initializer(ctx, item->initializer, &placement_type, placement_offset, result);
+            update_cursor(cursor, cursor->node->next);
+        } else {
+            if (cursor->expr == NULL)
+                cursor->expr = analyze_assignment_expression(ctx, item->initializer->init.assignment_expr);
+            bool is_recursive = false;
+            if (cursor->expr != NULL) {
+                IR_Initializer* init = NULL;
+                if (placement_type->type_kind != TYPE_ARRAY && placement_type->type_kind != TYPE_STRUCT && placement_type->type_kind != TYPE_UNION)
+                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
+                else if (placement_type->type_kind == TYPE_ARRAY && is_char_type(placement_type->type.array.element_type) && cursor->expr->expr_type == EXPR_STRING)
+                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
+                else if (placement_type->type_kind != TYPE_ARRAY && cursor->expr->type->type_kind == placement_type->type_kind && cursor->expr->type->type.struct_union_type == placement_type->type.struct_union_type)
+                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
+                else {
+                    analyze_initializer_items(ctx, placement_type, placement_offset, cursor, false, result);
+                    is_recursive = true;
+                }
+                if (init != NULL && !is_recursive) {
+                    if (!is_bitfield)
+                        remove_initializers(result, placement_offset, get_type_size(placement_type));
+                    append(result, init);
+                }
+            }
+            if (!is_recursive)
+                update_cursor(cursor, cursor->node->next);
+        }
+        if (type->type_kind == TYPE_ARRAY) {
+            index++;
+            if (index > max_index)
+                max_index = index;
+        } else {
+            IR_StructUnionDecl* decl = member_node->data;
+            if (is_bitfield && tail != result->tail) {
+                IR_Initializer* init = result->tail->data;
+                init->bitfield_size = decl->bitfield_size;
+                init->bit_offset = decl->bit_offset;
+            }
+            if (type->type_kind == TYPE_STRUCT)
+                member_node = member_node->next;
+            else if (type->type_kind == TYPE_UNION)
+                member_node = NULL;
+        }
+    }
+    if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0) {
+        type->type.array.length = max_index;
+        type->size = max_index * get_type_size(type->type.array.element_type);
+    }
+}
+
+static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** target_type, size_t offset, list(IR_Initializer*) result) {
+    assert(node != NULL);
+    assert(node->token != NULL);
+    assert(target_type != NULL);
+    assert(*target_type != NULL);
+    assert(result != NULL);
+
+    IR_Type* type = *target_type;
+    if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0) {
+        type = create_struct(IR_Type);
+        *type = **target_type;
+        *target_type = type;
+    }
+
+    if (node->is_assignment_expr) {
+        assert(node->init.assignment_expr != NULL);
+        IR_Expression* expr = analyze_assignment_expression(ctx, node->init.assignment_expr);
+        if (expr == NULL) return;
+        IR_Initializer* init = analyze_initializer_scalar(ctx, node->token, expr, type, offset);
+        if (init != NULL)
+            append(result, init);
+        return;
+    }
+
+    assert(node->init.inits != NULL);
+    if (type->type_kind != TYPE_ARRAY && type->type_kind != TYPE_STRUCT && type->type_kind != TYPE_UNION) {
+        bool is_first = true;
+        foreach (AST_InitializerItem*, item, node->init.inits) {
+            assert(item->token != NULL);
+            assert(item->initializer != NULL);
+            if (!list_empty(item->designation)) {
+                semantic_error(item->token, "Designator is not allowed for scalar type");
+                continue;
+            }
+            if (!is_first) {
+                semantic_warn(item->token, "Excess elements in scalar initializer");
+                continue;
+            }
+            is_first = false;
+            if (!item->initializer->is_assignment_expr)
+                semantic_warn(item->token, "Too many braces around scalar initializer");
+            analyze_initializer(ctx, item->initializer, target_type, offset, result);
+        }
+        return;
+    }
+
+    if (list_empty(node->init.inits)) {
+        if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0)
+            semantic_error(node->token, "Cannot deduce array size from empty initializer");
+        return;
+    }
+
+    InitCursor* cursor = &(InitCursor){0};
+    update_cursor(cursor, node->init.inits->head);
+    assert(cursor->node->data != NULL);
+
+    AST_InitializerItem* item = cursor->node->data;
+    list(AST_Designator*) designation = item->designation;
+    if (type->type_kind == TYPE_ARRAY && is_char_type(type->type.array.element_type) && list_empty(designation)) {
+        if (item->initializer->is_assignment_expr) {
+            cursor->expr = analyze_assignment_expression(ctx, item->initializer->init.assignment_expr);
+            if (cursor->expr == NULL) return;
+            else if (cursor->expr->expr_type == EXPR_STRING) {
+                IR_Initializer* init = analyze_initializer_scalar(ctx, item->token, cursor->expr, type, offset);
+                if (init != NULL)
+                    append(result, init);
+                if (cursor->node->next != NULL)
+                    semantic_warn(((AST_InitializerItem*)cursor->node->next->data)->token, "Excess elements in char array initializer");
+                return;
+            }
+        }
+    }
+    analyze_initializer_items(ctx, type, offset, cursor, true, result);
 }
 
 static void analyze_static_assert_decl(Semantic* ctx, AST_StaticAssertDecl* node) {
@@ -354,6 +686,18 @@ static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInf
         return NULL;
     }
 
+    if (kind == SYMBOL_VAR && !is_complete_type(symbol->type)) {
+        bool is_allowed = false;
+        if (node->initializer != NULL)
+            is_allowed = symbol->type->type_kind == TYPE_ARRAY;
+        else
+            is_allowed = info.storage == KEYWORD_EXTERN || (ctx->scope->kind == SCOPE_FILE && symbol->type->type_kind != TYPE_VOID);
+        if (!is_allowed) {
+            semantic_error(id, "Variable has incomplete type");
+            return NULL;
+        }
+    }
+
     IR_Decl* decl = create_struct(IR_Decl);
     *decl = (IR_Decl){.token = node->token, .symbol = symbol};
     if (kind == SYMBOL_FUNC) {
@@ -362,7 +706,8 @@ static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInf
         decl->is_func_proto = true;
         decl->decl.func_proto = type->type.func_type;
     } else if (node->initializer != NULL) {
-        decl->decl.initializer = analyze_initializer(ctx, node->initializer, symbol->type);
+        decl->decl.initializer = create_list(IR_Initializer*);
+        analyze_initializer(ctx, node->initializer, &symbol->type, 0, decl->decl.initializer);
         symbol->is_defined = true;
     }
     return decl;
@@ -404,23 +749,64 @@ static IR_FuncDef* analyze_func_decl(Semantic* ctx, AST_FuncDecl* node) {
         semantic_error(node->token, "Invalid storage class for function");
         return NULL;
     }
-
     IR_Type* type = NULL;
     Token* id = analyze_declarator(ctx, node->declarator, info.type, &type);
     assert(id != NULL);
     if (type == NULL) return NULL;
-
     if (type->type_kind != TYPE_FUNCTION || type == info.type) {
         semantic_error(node->token, "Function declarator must have function type");
         return NULL;
     }
-
     IR_FuncProto* proto = type->type.func_type;
     proto->name = id->value;
-
-    // TODO
-
-    return NULL;  // placeholder
+    if (proto->return_type->type_kind != TYPE_VOID && !is_complete_type(proto->return_type)) {
+        semantic_error(node->token, "Function has incomplete return type");
+        return NULL;
+    }
+    bool has_error = false;
+    foreach (IR_Param*, param, proto->params) {
+        if (!is_complete_type(param->type)) {
+            semantic_error(param->token, "Function has incomplete parameter type");
+            has_error = true;
+        }
+        if (param->symbol == NULL)
+            semantic_warn(param->token, "Function has unnamed parameter");
+    }
+    if (has_error) return NULL;
+    IR_Symbol* symbol = declare_name(ctx, id, type, SYMBOL_FUNC, info.storage);
+    if (symbol == NULL) return NULL;
+    if (symbol->is_defined) {
+        semantic_error(node->token, "Function is already defined");
+        return NULL;
+    }
+    symbol->is_defined = true;
+    IR_FuncDef* func = create_struct(IR_FuncDef);
+    *func = (IR_FuncDef){.token = node->token, .proto = proto, .locals = create_list(IR_Symbol*), .labels = create_list(IR_Symbol*)};
+    ctx->func = func;
+    ctx->scope = proto->scope;
+    list(IR_Statement*) stmts = create_list(IR_Statement*);
+    foreach (AST_DeclStmt*, item, node->body) {
+        if (item->is_var_decl) {
+            foreach (IR_Decl*, decl, analyze_var_decl(ctx, item->item.var_decl)) {
+                IR_Statement* stmt = create_struct(IR_Statement);
+                *stmt = (IR_Statement){.token = decl->token, .stmt.decl = decl, .stmt_type = IR_STMT_DECL};
+                append(stmts, stmt);
+            }
+        } else {
+            IR_Statement* stmt = analyze_statement(ctx, item->item.statement);
+            if (stmt != NULL)
+                append(stmts, stmt);
+        }
+    }
+    func->body = create_struct(IR_CompoundStatement);
+    *func->body = (IR_CompoundStatement){.token = node->token, .statements = stmts, .scope = proto->scope};
+    foreach (IR_Symbol*, label, func->labels) {
+        if (!label->is_defined)
+            semantic_error(label->token, "Label is used but not defined");
+    }
+    ctx->scope = proto->scope->parent;
+    ctx->func = NULL;
+    return func;
 }
 
 static list(IR_ExternDecl*) analyze_extern_decl(Semantic* ctx, AST_ExternDecl* node) {

@@ -110,7 +110,7 @@ struct IR_Expression {
         } member;
         struct {
             IR_Type* type_name;
-            IR_Initializer* init_list;
+            list(IR_Initializer*) init_list;
             IR_Symbol* memory;
         } compound_literal;
     } expr;
@@ -237,14 +237,11 @@ struct IR_Param {
 
 struct IR_Initializer {
     Token* token;
-    union {
-        IR_Expression* expr;
-        struct {
-            list(IR_Initializer*) items;
-            IR_StructUnionDecl* union_member;
-        } list;
-    } init;
-    bool is_expr;
+    size_t offset;
+    size_t size;
+    IR_Expression* expr;
+    intmax_t bitfield_size;
+    int bit_offset;
 };
 
 struct IR_Type {
@@ -313,7 +310,7 @@ struct IR_Decl {
     Token* token;
     IR_Symbol* symbol;
     union {
-        IR_Initializer* initializer;
+        list(IR_Initializer*) initializer;
         IR_FuncProto* func_proto;
     } decl;
     bool is_func_proto;
