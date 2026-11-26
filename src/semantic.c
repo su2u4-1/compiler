@@ -20,6 +20,18 @@ typedef struct {
     IR_Expression* expr;
 } InitCursor;
 
+typedef struct InitNode InitNode;
+struct InitNode {
+    Token* token;
+    IR_Type* type;
+    size_t offset;
+    IR_Expression* expr;
+    IR_StructUnionDecl* member;
+    uintmax_t index;
+    bool is_set;
+    InitNode *head, *tail, *next;
+};
+
 static void print_string_literal(FILE* out, StringLiteral str) {
     fputc('"', out);
     for (size_t i = 0; i < str.length; i++) {
@@ -88,11 +100,12 @@ static IR_Expression* convert_for_assignment(Semantic* ctx, IR_Expression* expr,
     return NULL;  // placeholder
 }
 
-static void update_cursor(InitCursor* cursor, ListNode* next_node) {
+static void update_cursor(InitCursor* cursor) {
     assert(cursor != NULL);
-    *cursor = (InitCursor){.node = next_node, .designator = NULL, .expr = NULL};
-    if (cursor->node == NULL || cursor->node->data == NULL)
+    *cursor = (InitCursor){.node = cursor->node->next, .designator = NULL, .expr = NULL};
+    if (cursor->node == NULL)
         return;
+    assert(cursor->node->data != NULL);
     list(AST_Designator*) designation = ((AST_InitializerItem*)cursor->node->data)->designation;
     if (!list_empty(designation))
         cursor->designator = designation->head;
@@ -113,6 +126,86 @@ static ListNode* find_member(IR_Type* type, string name) {
         }
     }
     return NULL;
+}
+
+static InitNode* create_init_tree(IR_Type* type) {
+    InitNode* node = create_struct(InitNode);
+    *node = (InitNode){.token = NULL, .type = type, .offset = 0, .expr = NULL, .member = NULL, .index = 0, .is_set = false, .head = NULL, .tail = NULL, .next = NULL};
+    return node;
+}
+
+static InitNode* get_child(InitNode* parent, uintmax_t index, IR_StructUnionDecl* member, IR_Type* type, size_t offset, Token* token) {
+    assert(parent != NULL);
+    assert(type != NULL);
+    assert((parent->type->type_kind == TYPE_ARRAY) == (member == NULL));
+
+    if (parent->head == NULL || parent->tail == NULL) {
+        InitNode* child = create_struct(InitNode);
+        *child = (InitNode){.token = token, .type = type, .offset = offset, .expr = NULL, .member = member, .index = index, .is_set = false, .head = NULL, .tail = NULL, .next = NULL};
+        parent->head = child;
+        parent->tail = child;
+        return child;
+    }
+
+    InitNode *l = NULL, *r = NULL;
+    if (parent->type->type_kind == TYPE_ARRAY && parent->tail != NULL && index > parent->tail->index)
+        l = parent->tail;
+    else {
+        for (InitNode* child = parent->head; child != NULL; child = child->next) {
+            if (parent->type->type_kind == TYPE_ARRAY) {
+                if (child->index > index && r == NULL) {
+                    r = child;
+                    break;
+                } else if (child->index < index)
+                    l = child;
+                else
+                    return child;
+            } else if (child->member == member)
+                return child;
+        }
+    }
+    InitNode* child = create_struct(InitNode);
+    *child = (InitNode){.token = token, .type = type, .offset = offset, .expr = NULL, .member = NULL, .index = 0, .is_set = false, .head = NULL, .tail = NULL, .next = NULL};
+    if (parent->type->type_kind == TYPE_ARRAY) {
+        child->index = index;
+        child->next = r;
+        if (l != NULL)
+            l->next = child;
+        else
+            parent->head = child;
+        if (r == NULL)
+            parent->tail = child;
+    } else {
+        child->member = member;
+        if (parent->type->type_kind == TYPE_UNION)
+            parent->tail = NULL;
+        if (parent->tail == NULL) {
+            parent->tail = child;
+            parent->head = child;
+        } else {
+            parent->tail->next = child;
+            parent->tail = child;
+        }
+    }
+    return child;
+}
+
+static void convert_init_tree(InitNode* tree, bool has_base, list(IR_Initializer*) result) {
+    assert(tree != NULL);
+    assert(result != NULL);
+
+    if (tree->expr != NULL || (tree->is_set && has_base)) {
+        IR_Initializer* init = create_struct(IR_Initializer);
+        *init = (IR_Initializer){.token = tree->token, .offset = tree->offset, .size = get_type_size(tree->type), .expr = tree->expr, .bitfield_size = 0, .bit_offset = 0};
+        if (tree->member != NULL) {
+            init->bitfield_size = tree->member->bitfield_size;
+            init->bit_offset = tree->member->bit_offset;
+        }
+        append(result, init);
+        has_base = tree->expr != NULL;
+    }
+    for (InitNode* child = tree->head; child != NULL; child = child->next)
+        convert_init_tree(child, has_base, result);
 }
 
 static IR_Expression* analyze_conditional_expression(Semantic* ctx, AST_ConditionalExpression* node) {
@@ -140,6 +233,8 @@ static IR_Type* analyze_pointer(Semantic* ctx, AST_Pointer* node, IR_Type* base)
     type->token = node->token;
     type->type_kind = TYPE_POINTER;
     type->type.pointer_type = base;
+    type->size = 8;
+    type->align = 8;
     foreach (string, qual, node->type_qualifiers) {
         if (qual == KEYWORD_CONST) {
             if (type->is_const) semantic_warn(node->token, "Duplicate 'const' qualifier");
@@ -205,8 +300,13 @@ static IR_Type* analyze_array_suffix(Semantic* ctx, AST_DirectDeclarator* node, 
             semantic_error(length_expr->token, "Array size must be greater than 0");
             return NULL;
         }
+        size_t element_size = get_type_size(base);
+        if (element_size > 0 && (uintmax_t)length > INTMAX_MAX / element_size / 2) {
+            semantic_error(length_expr->token, "Array is too large");
+            return NULL;
+        }
         type->type.array.length = (uintmax_t)length;
-        type->size = (size_t)length * get_type_size(base);
+        type->size = (size_t)length * element_size;
     } else
         type_qualifiers = node->decl.incomplete_array.type_qualifiers;
 
@@ -355,25 +455,7 @@ static Token* analyze_declarator(Semantic* ctx, AST_Declarator* node, IR_Type* b
     return analyze_direct_declarator(ctx, node->direct_declarator, type, out_type);
 }
 
-static void remove_initializers(list(IR_Initializer*) result, size_t offset, size_t size) {
-    ListNode* prev = NULL;
-    foreach (IR_Initializer*, init, result) {
-        if (offset <= init->offset && init->offset + init->size <= offset + size) {
-            if (prev == NULL) {
-                result->head = init__n->next;
-                if (result->head == NULL)
-                    result->tail = NULL;
-            } else {
-                prev->next = init__n->next;
-                if (prev->next == NULL)
-                    result->tail = prev;
-            }
-        } else
-            prev = init__n;
-    }
-}
-
-static IR_Initializer* analyze_initializer_scalar(Semantic* ctx, Token* token, IR_Expression* expr, IR_Type* type, size_t offset) {
+static IR_Expression* analyze_initializer_scalar(Semantic* ctx, Token* token, IR_Expression* expr, IR_Type* type) {
     assert(token != NULL);
     assert(type != NULL);
     assert(expr != NULL);
@@ -389,24 +471,33 @@ static IR_Initializer* analyze_initializer_scalar(Semantic* ctx, Token* token, I
             type->size = (length + 1) * type->type.array.element_type->size;
         } else if (length > type->type.array.length)
             semantic_warn(token, "Initializer string for char array is too long");
-    } else {
+    } else
         expr = convert_for_assignment(ctx, expr, type, token);
-        if (expr == NULL) return NULL;
-    }
-
-    IR_Initializer* init = create_struct(IR_Initializer);
-    *init = (IR_Initializer){.token = token, .offset = offset, .expr = expr, .bitfield_size = 0, .bit_offset = 0, .size = get_type_size(type)};
-    return init;
+    return expr;
 }
 
-static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** type, size_t offset, list(IR_Initializer*) result);
-static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offset, InitCursor* cursor, bool is_braced, list(IR_Initializer*) result) {
+static void analyze_error_initializer(Semantic* ctx, AST_Initializer* node) {
+    assert(node != NULL);
+    if (!node->is_assignment_expr) {
+        foreach (AST_InitializerItem*, item, node->init.inits) {
+            foreach (AST_Designator*, designator, item->designation) {
+                if (designator->is_index)
+                    analyze_conditional_expression(ctx, designator->designator.index_expr);
+            }
+            analyze_error_initializer(ctx, item->initializer);
+        }
+    } else
+        analyze_assignment_expression(ctx, node->init.assignment_expr);
+}
+
+static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** type, InitNode* tree);
+static void analyze_initializer_items(Semantic* ctx, IR_Type* type, InitCursor* cursor, bool is_braced, InitNode* tree) {
     assert(cursor != NULL);
     assert(cursor->node != NULL);
     assert(cursor->node->data != NULL);
     assert(type != NULL);
     assert(type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION);
-    assert(result != NULL);
+    assert(tree != NULL);
 
     uintmax_t index = 0;
     uintmax_t max_index = 0;
@@ -423,34 +514,38 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offse
         AST_InitializerItem* item = cursor->node->data;
         IR_Type* placement_type = NULL;
         uintmax_t placement_offset = 0;
+        IR_StructUnionDecl* decl = NULL;
 
         if (type->type_kind == TYPE_ARRAY) {
             if (cursor->designator != NULL) {
                 AST_Designator* designator = cursor->designator->data;
                 if (!designator->is_index) {
                     semantic_error(designator->token, "Member designator is not allowed for array type");
-                    update_cursor(cursor, cursor->node->next);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
                 IR_Expression* expr = analyze_conditional_expression(ctx, designator->designator.index_expr);
                 if (expr == NULL) {
-                    update_cursor(cursor, cursor->node->next);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
                 intmax_t v = 0;
-                if (!eval_const_int(expr, &v)) {
-                    semantic_error(designator->token, "Array index is not a constant expression");
-                    update_cursor(cursor, cursor->node->next);
-                    continue;
-                }
-                if (v < 0) {
-                    semantic_error(designator->token, "Array index is negative");
-                    update_cursor(cursor, cursor->node->next);
-                    continue;
-                }
-                if (type->type.array.length > 0 && (uintmax_t)v >= type->type.array.length) {
-                    semantic_error(designator->token, "Array index is out of bounds");
-                    update_cursor(cursor, cursor->node->next);
+                char* msg = NULL;
+                size_t element_size = get_type_size(type->type.array.element_type);
+                if (!eval_const_int(expr, &v))
+                    msg = "Array index is not a constant expression";
+                else if (v < 0)
+                    msg = "Array index is negative";
+                else if (type->type.array.length > 0 && (uintmax_t)v >= type->type.array.length)
+                    msg = "Array index is out of bounds";
+                else if (type->type.array.length == 0 && element_size > 0 && (uintmax_t)v >= INTMAX_MAX / element_size / 2)
+                    msg = "Array is too large";
+                if (msg != NULL) {
+                    semantic_error(designator->token, msg);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
                 index = (uintmax_t)v;
@@ -459,37 +554,40 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offse
             if (type->type.array.length > 0 && index >= type->type.array.length) {
                 if (!is_braced) return;
                 semantic_warn(item->token, "Excess elements in array initializer");
-                update_cursor(cursor, cursor->node->next);
+                analyze_error_initializer(ctx, item->initializer);
+                update_cursor(cursor);
                 continue;
             }
             placement_type = type->type.array.element_type;
-            placement_offset = offset + index * get_type_size(placement_type);
+            placement_offset = tree->offset + index * get_type_size(placement_type);
         } else {
             if (cursor->designator != NULL) {
                 AST_Designator* designator = cursor->designator->data;
                 if (designator->is_index) {
                     semantic_error(designator->token, "Array index designator is not allowed for struct/union type");
-                    update_cursor(cursor, cursor->node->next);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
                 assert(designator->designator.member->type == TOKEN_IDENTIFIER);
                 ListNode* member = find_member(type, designator->designator.member->value);
                 if (member == NULL) {
                     semantic_error(designator->token, "Member designator does not match any member of struct/union");
-                    update_cursor(cursor, cursor->node->next);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
-                IR_StructUnionDecl* decl = member->data;
+                decl = member->data;
                 if (decl->type->type_kind == TYPE_ARRAY && decl->type->type.array.length == 0) {
                     semantic_error(designator->token, "Initialization of flexible array member is not supported");
-                    update_cursor(cursor, cursor->node->next);
+                    analyze_error_initializer(ctx, item->initializer);
+                    update_cursor(cursor);
                     continue;
                 }
                 if (decl->name != NULL)
                     cursor->designator = cursor->designator->next;
                 member_node = member;
             }
-            IR_StructUnionDecl* decl = NULL;
             for (; member_node != NULL; member_node = member_node->next) {
                 decl = member_node->data;
                 if (decl->type->type_kind == TYPE_ARRAY && decl->type->type.array.length == 0)
@@ -500,70 +598,59 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offse
             if (member_node == NULL) {
                 if (!is_braced && !is_first) return;
                 semantic_warn(item->token, "Excess elements in struct/union initializer");
-                update_cursor(cursor, cursor->node->next);
+                if (cursor->expr == NULL)
+                    analyze_error_initializer(ctx, item->initializer);
+                update_cursor(cursor);
                 continue;
             }
             assert(decl != NULL);
             placement_type = decl->type;
-            placement_offset = offset + decl->offset;
+            placement_offset = tree->offset + decl->offset;
         }
 
-        ListNode* tail = result->tail;
-        bool is_bitfield = type->type_kind != TYPE_ARRAY && ((IR_StructUnionDecl*)member_node->data)->bitfield_size > 0;
+        InitNode* child = get_child(tree, index, decl, placement_type, placement_offset, item->token);
         if (cursor->designator != NULL) {
             AST_Designator* designator = cursor->designator->data;
             if (placement_type->type_kind == TYPE_ARRAY || placement_type->type_kind == TYPE_STRUCT || placement_type->type_kind == TYPE_UNION) {
-                analyze_initializer_items(ctx, placement_type, placement_offset, cursor, false, result);
+                analyze_initializer_items(ctx, placement_type, cursor, false, child);
             } else {
                 semantic_error(designator->token, "Designator is not allowed for scalar type");
-                update_cursor(cursor, cursor->node->next);
+                analyze_error_initializer(ctx, item->initializer);
+                update_cursor(cursor);
             }
         } else if (!item->initializer->is_assignment_expr) {
-            if (!is_bitfield)
-                remove_initializers(result, placement_offset, get_type_size(placement_type));
-            analyze_initializer(ctx, item->initializer, &placement_type, placement_offset, result);
-            update_cursor(cursor, cursor->node->next);
+            analyze_initializer(ctx, item->initializer, &placement_type, child);
+            update_cursor(cursor);
         } else {
             if (cursor->expr == NULL)
                 cursor->expr = analyze_assignment_expression(ctx, item->initializer->init.assignment_expr);
             bool is_recursive = false;
             if (cursor->expr != NULL) {
-                IR_Initializer* init = NULL;
-                if (placement_type->type_kind != TYPE_ARRAY && placement_type->type_kind != TYPE_STRUCT && placement_type->type_kind != TYPE_UNION)
-                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
-                else if (placement_type->type_kind == TYPE_ARRAY && is_char_type(placement_type->type.array.element_type) && cursor->expr->expr_type == EXPR_STRING)
-                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
-                else if (placement_type->type_kind != TYPE_ARRAY && cursor->expr->type->type_kind == placement_type->type_kind && cursor->expr->type->type.struct_union_type == placement_type->type.struct_union_type)
-                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type, placement_offset);
-                else {
-                    analyze_initializer_items(ctx, placement_type, placement_offset, cursor, false, result);
-                    is_recursive = true;
-                }
-                if (init != NULL && !is_recursive) {
-                    if (!is_bitfield)
-                        remove_initializers(result, placement_offset, get_type_size(placement_type));
-                    append(result, init);
+                IR_Expression* init = NULL;
+                bool is_direct = (placement_type->type_kind != TYPE_ARRAY && placement_type->type_kind != TYPE_STRUCT && placement_type->type_kind != TYPE_UNION) ||
+                                 (placement_type->type_kind == TYPE_ARRAY && is_char_type(placement_type->type.array.element_type) && cursor->expr->expr_type == EXPR_STRING) ||
+                                 (placement_type->type_kind != TYPE_ARRAY && cursor->expr->type->type_kind == placement_type->type_kind && cursor->expr->type->type.struct_union_type == placement_type->type.struct_union_type);
+                if (is_direct)
+                    init = analyze_initializer_scalar(ctx, item->token, cursor->expr, placement_type);
+                else
+                    analyze_initializer_items(ctx, placement_type, cursor, false, child);
+                if (init != NULL) {
+                    child->expr = init;
+                    child->token = init->token;
+                    child->is_set = true;
+                    child->head = NULL;
+                    child->tail = NULL;
                 }
             }
             if (!is_recursive)
-                update_cursor(cursor, cursor->node->next);
+                update_cursor(cursor);
         }
         if (type->type_kind == TYPE_ARRAY) {
             index++;
             if (index > max_index)
                 max_index = index;
-        } else {
-            IR_StructUnionDecl* decl = member_node->data;
-            if (is_bitfield && tail != result->tail) {
-                IR_Initializer* init = result->tail->data;
-                init->bitfield_size = decl->bitfield_size;
-                init->bit_offset = decl->bit_offset;
-            }
-            if (type->type_kind == TYPE_STRUCT)
-                member_node = member_node->next;
-            else if (type->type_kind == TYPE_UNION)
-                member_node = NULL;
-        }
+        } else
+            member_node = type->type_kind == TYPE_STRUCT ? member_node->next : NULL;
     }
     if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0) {
         type->type.array.length = max_index;
@@ -571,27 +658,35 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, size_t offse
     }
 }
 
-static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** target_type, size_t offset, list(IR_Initializer*) result) {
+static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** target_type, InitNode* tree) {
     assert(node != NULL);
     assert(node->token != NULL);
     assert(target_type != NULL);
     assert(*target_type != NULL);
-    assert(result != NULL);
+    assert(tree != NULL);
 
+    tree->token = node->token;
+    tree->expr = NULL;
+    tree->head = NULL;
+    tree->tail = NULL;
+    tree->is_set = true;
     IR_Type* type = *target_type;
     if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0) {
         type = create_struct(IR_Type);
         *type = **target_type;
         *target_type = type;
+        tree->type = type;
     }
 
     if (node->is_assignment_expr) {
         assert(node->init.assignment_expr != NULL);
         IR_Expression* expr = analyze_assignment_expression(ctx, node->init.assignment_expr);
         if (expr == NULL) return;
-        IR_Initializer* init = analyze_initializer_scalar(ctx, node->token, expr, type, offset);
-        if (init != NULL)
-            append(result, init);
+        expr = analyze_initializer_scalar(ctx, node->token, expr, type);
+        if (expr != NULL) {
+            tree->expr = expr;
+            tree->token = expr->token;
+        }
         return;
     }
 
@@ -603,16 +698,18 @@ static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** 
             assert(item->initializer != NULL);
             if (!list_empty(item->designation)) {
                 semantic_error(item->token, "Designator is not allowed for scalar type");
+                analyze_error_initializer(ctx, item->initializer);
                 continue;
             }
             if (!is_first) {
                 semantic_warn(item->token, "Excess elements in scalar initializer");
+                analyze_error_initializer(ctx, item->initializer);
                 continue;
             }
             is_first = false;
             if (!item->initializer->is_assignment_expr)
                 semantic_warn(item->token, "Too many braces around scalar initializer");
-            analyze_initializer(ctx, item->initializer, target_type, offset, result);
+            analyze_initializer(ctx, item->initializer, target_type, tree);
         }
         return;
     }
@@ -623,27 +720,32 @@ static void analyze_initializer(Semantic* ctx, AST_Initializer* node, IR_Type** 
         return;
     }
 
-    InitCursor* cursor = &(InitCursor){0};
-    update_cursor(cursor, node->init.inits->head);
-    assert(cursor->node->data != NULL);
-
+    InitCursor* cursor = &(InitCursor){.node = node->init.inits->head, .designator = NULL, .expr = NULL};
+    assert(cursor->node != NULL && cursor->node->data != NULL);
     AST_InitializerItem* item = cursor->node->data;
-    list(AST_Designator*) designation = item->designation;
-    if (type->type_kind == TYPE_ARRAY && is_char_type(type->type.array.element_type) && list_empty(designation)) {
+    if (!list_empty(item->designation))
+        cursor->designator = item->designation->head;
+
+    if (type->type_kind == TYPE_ARRAY && is_char_type(type->type.array.element_type) && cursor->designator == NULL) {
         if (item->initializer->is_assignment_expr) {
             cursor->expr = analyze_assignment_expression(ctx, item->initializer->init.assignment_expr);
-            if (cursor->expr == NULL) return;
-            else if (cursor->expr->expr_type == EXPR_STRING) {
-                IR_Initializer* init = analyze_initializer_scalar(ctx, item->token, cursor->expr, type, offset);
-                if (init != NULL)
-                    append(result, init);
-                if (cursor->node->next != NULL)
-                    semantic_warn(((AST_InitializerItem*)cursor->node->next->data)->token, "Excess elements in char array initializer");
+            if (cursor->expr == NULL || cursor->expr->expr_type == EXPR_STRING) {
+                if (cursor->expr != NULL) {
+                    IR_Expression* expr = analyze_initializer_scalar(ctx, item->token, cursor->expr, type);
+                    if (expr != NULL) {
+                        tree->expr = expr;
+                        tree->token = expr->token;
+                    }
+                    if (cursor->node->next != NULL)
+                        semantic_warn(((AST_InitializerItem*)cursor->node->next->data)->token, "Excess elements in char array initializer");
+                }
+                for (ListNode* excess = cursor->node->next; excess != NULL; excess = excess->next)
+                    analyze_error_initializer(ctx, ((AST_InitializerItem*)excess->data)->initializer);
                 return;
             }
         }
     }
-    analyze_initializer_items(ctx, type, offset, cursor, true, result);
+    analyze_initializer_items(ctx, type, cursor, true, tree);
 }
 
 static void analyze_static_assert_decl(Semantic* ctx, AST_StaticAssertDecl* node) {
@@ -706,8 +808,10 @@ static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInf
         decl->is_func_proto = true;
         decl->decl.func_proto = type->type.func_type;
     } else if (node->initializer != NULL) {
+        InitNode* tree = create_init_tree(symbol->type);
+        analyze_initializer(ctx, node->initializer, &symbol->type, tree);
         decl->decl.initializer = create_list(IR_Initializer*);
-        analyze_initializer(ctx, node->initializer, &symbol->type, 0, decl->decl.initializer);
+        convert_init_tree(tree, false, decl->decl.initializer);
         symbol->is_defined = true;
     }
     return decl;
