@@ -9,6 +9,7 @@
 
 #define CHAR_IS_SIGNED ((char)-1 < 0)
 #define normalize_char(c, count) ((count) == 1 ? (CHAR_IS_SIGNED ? (int)(signed char)(c) : (int)(unsigned char)(c)) : (int)(c))
+#define TARGET_IS_BIG_ENDIAN 0
 
 #define DEFAULT_INCLUDE_PATHS {"TODO"}
 #define COUNT_OF_DEFAULT_INCLUDE_PATHS 1
