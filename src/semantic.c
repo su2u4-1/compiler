@@ -1,7 +1,5 @@
 #include "semantic.h"
 
-#include <complex.h>
-
 #include "lexer.h"
 #include "target.h"
 
@@ -30,7 +28,7 @@ typedef struct InitNode InitNode;
 struct InitNode {
     Token* token;
     IR_Type* type;
-    size_t offset;
+    uintmax_t offset;
     IR_Expression* expr;
     IR_StructUnionDecl* member;
     uintmax_t index;
@@ -154,7 +152,7 @@ static InitNode* create_init_tree(IR_Type* type) {
     return node;
 }
 
-static InitNode* get_child(InitNode* parent, uintmax_t index, IR_StructUnionDecl* member, IR_Type* type, size_t offset, Token* token) {
+static InitNode* get_child(InitNode* parent, uintmax_t index, IR_StructUnionDecl* member, IR_Type* type, uintmax_t offset, Token* token) {
     assert(parent != NULL);
     assert(type != NULL);
     assert((parent->type->type_kind == TYPE_ARRAY) == (member == NULL));
@@ -228,7 +226,7 @@ static void convert_init_tree(InitNode* tree, bool has_base, list(IR_Initializer
         convert_init_tree(child, has_base, result);
 }
 
-static size_t get_type_size(IR_Type* type) {
+static uintmax_t get_type_size(IR_Type* type) {
     switch (type->type_kind) {
         case TYPE_VOID: return VOID_SIZE;
         case TYPE_CHAR: return CHAR_SIZE;
@@ -262,7 +260,7 @@ static size_t get_type_size(IR_Type* type) {
     }
 }
 
-static size_t get_type_align(IR_Type* type) {
+static uintmax_t get_type_align(IR_Type* type) {
     switch (type->type_kind) {
         case TYPE_VOID: return VOID_ALIGN;
         case TYPE_CHAR: return CHAR_ALIGN;
@@ -640,13 +638,13 @@ static IR_Type* analyze_array_suffix(Semantic* ctx, AST_DirectDeclarator* node, 
             semantic_error(length_expr->token, "Array size must be greater than 0");
             return NULL;
         }
-        size_t element_size = type_size(base);
-        if (element_size > 0 && (uintmax_t)length > INTMAX_MAX / element_size / 2) {
+        uintmax_t element_size = type_size(base);
+        if (element_size > 0 && (uintmax_t)length > TARGET_PTRDIFF_MAX / element_size) {
             semantic_error(length_expr->token, "Array is too large");
             return NULL;
         }
         type->type.array.length = (uintmax_t)length;
-        type->size = (size_t)length * element_size;
+        type->size = (uintmax_t)length * element_size;
     } else
         type_qualifiers = node->decl.incomplete_array.type_qualifiers;
 
@@ -877,14 +875,14 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, InitCursor* 
                 }
                 intmax_t v = 0;
                 char* msg = NULL;
-                size_t element_size = type_size(type->type.array.element_type);
+                uintmax_t element_size = type_size(type->type.array.element_type);
                 if (!eval_const_int(expr, &v))
                     msg = "Array index is not a constant expression";
                 else if (v < 0)
                     msg = "Array index is negative";
                 else if (type->type.array.length > 0 && (uintmax_t)v >= type->type.array.length)
                     msg = "Array index is out of bounds";
-                else if (type->type.array.length == 0 && element_size > 0 && (uintmax_t)v >= INTMAX_MAX / element_size / 2)
+                else if (type->type.array.length == 0 && element_size > 0 && (uintmax_t)v >= TARGET_PTRDIFF_MAX / element_size)
                     msg = "Array is too large";
                 if (msg != NULL) {
                     semantic_error(designator->token, msg);

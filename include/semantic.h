@@ -204,7 +204,7 @@ struct IR_StructUnionDecl {
     Token* token;
     IR_Type* type;
     string name;
-    size_t offset;
+    uintmax_t offset;
     intmax_t bitfield_size;
     int bit_offset;
 };
@@ -213,8 +213,8 @@ struct IR_StructUnion {
     Token* token;
     string name;
     list(IR_StructUnionDecl*) members;
-    size_t size;
-    size_t align;
+    uintmax_t size;
+    uintmax_t align;
 };
 
 struct IR_EnumItem {
@@ -237,8 +237,8 @@ struct IR_Param {
 
 struct IR_Initializer {
     Token* token;
-    size_t offset;
-    size_t size;
+    uintmax_t offset;
+    uintmax_t size;
     IR_Expression* expr;
     intmax_t bitfield_size;
     int bit_offset;
@@ -287,8 +287,8 @@ struct IR_Type {
         TYPE_UNION,
         TYPE_ENUM,
     } type_kind;
-    size_t size;
-    size_t align;
+    uintmax_t size;
+    uintmax_t align;
     bool is_const;
     bool is_volatile;
     bool is_restrict;

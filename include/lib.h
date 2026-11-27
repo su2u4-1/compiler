@@ -31,8 +31,10 @@ string string_splice(string format, ...);
 
 #ifdef _WIN32
 #define WIN_PATH 1
+#define is_path_sep(c) ((c) == '\\' || (c) == '/')
 #else
 #define WIN_PATH 0
+#define is_path_sep(c) ((c) == '/')
 #endif
 
 // memory

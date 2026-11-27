@@ -1,5 +1,6 @@
 #include "lib.h"
 #include "preprocessor.h"
+#include "target.h"
 
 ppToken* pp_peek(ppContext* ctx) {
     if (ctx == NULL) return NULL;
@@ -99,7 +100,7 @@ static ppIntValue eval_number_literal(ppContext* ctx, ppToken* t, bool skip) {
         return u ? pp_unsign(v) : pp_sign((intmax_t)v);
     }
     if (u) return pp_unsign(v);
-    if (v > (uintmax_t)INTMAX_MAX) {
+    if (v > (uintmax_t)TARGET_MAXINT_MAX) {
         if (base == 10 && !skip)
             preprocessor_warn("Integer constant is so large that it is unsigned", t->line, t->column);
         return pp_unsign(v);
@@ -125,7 +126,7 @@ static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
         }
         if (result == ESC_NO_HEX_DIGITS || result == ESC_UNSUPPORTED)
             return 0;
-        acc = (acc << 8) | c;  // acc * 256 + c
+        acc = (acc << CHAR_SIZE * 8) | c;
         count++;
     }
     if (count == 0) {
@@ -135,11 +136,11 @@ static int eval_char_literal(ppContext* ctx, ppToken* t, bool skip) {
     }
     if (count > 1 && !skip) {
         preprocessor_warn("Multi-character character constant", t->line, t->column);
-        if (count > 4)
+        if (count > INT_SIZE)
             preprocessor_warn("character constant too long", t->line, t->column);
     }
 
-    return count == 1 ? (int)(char)acc : (int)acc;
+    return normalize_char(acc, count);
 }
 
 static ppIntValue eval_conditional_expr(ppContext* ctx, bool skip);
@@ -233,7 +234,7 @@ static ppIntValue eval_multiplicative_expr(ppContext* ctx, bool skip) {
                 result = pp_sign(0);
                 break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                if (!right.is_unsigned && get_sign(result) == TARGET_MAXINT_MIN && get_sign(right) == -1) {
                     if (!skip)
                         preprocessor_error("Integer constant expression overflow", t->line, t->column);
                     result = pp_sign(0);
@@ -248,7 +249,7 @@ static ppIntValue eval_multiplicative_expr(ppContext* ctx, bool skip) {
                 result = pp_sign(0);
                 break;
             } else if (!result.is_unsigned && !right.is_unsigned) {
-                if (!right.is_unsigned && get_sign(result) == INTMAX_MIN && get_sign(right) == -1) {
+                if (!right.is_unsigned && get_sign(result) == TARGET_MAXINT_MIN && get_sign(right) == -1) {
                     if (!skip)
                         preprocessor_error("Integer constant expression overflow", t->line, t->column);
                     result = pp_sign(0);
@@ -302,7 +303,7 @@ static ppIntValue eval_shift_expr(ppContext* ctx, bool skip) {
         } else
             n = (uintmax_t)get_sign(right);
 
-        if (n >= sizeof(intmax_t) * CHAR_BIT) {
+        if (n >= TARGET_MAXINT_BITS) {
             if (!skip) {
                 preprocessor_error("Shift count too large", t->line, t->column);
                 result = pp_sign(0);
@@ -313,7 +314,7 @@ static ppIntValue eval_shift_expr(ppContext* ctx, bool skip) {
 
         if (t->value == SYMBOL_L_SHIFT) {
             uintmax_t shifted = get_unsign(result) << n;
-            if (!result.is_unsigned && shifted > (uintmax_t)INTMAX_MAX) {
+            if (!result.is_unsigned && shifted > (uintmax_t)TARGET_MAXINT_MAX) {
                 if (!skip)
                     preprocessor_error("Integer constant expression overflow", t->line, t->column);
                 result = pp_sign(0);

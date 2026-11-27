@@ -1,13 +1,12 @@
 #include "file.h"
 
 #include <sys/stat.h>
+
 #if WIN_PATH
 #include <direct.h>
-#define is_sep(c) ((c) == '\\' || (c) == '/')
 #define get_cwd(buf, size) _getcwd(buf, size)
 #else
 #include <unistd.h>
-#define is_sep(c) ((c) == '/')
 #define get_cwd(buf, size) getcwd(buf, size)
 #endif
 
@@ -59,7 +58,7 @@ static void path_normalize(Path* p, const char* raw) {
     size_t k = 0;
 
 #if WIN_PATH
-    if (len >= 2 && is_sep(raw[0]) && is_sep(raw[1]) && !(len >= 3 && is_sep(raw[2]))) {
+    if (len >= 2 && is_path_sep(raw[0]) && is_path_sep(raw[1]) && !(len >= 3 && is_path_sep(raw[2]))) {
         out[pos++] = '/';
         out[pos++] = '/';
         k = 2;
@@ -67,7 +66,7 @@ static void path_normalize(Path* p, const char* raw) {
 #endif
     for (; k < len; k++) {
         char c = raw[k];
-        if (is_sep(c)) {
+        if (is_path_sep(c)) {
             if (pos == 0 || out[pos - 1] != '/')
                 out[pos++] = '/';
         } else

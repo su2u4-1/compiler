@@ -1,5 +1,7 @@
 #include "lib.h"
 
+#include "target.h"
+
 // memory
 
 MemoryBlock* string_memory = NULL;
@@ -308,7 +310,7 @@ IntLiteral parse_int_digits(const char* s) {
         int d = hex_digit_value(s[i]);
         if (d < 0 || (unsigned int)d >= result.base)
             break;
-        if (result.value > (UINTMAX_MAX - (uintmax_t)d) / result.base)
+        if (result.value > (TARGET_MAXUINT_MAX - (uintmax_t)d) / result.base)
             result.overflow = true;
         result.value = result.value * result.base + (uintmax_t)d;
     }
@@ -354,9 +356,9 @@ EscapeResult decode_literal_char(const char* s, size_t* pos, unsigned int* value
             unsigned int v = 0;
             while (hex_digit_value(s[*pos]) >= 0) {
                 v = v * 16 + (unsigned int)hex_digit_value(s[*pos]);
-                if (v > UCHAR_MAX) {
+                if (v > TARGET_UNSIGNED_CHAR_MAX) {
                     out_of_range = true;
-                    v &= UCHAR_MAX;
+                    v &= TARGET_UNSIGNED_CHAR_MAX;
                 }
                 ++*pos;
             }
@@ -373,8 +375,8 @@ EscapeResult decode_literal_char(const char* s, size_t* pos, unsigned int* value
                 v = v * 8 + (unsigned int)(s[*pos] - '0');
                 ++*pos;
             }
-            *value = v & UCHAR_MAX;
-            return v > UCHAR_MAX ? ESC_OCT_OUT_OF_RANGE : ESC_OK;
+            *value = v & TARGET_UNSIGNED_CHAR_MAX;
+            return v > TARGET_UNSIGNED_CHAR_MAX ? ESC_OCT_OUT_OF_RANGE : ESC_OK;
         }
     }
 }

@@ -3,6 +3,7 @@
 #include <math.h>
 
 #include "preprocessor.h"
+#include "target.h"
 
 static string is_keyword(string str) {
     for (size_t i = 0; i < keyword_count; ++i)
@@ -51,7 +52,7 @@ static Token* int_token(ppToken* t) {
 
     if (literal.overflow)
         lexer_warn("Integer constant is too large", t, 0, 0);
-    else if (literal.base == 10 && !is_unsigned && literal.value > (uintmax_t)INTMAX_MAX)
+    else if (literal.base == 10 && !is_unsigned && literal.value > (uintmax_t)TARGET_MAXINT_MAX)
         lexer_warn("Integer constant is so large that it is unsigned", t, 0, 0);
 
     Token* token = create_token(TOKEN_INT, t);
@@ -284,7 +285,7 @@ static Token* char_token(ppToken* t) {
         unsigned int c;
         if (!report_escape(t, decode_literal_char(t->value, &i, &c), start))
             return create_token(TOKEN_SYNTAX_ERROR_CHAR, t);
-        acc = (acc << 8) | c;  // acc * 256 + c
+        acc = (acc << CHAR_SIZE * 8) | c;
         count++;
     }
     if (count == 0) {
@@ -293,11 +294,11 @@ static Token* char_token(ppToken* t) {
     }
     if (count > 1) {
         lexer_warn("Multi-character character constant", t, 0, 0);
-        if (count > 4)
+        if (count > INT_SIZE)
             lexer_warn("character constant too long", t, 0, 0);
     }
     Token* token = create_token(TOKEN_CHAR, t);
-    token->literal.character = count == 1 ? (int)(char)acc : (int)acc;
+    token->literal.character = normalize_char(acc, count);
     return token;
 }
 

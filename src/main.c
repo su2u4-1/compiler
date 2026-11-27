@@ -4,6 +4,7 @@
 #include "output.h"
 #include "parser.h"
 #include "preprocessor.h"
+#include "target.h"
 
 /*
 <exe> <source_files> [-o <output_file>] [-I<dir>...] [output option...]
@@ -136,6 +137,11 @@ int main(int argc, char* argv[]) {
         free_all_memory();
         return 1;
     }
+    char* output_dirs[COUNT_OF_DEFAULT_INCLUDE_PATHS] = DEFAULT_INCLUDE_PATHS;
+    for (int i = 0; i < COUNT_OF_DEFAULT_INCLUDE_PATHS; i++) {
+        add_include_dir(output_dirs[i]);
+    }
+
     int ret = run(opt);
     free_all_memory();
     return ret;
