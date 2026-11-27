@@ -1,17 +1,23 @@
 #include "semantic.h"
 
+#include <complex.h>
+
 #include "lexer.h"
+#include "target.h"
 
 #define semantic_error(token, msg) report_error(ctx, (token), (msg), false)
 #define semantic_warn(token, msg) report_error(ctx, (token), (msg), true)
 #define is_char_type(type_) ((type_)->type_kind == TYPE_CHAR || (type_)->type_kind == TYPE_S_CHAR || (type_)->type_kind == TYPE_U_CHAR)
-#define get_type_size(type_) (((type_)->type_kind == TYPE_STRUCT || (type_)->type_kind == TYPE_UNION) ? (type_)->type.struct_union_type->size : (type_)->size)
+#define type_size(type_) (((type_)->type_kind == TYPE_STRUCT || (type_)->type_kind == TYPE_UNION) ? (type_)->type.struct_union_type->size : (type_)->size)
 
 typedef struct {
     IR_Type* type;
     string storage;
+    uintmax_t align;
+    Token* align_keyword;
     bool is_inline;
     bool is_noreturn;
+    bool is_thread_local;
 } DeclSpecInfo;
 
 typedef struct {
@@ -69,6 +75,20 @@ static IR_Symbol* create_symbol(Token* token, string name, IR_Type* type, IR_Sym
     IR_Symbol* symbol = create_struct(IR_Symbol);
     *symbol = (IR_Symbol){.token = token, .name = name, .type = type, .kind = kind, .linkage = LINKAGE_NONE};
     return symbol;
+}
+
+static IR_Symbol* find_symbol(IR_Scope* scope, string name, bool search_names) {
+    assert(scope != NULL);
+    assert(name != NULL);
+    IR_Scope* s = scope;
+    while (s != NULL) {
+        foreach (IR_Symbol*, symbol, (search_names ? s->names : s->tags)) {
+            if (symbol->name == name)
+                return symbol;
+        }
+        s = s->parent;
+    }
+    return NULL;
 }
 
 static IR_Symbol* declare_name(Semantic* ctx, Token* id, IR_Type* type, IR_SymbolKind kind, string storage) {
@@ -196,7 +216,7 @@ static void convert_init_tree(InitNode* tree, bool has_base, list(IR_Initializer
 
     if (tree->expr != NULL || (tree->is_set && has_base)) {
         IR_Initializer* init = create_struct(IR_Initializer);
-        *init = (IR_Initializer){.token = tree->token, .offset = tree->offset, .size = get_type_size(tree->type), .expr = tree->expr, .bitfield_size = 0, .bit_offset = 0};
+        *init = (IR_Initializer){.token = tree->token, .offset = tree->offset, .size = type_size(tree->type), .expr = tree->expr, .bitfield_size = 0, .bit_offset = 0};
         if (tree->member != NULL) {
             init->bitfield_size = tree->member->bitfield_size;
             init->bit_offset = tree->member->bit_offset;
@@ -206,6 +226,74 @@ static void convert_init_tree(InitNode* tree, bool has_base, list(IR_Initializer
     }
     for (InitNode* child = tree->head; child != NULL; child = child->next)
         convert_init_tree(child, has_base, result);
+}
+
+static size_t get_type_size(IR_Type* type) {
+    switch (type->type_kind) {
+        case TYPE_VOID: return VOID_SIZE;
+        case TYPE_CHAR: return CHAR_SIZE;
+        case TYPE_S_CHAR: return SIGNED_CHAR_SIZE;
+        case TYPE_U_CHAR: return UNSIGNED_CHAR_SIZE;
+        case TYPE_SHORT: return SHORT_SIZE;
+        case TYPE_U_SHORT: return UNSIGNED_SHORT_SIZE;
+        case TYPE_INT: return INT_SIZE;
+        case TYPE_U_INT: return UNSIGNED_INT_SIZE;
+        case TYPE_LONG: return LONG_SIZE;
+        case TYPE_U_LONG: return UNSIGNED_LONG_SIZE;
+        case TYPE_LONG_LONG: return LONG_LONG_SIZE;
+        case TYPE_U_LONG_LONG: return UNSIGNED_LONG_LONG_SIZE;
+        case TYPE_FLOAT: return FLOAT_SIZE;
+        case TYPE_DOUBLE: return DOUBLE_SIZE;
+        case TYPE_LONG_DOUBLE: return LONG_DOUBLE_SIZE;
+        case TYPE_BOOL: return BOOL_SIZE;
+        case TYPE_FLOAT_COMPLEX: return FLOAT_COMPLEX_SIZE;
+        case TYPE_DOUBLE_COMPLEX: return DOUBLE_COMPLEX_SIZE;
+        case TYPE_LONG_DOUBLE_COMPLEX: return LONG_DOUBLE_COMPLEX_SIZE;
+        case TYPE_FLOAT_IMAGINARY: return FLOAT_IMAGINARY_SIZE;
+        case TYPE_DOUBLE_IMAGINARY: return DOUBLE_IMAGINARY_SIZE;
+        case TYPE_LONG_DOUBLE_IMAGINARY: return LONG_DOUBLE_IMAGINARY_SIZE;
+        case TYPE_POINTER: return POINTER_SIZE;
+        case TYPE_ARRAY: return get_type_size(type->type.array.element_type) * type->type.array.length;
+        case TYPE_FUNCTION: return 0;  // functions do not have a size
+        case TYPE_STRUCT: return type->type.struct_union_type->size;
+        case TYPE_UNION: return type->type.struct_union_type->size;
+        case TYPE_ENUM: return ENUM_SIZE;
+        default: assert(false);
+    }
+}
+
+static size_t get_type_align(IR_Type* type) {
+    switch (type->type_kind) {
+        case TYPE_VOID: return VOID_ALIGN;
+        case TYPE_CHAR: return CHAR_ALIGN;
+        case TYPE_S_CHAR: return SIGNED_CHAR_ALIGN;
+        case TYPE_U_CHAR: return UNSIGNED_CHAR_ALIGN;
+        case TYPE_SHORT: return SHORT_ALIGN;
+        case TYPE_U_SHORT: return UNSIGNED_SHORT_ALIGN;
+        case TYPE_INT: return INT_ALIGN;
+        case TYPE_U_INT: return UNSIGNED_INT_ALIGN;
+        case TYPE_LONG: return LONG_ALIGN;
+        case TYPE_U_LONG: return UNSIGNED_LONG_ALIGN;
+        case TYPE_LONG_LONG: return LONG_LONG_ALIGN;
+        case TYPE_U_LONG_LONG: return UNSIGNED_LONG_LONG_ALIGN;
+        case TYPE_FLOAT: return FLOAT_ALIGN;
+        case TYPE_DOUBLE: return DOUBLE_ALIGN;
+        case TYPE_LONG_DOUBLE: return LONG_DOUBLE_ALIGN;
+        case TYPE_BOOL: return BOOL_ALIGN;
+        case TYPE_FLOAT_COMPLEX: return FLOAT_COMPLEX_ALIGN;
+        case TYPE_DOUBLE_COMPLEX: return DOUBLE_COMPLEX_ALIGN;
+        case TYPE_LONG_DOUBLE_COMPLEX: return LONG_DOUBLE_COMPLEX_ALIGN;
+        case TYPE_FLOAT_IMAGINARY: return FLOAT_IMAGINARY_ALIGN;
+        case TYPE_DOUBLE_IMAGINARY: return DOUBLE_IMAGINARY_ALIGN;
+        case TYPE_LONG_DOUBLE_IMAGINARY: return LONG_DOUBLE_IMAGINARY_ALIGN;
+        case TYPE_POINTER: return POINTER_ALIGN;
+        case TYPE_ARRAY: return get_type_align(type->type.array.element_type);
+        case TYPE_FUNCTION: return 0;  // functions do not have a size
+        case TYPE_STRUCT: return type->type.struct_union_type->align;
+        case TYPE_UNION: return type->type.struct_union_type->align;
+        case TYPE_ENUM: return ENUM_ALIGN;
+        default: assert(false);
+    }
 }
 
 static IR_Expression* analyze_conditional_expression(Semantic* ctx, AST_ConditionalExpression* node) {
@@ -220,8 +308,260 @@ static IR_Statement* analyze_statement(Semantic* ctx, AST_Statement* node) {
     return NULL;  // placeholder
 }
 
-static DeclSpecInfo analyze_decl_specs(Semantic* ctx, list(AST_DeclSpec*) decl_specs) {
-    return (DeclSpecInfo){0};  // placeholder
+static IR_StructUnion* analyze_struct_union(Semantic* ctx, list(AST_StructDecl*) struct_decls, bool is_struct, Token* name) {
+    return NULL;  // placeholder
+}
+
+static IR_Enum* analyze_enum(Semantic* ctx, list(AST_Enumerator*) enumerators, Token* name) {
+    return NULL;  // placeholder
+}
+
+static IR_Type* analyze_type_name(Semantic* ctx, AST_TypeName* node) {
+    return NULL;  // placeholder
+}
+
+static DeclSpecInfo* analyze_decl_specs(Semantic* ctx, list(AST_DeclSpec*) decl_specs) {
+    DeclSpecInfo* decl_spec_info = create_struct(DeclSpecInfo);
+    decl_spec_info->type = NULL;
+    decl_spec_info->storage = NULL;
+    decl_spec_info->align = 0;
+    decl_spec_info->align_keyword = NULL;
+    decl_spec_info->is_inline = false;
+    decl_spec_info->is_noreturn = false;
+    decl_spec_info->is_thread_local = false;
+    bool is_const = false;
+    bool is_restrict = false;
+    bool is_volatile = false;
+    bool is_atomic = false;
+    /*
+    complex imaginary bool unsigned signed double float long long int short char void
+    4096    2048      1024 512      256    128    64    32   16   8   4     2    1
+    */
+    int type_bits = 0;
+
+    IR_Type* other = NULL;
+    bool has_type_specifier = false;
+    bool has_error = false;
+    foreach (AST_DeclSpec*, decl, decl_specs) {
+        if (decl->specifier_type == SPEC_TYPE_SPEC) {
+            has_type_specifier = true;
+            AST_TypeSpec* type = decl->specifier.type;
+            if (type->spec_type == TYPE_SPEC_KEYWORD) {
+                if (type->spec.keyword_spec == KEYWORD_VOID) {
+                    if (type_bits & 1) semantic_error(type->token, "Duplicate 'void' type specifier");
+                    else type_bits |= 1;
+                } else if (type->spec.keyword_spec == KEYWORD_CHAR) {
+                    if (type_bits & 2) semantic_error(type->token, "Duplicate 'char' type specifier");
+                    else type_bits |= 2;
+                } else if (type->spec.keyword_spec == KEYWORD_SHORT) {
+                    if (type_bits & 4) semantic_error(type->token, "Duplicate 'short' type specifier");
+                    else type_bits |= 4;
+                } else if (type->spec.keyword_spec == KEYWORD_INT) {
+                    if (type_bits & 8) semantic_error(type->token, "Duplicate 'int' type specifier");
+                    else type_bits |= 8;
+                } else if (type->spec.keyword_spec == KEYWORD_LONG) {
+                    if (type_bits & 32) semantic_error(type->token, "Too many 'long' type specifiers");
+                    else if (type_bits & 16) type_bits |= 32;
+                    else type_bits |= 16;
+                } else if (type->spec.keyword_spec == KEYWORD_FLOAT) {
+                    if (type_bits & 64) semantic_error(type->token, "Duplicate 'float' type specifier");
+                    else type_bits |= 64;
+                } else if (type->spec.keyword_spec == KEYWORD_DOUBLE) {
+                    if (type_bits & 128) semantic_error(type->token, "Duplicate 'double' type specifier");
+                    else type_bits |= 128;
+                } else if (type->spec.keyword_spec == KEYWORD_SIGNED) {
+                    if (type_bits & 256) semantic_error(type->token, "Duplicate 'signed' type specifier");
+                    else type_bits |= 256;
+                } else if (type->spec.keyword_spec == KEYWORD_UNSIGNED) {
+                    if (type_bits & 512) semantic_error(type->token, "Duplicate 'unsigned' type specifier");
+                    else type_bits |= 512;
+                } else if (type->spec.keyword_spec == KEYWORD_BOOL) {
+                    if (type_bits & 1024) semantic_error(type->token, "Duplicate '_Bool' type specifier");
+                    else type_bits |= 1024;
+                } else if (type->spec.keyword_spec == KEYWORD_IMAGINARY) {
+                    if (type_bits & 2048) semantic_error(type->token, "Duplicate '_Imaginary' type specifier");
+                    else type_bits |= 2048;
+                } else if (type->spec.keyword_spec == KEYWORD_COMPLEX) {
+                    if (type_bits & 4096) semantic_error(type->token, "Duplicate '_Complex' type specifier");
+                    else type_bits |= 4096;
+                } else assert(false);
+            } else if (type->spec_type == TYPE_SPEC_ATOMIC) {
+                IR_Type* t = analyze_type_name(ctx, type->spec.atomic_spec);
+                if (t == NULL) {
+                    has_error = true;
+                    continue;
+                }
+                if (t->type_kind == TYPE_FUNCTION || t->type_kind == TYPE_ARRAY) {
+                    semantic_error(type->token, "Atomic specifier cannot be applied to function or array types");
+                    has_error = true;
+                    continue;
+                }
+                if (t->is_atomic || t->is_const || t->is_volatile || t->is_restrict) {
+                    semantic_error(type->token, "Atomic specifier cannot be combined with atomic, const, volatile, or restrict qualifiers");
+                    has_error = true;
+                    continue;
+                }
+                if (other != NULL) {
+                    semantic_error(type->token, "Cannot combine atomic specifier with other type specifiers");
+                    continue;
+                }
+                other = create_struct(IR_Type);
+                memcpy(other, t, sizeof(IR_Type));
+                other->token = type->token;
+                other->is_atomic = true;
+                // TODO: in Atomic, size and align depend on the target
+            } else if (type->spec_type == TYPE_SPEC_STRUCT_UNION) {
+                IR_StructUnion* struct_union = analyze_struct_union(ctx, type->spec.struct_union_spec.members, type->spec.struct_union_spec.is_struct, type->spec.struct_union_spec.identifier);
+                if (struct_union == NULL) {
+                    has_error = true;
+                    continue;
+                }
+                if (other != NULL) {
+                    semantic_error(type->token, "Cannot combine struct/union specifier with other type specifiers");
+                    continue;
+                }
+                other = create_struct(IR_Type);
+                other->type.struct_union_type = struct_union;
+                other->token = type->token;
+                other->type_kind = type->spec.struct_union_spec.is_struct ? TYPE_STRUCT : TYPE_UNION;
+            } else if (type->spec_type == TYPE_SPEC_ENUM) {
+                IR_Enum* enum_type = analyze_enum(ctx, type->spec.enum_spec.enumerators, type->spec.enum_spec.identifier);
+                if (enum_type == NULL) {
+                    has_error = true;
+                    continue;
+                }
+                if (other != NULL) {
+                    semantic_error(type->token, "Cannot combine enum specifier with other type specifiers");
+                    continue;
+                }
+                other = create_struct(IR_Type);
+                other->type.enum_type = enum_type;
+                other->token = type->token;
+                other->type_kind = TYPE_ENUM;
+            } else if (type->spec_type == TYPE_SPEC_TYPEDEF_NAME) {
+                IR_Symbol* symbol = find_symbol(ctx->scope, type->spec.typedef_name->value, true);
+                if (symbol == NULL || symbol->kind != SYMBOL_TYPEDEF) {
+                    semantic_error(type->spec.typedef_name, "Unknown typedef name");
+                    has_error = true;
+                    continue;
+                }
+                if (other != NULL) {
+                    semantic_error(type->spec.typedef_name, "Cannot combine typedef name with other type specifiers");
+                    continue;
+                }
+                other = create_struct(IR_Type);
+                memcpy(other, symbol->type, sizeof(IR_Type));
+                other->token = type->spec.typedef_name;
+            } else assert(false);
+        } else if (decl->specifier_type == SPEC_ALIGNMENT) {
+            intmax_t value = 0;
+            if (decl->specifier.alignment.is_type_name) {
+                IR_Type* type = analyze_type_name(ctx, decl->specifier.alignment.spec.type_name);
+                if (type == NULL) continue;
+                value = (intmax_t)type->align;
+            } else {
+                IR_Expression* expr = analyze_conditional_expression(ctx, decl->specifier.alignment.spec.constant_expression);
+                if (expr == NULL)
+                    continue;
+                if (!eval_const_int(expr, &value)) {
+                    semantic_error(decl->token, "Alignment specifier is not a constant expression");
+                    continue;
+                }
+            }
+            if (value == 0) continue;
+            if (value < 0 || (value & (value - 1)) != 0) {
+                semantic_error(decl->token, "Alignment specifier must be a positive power of two");
+                continue;
+            }
+            if (decl_spec_info->align <= (uintmax_t)value) {
+                decl_spec_info->align = (uintmax_t)value;
+                decl_spec_info->align_keyword = decl->token;
+            }
+        } else if (decl->specifier_type == SPEC_KEYWORD) {
+            if (decl->specifier.keyword == KEYWORD_TYPEDEF || decl->specifier.keyword == KEYWORD_EXTERN || decl->specifier.keyword == KEYWORD_STATIC || decl->specifier.keyword == KEYWORD_AUTO || decl->specifier.keyword == KEYWORD_REGISTER) {
+                if (decl_spec_info->storage != NULL)
+                    semantic_error(decl->token, "Multiple storage class specifiers");
+                else
+                    decl_spec_info->storage = decl->specifier.keyword;
+            } else if (decl->specifier.keyword == KEYWORD_THREAD_LOCAL) decl_spec_info->is_thread_local = true;
+            else if (decl->specifier.keyword == KEYWORD_CONST) is_const = true;
+            else if (decl->specifier.keyword == KEYWORD_RESTRICT) is_restrict = true;
+            else if (decl->specifier.keyword == KEYWORD_VOLATILE) is_volatile = true;
+            else if (decl->specifier.keyword == KEYWORD_ATOMIC) is_atomic = true;
+            else if (decl->specifier.keyword == KEYWORD_INLINE) decl_spec_info->is_inline = true;
+            else if (decl->specifier.keyword == KEYWORD_NORETURN) decl_spec_info->is_noreturn = true;
+            else assert(false);
+        } else assert(false);
+    }
+    if (other == NULL) {
+        if (has_error) return NULL;
+        other = create_struct(IR_Type);
+        other->type.basic_type = NULL;
+        other->token = peek_front(decl_specs, AST_DeclSpec*)->token;
+        // clang-format off
+        switch (type_bits) {
+            case 0: other->type_kind = TYPE_INT;  // default to int
+                if (!has_type_specifier)
+                    semantic_warn(other->token, "No type specifier, defaulting to 'int'");
+                break;
+            case 1: other->type_kind = TYPE_VOID; break;
+            case 2: other->type_kind = TYPE_CHAR; break;
+            case 258: other->type_kind = TYPE_S_CHAR; break;
+            case 514: other->type_kind = TYPE_U_CHAR; break;
+            case 4: case 12: case 260: case 268: other->type_kind = TYPE_SHORT; break;
+            case 516: case 524: other->type_kind = TYPE_U_SHORT; break;
+            case 8: case 256: case 264: other->type_kind = TYPE_INT; break;
+            case 512: case 520: other->type_kind = TYPE_U_INT; break;
+            case 16: case 24: case 272: case 280: other->type_kind = TYPE_LONG; break;
+            case 528: case 536: other->type_kind = TYPE_U_LONG; break;
+            case 48: case 56: case 304: case 312: other->type_kind = TYPE_LONG_LONG; break;
+            case 560: case 568: other->type_kind = TYPE_U_LONG_LONG; break;
+            case 64: other->type_kind = TYPE_FLOAT; break;
+            case 128: other->type_kind = TYPE_DOUBLE; break;
+            case 144: other->type_kind = TYPE_LONG_DOUBLE; break;
+            case 1024: other->type_kind = TYPE_BOOL; break;
+            case 4160: other->type_kind = TYPE_FLOAT_COMPLEX; break;
+            case 4096: case 4224: other->type_kind = TYPE_DOUBLE_COMPLEX; break;
+            case 4240: other->type_kind = TYPE_LONG_DOUBLE_COMPLEX; break;
+            case 2112: other->type_kind = TYPE_FLOAT_IMAGINARY; break;
+            case 2048: case 2176: other->type_kind = TYPE_DOUBLE_IMAGINARY; break;
+            case 2192: other->type_kind = TYPE_LONG_DOUBLE_IMAGINARY; break;
+            default:
+                semantic_error(other->token, "Invalid combination of type specifiers");
+                return NULL;
+        }
+        // clang-format on
+    } else if (type_bits > 0) {
+        semantic_error(other->token, "Cannot combine type specifiers with struct/union/enum/typedef");
+        return NULL;
+    }
+    if (other->type_kind == TYPE_ARRAY && (is_const || is_volatile || is_restrict || is_atomic)) {
+        IR_Type* t = other;
+        while (true) {
+            if (t->type_kind != TYPE_ARRAY) break;
+            IR_Type* element_type = create_struct(IR_Type);
+            memcpy(element_type, t->type.array.element_type, sizeof(IR_Type));
+            t->type.array.element_type = element_type;
+            t = element_type;
+        }
+    } else {
+        other->is_const |= is_const;
+        other->is_volatile |= is_volatile;
+    }
+    other->size = get_type_size(other);
+    other->align = get_type_align(other);
+    decl_spec_info->type = other;
+    if (decl_spec_info->is_thread_local && decl_spec_info->storage != NULL && decl_spec_info->storage != KEYWORD_EXTERN && decl_spec_info->storage != KEYWORD_STATIC)
+        semantic_error(other->token, "Thread-local storage class is only allowed with 'extern' or 'static'");
+    if (is_restrict && other->type_kind != TYPE_POINTER)
+        semantic_error(other->token, "'restrict' qualifier is not allowed for function type");
+    else
+        other->is_restrict |= is_restrict;
+    if (is_atomic && (other->type_kind == TYPE_FUNCTION || other->type_kind == TYPE_ARRAY))
+        semantic_error(other->token, "'atomic' qualifier is not allowed for function or array types");
+    else
+        other->is_atomic |= is_atomic;
+    return decl_spec_info;
 }
 
 static IR_Type* analyze_pointer(Semantic* ctx, AST_Pointer* node, IR_Type* base) {
@@ -233,8 +573,8 @@ static IR_Type* analyze_pointer(Semantic* ctx, AST_Pointer* node, IR_Type* base)
     type->token = node->token;
     type->type_kind = TYPE_POINTER;
     type->type.pointer_type = base;
-    type->size = 8;
-    type->align = 8;
+    type->size = POINTER_SIZE;
+    type->align = POINTER_ALIGN;
     foreach (string, qual, node->type_qualifiers) {
         if (qual == KEYWORD_CONST) {
             if (type->is_const) semantic_warn(node->token, "Duplicate 'const' qualifier");
@@ -300,7 +640,7 @@ static IR_Type* analyze_array_suffix(Semantic* ctx, AST_DirectDeclarator* node, 
             semantic_error(length_expr->token, "Array size must be greater than 0");
             return NULL;
         }
-        size_t element_size = get_type_size(base);
+        size_t element_size = type_size(base);
         if (element_size > 0 && (uintmax_t)length > INTMAX_MAX / element_size / 2) {
             semantic_error(length_expr->token, "Array is too large");
             return NULL;
@@ -355,11 +695,15 @@ static IR_Type* analyze_func_suffix(Semantic* ctx, AST_DirectDeclarator* node, I
         assert(param->token != NULL);
         assert(param->decl_specs != NULL);
         assert(param->decl != NULL || param->is_abs);
-        DeclSpecInfo info = analyze_decl_specs(ctx, param->decl_specs);
-        IR_Type* type = info.type;
+        DeclSpecInfo* info = analyze_decl_specs(ctx, param->decl_specs);
+        if (info == NULL) {
+            has_error = true;
+            continue;
+        }
+        IR_Type* type = info->type;
         Token* id = NULL;
         if (param->decl != NULL) {
-            id = analyze_declarator(ctx, param->decl, info.type, &type);
+            id = analyze_declarator(ctx, param->decl, info->type, &type);
             if (type == NULL) {
                 has_error = true;
                 continue;
@@ -367,12 +711,12 @@ static IR_Type* analyze_func_suffix(Semantic* ctx, AST_DirectDeclarator* node, I
         }
         assert(param->is_abs == (id == NULL));
 
-        if (info.storage != NULL && info.storage != KEYWORD_REGISTER) {
+        if (info->storage != NULL && info->storage != KEYWORD_REGISTER) {
             semantic_error(param->token, "Invalid storage class for parameter");
             has_error = true;
             continue;
         }
-        if (info.is_inline || info.is_noreturn) {
+        if (info->is_inline || info->is_noreturn) {
             semantic_error(param->token, "Function specifier is not allowed for parameter");
             has_error = true;
             continue;
@@ -388,18 +732,18 @@ static IR_Type* analyze_func_suffix(Semantic* ctx, AST_DirectDeclarator* node, I
 
         if (type->type_kind == TYPE_ARRAY) {
             IR_Type* ptr = create_struct(IR_Type);
-            *ptr = (IR_Type){.token = type->token, .type.pointer_type = type->type.array.element_type, .type_kind = TYPE_POINTER, .size = 8, .align = 8, .is_const = type->is_const, .is_volatile = type->is_volatile, .is_restrict = type->is_restrict, .is_atomic = type->is_atomic};
+            *ptr = (IR_Type){.token = type->token, .type.pointer_type = type->type.array.element_type, .type_kind = TYPE_POINTER, .size = POINTER_SIZE, .align = POINTER_ALIGN, .is_const = type->is_const, .is_volatile = type->is_volatile, .is_restrict = type->is_restrict, .is_atomic = type->is_atomic};
             type = ptr;
         } else if (type->type_kind == TYPE_FUNCTION) {
             IR_Type* ptr = create_struct(IR_Type);
-            *ptr = (IR_Type){.token = type->token, .type.pointer_type = type, .type_kind = TYPE_POINTER, .size = 8, .align = 8};
+            *ptr = (IR_Type){.token = type->token, .type.pointer_type = type, .type_kind = TYPE_POINTER, .size = POINTER_SIZE, .align = POINTER_ALIGN};
             type = ptr;
         }
 
         IR_Param* ir_param = create_struct(IR_Param);
         *ir_param = (IR_Param){.token = param->token, .type = type};
         if (id != NULL) {
-            ir_param->symbol = declare_name(ctx, id, type, SYMBOL_VAR, info.storage);
+            ir_param->symbol = declare_name(ctx, id, type, SYMBOL_VAR, info->storage);
             if (ir_param->symbol == NULL) has_error = true;
         }
         append(proto->params, ir_param);
@@ -533,7 +877,7 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, InitCursor* 
                 }
                 intmax_t v = 0;
                 char* msg = NULL;
-                size_t element_size = get_type_size(type->type.array.element_type);
+                size_t element_size = type_size(type->type.array.element_type);
                 if (!eval_const_int(expr, &v))
                     msg = "Array index is not a constant expression";
                 else if (v < 0)
@@ -559,7 +903,7 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, InitCursor* 
                 continue;
             }
             placement_type = type->type.array.element_type;
-            placement_offset = tree->offset + index * get_type_size(placement_type);
+            placement_offset = tree->offset + index * type_size(placement_type);
         } else {
             if (cursor->designator != NULL) {
                 AST_Designator* designator = cursor->designator->data;
@@ -654,7 +998,7 @@ static void analyze_initializer_items(Semantic* ctx, IR_Type* type, InitCursor* 
     }
     if (type->type_kind == TYPE_ARRAY && type->type.array.length == 0) {
         type->type.array.length = max_index;
-        type->size = max_index * get_type_size(type->type.array.element_type);
+        type->size = max_index * type_size(type->type.array.element_type);
     }
 }
 
@@ -765,21 +1109,21 @@ static void analyze_static_assert_decl(Semantic* ctx, AST_StaticAssertDecl* node
         static_assert_report(ctx, node->token, node->message->literal.str);
 }
 
-static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInfo info) {
+static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInfo* info) {
     assert(node != NULL);
     assert(node->token != NULL);
     assert(node->declarator != NULL);
 
     IR_Type* type = NULL;
-    Token* id = analyze_declarator(ctx, node->declarator, info.type, &type);
+    Token* id = analyze_declarator(ctx, node->declarator, info->type, &type);
     assert(id != NULL);
     if (type == NULL) return NULL;
 
     IR_SymbolKind kind = SYMBOL_VAR;
-    if (info.storage == KEYWORD_TYPEDEF) kind = SYMBOL_TYPEDEF;
+    if (info->storage == KEYWORD_TYPEDEF) kind = SYMBOL_TYPEDEF;
     else if (type->type_kind == TYPE_FUNCTION) kind = SYMBOL_FUNC;
 
-    IR_Symbol* symbol = declare_name(ctx, id, type, kind, info.storage);
+    IR_Symbol* symbol = declare_name(ctx, id, type, kind, info->storage);
     if (symbol == NULL) return NULL;
 
     if (kind == SYMBOL_TYPEDEF) {
@@ -793,7 +1137,7 @@ static IR_Decl* analyze_init_decl(Semantic* ctx, AST_InitDecl* node, DeclSpecInf
         if (node->initializer != NULL)
             is_allowed = symbol->type->type_kind == TYPE_ARRAY;
         else
-            is_allowed = info.storage == KEYWORD_EXTERN || (ctx->scope->kind == SCOPE_FILE && symbol->type->type_kind != TYPE_VOID);
+            is_allowed = info->storage == KEYWORD_EXTERN || (ctx->scope->kind == SCOPE_FILE && symbol->type->type_kind != TYPE_VOID);
         if (!is_allowed) {
             semantic_error(id, "Variable has incomplete type");
             return NULL;
@@ -831,7 +1175,8 @@ static list(IR_Decl*) analyze_var_decl(Semantic* ctx, AST_VarDecl* node) {
         analyze_static_assert_decl(ctx, node->decl.static_assert_decl);
         return result;
     }
-    DeclSpecInfo info = analyze_decl_specs(ctx, node->decl.general_decl.decl_specs);
+    DeclSpecInfo* info = analyze_decl_specs(ctx, node->decl.general_decl.decl_specs);
+    if (info == NULL) return result;
 
     foreach (AST_InitDecl*, init_decl, node->decl.general_decl.init_decls) {
         IR_Decl* decl = analyze_init_decl(ctx, init_decl, info);
@@ -848,16 +1193,17 @@ static IR_FuncDef* analyze_func_decl(Semantic* ctx, AST_FuncDecl* node) {
     assert(node->declarator != NULL);
     assert(node->body != NULL);
 
-    DeclSpecInfo info = analyze_decl_specs(ctx, node->decl_specs);
-    if (info.storage == KEYWORD_TYPEDEF || info.storage == KEYWORD_REGISTER || info.storage == KEYWORD_AUTO) {
+    DeclSpecInfo* info = analyze_decl_specs(ctx, node->decl_specs);
+    if (info == NULL) return NULL;
+    if (info->storage == KEYWORD_TYPEDEF || info->storage == KEYWORD_REGISTER || info->storage == KEYWORD_AUTO) {
         semantic_error(node->token, "Invalid storage class for function");
         return NULL;
     }
     IR_Type* type = NULL;
-    Token* id = analyze_declarator(ctx, node->declarator, info.type, &type);
+    Token* id = analyze_declarator(ctx, node->declarator, info->type, &type);
     assert(id != NULL);
     if (type == NULL) return NULL;
-    if (type->type_kind != TYPE_FUNCTION || type == info.type) {
+    if (type->type_kind != TYPE_FUNCTION || type == info->type) {
         semantic_error(node->token, "Function declarator must have function type");
         return NULL;
     }
@@ -877,7 +1223,7 @@ static IR_FuncDef* analyze_func_decl(Semantic* ctx, AST_FuncDecl* node) {
             semantic_warn(param->token, "Function has unnamed parameter");
     }
     if (has_error) return NULL;
-    IR_Symbol* symbol = declare_name(ctx, id, type, SYMBOL_FUNC, info.storage);
+    IR_Symbol* symbol = declare_name(ctx, id, type, SYMBOL_FUNC, info->storage);
     if (symbol == NULL) return NULL;
     if (symbol->is_defined) {
         semantic_error(node->token, "Function is already defined");
